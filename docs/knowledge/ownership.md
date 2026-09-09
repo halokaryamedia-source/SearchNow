@@ -35,21 +35,24 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | Minecraft storage discovery | `EngineData/Backend/RustCore/src/minecraft.rs` |
 | local content indexing | `EngineData/Backend/RustCore/src/library.rs` |
 | read-only package inspection + archive safety + BP/RP relationships | `EngineData/Backend/RustCore/src/package/` |
+| download DTOs/state contract | `EngineData/Backend/RustCore/src/download/model.rs` |
 | download lifecycle/state machine/concurrency | `EngineData/Backend/RustCore/src/download/manager.rs` |
 | download persistence/recovery | `EngineData/Backend/RustCore/src/download/store.rs` |
 | download workspace + atomic finalization | `EngineData/Backend/RustCore/src/download/workspace.rs` |
-| download DTOs/state contract | `EngineData/Backend/RustCore/src/download/model.rs` |
+| transport adapter contract + local-file transport | `EngineData/Backend/RustCore/src/download/transport.rs` |
+| scheduler/executor/progress checkpointing | `EngineData/Backend/RustCore/src/download/executor.rs` |
 | backend orchestration snapshot | `EngineData/Backend/RustCore/src/lib.rs` |
 | backend error semantics | `EngineData/Backend/RustCore/src/error.rs` |
 | Tauri IPC registration | `EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs` |
+| Tauri application/runtime bootstrap | `EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs` |
 | Tauri settings adaptation | `.../commands/settings.rs` |
 | Tauri Minecraft adaptation | `.../commands/minecraft.rs` |
 | Tauri library adaptation | `.../commands/library.rs` |
 | Tauri package-inspection adaptation | `.../commands/package.rs` |
-| Tauri download queue adaptation + transactional persistence | `.../commands/download.rs` |
+| Tauri download adaptation | `.../commands/download.rs` |
 | frontend raw invoke boundary | `EngineData/Frontend/RustApp/src/app/bridge/runtimeApi.ts` |
 
-Tauri commands must remain adapters. Fix filesystem/domain/archive/download behavior in RustCore, not in IPC wrappers or Svelte pages.
+Tauri commands must remain adapters. Queue lifecycle, transport execution, persistence, filesystem, package, and Minecraft behavior belong in RustCore rather than IPC wrappers or Svelte pages.
 
 ## Legacy evidence
 

@@ -40,6 +40,7 @@ const backendRequired = [
   "src/download/workspace.rs",
   "src/download/transport.rs",
   "src/download/executor.rs",
+  "src/download/http.rs",
 ];
 const errors = [];
 
@@ -77,7 +78,8 @@ if (!packageCommand.includes("searchnow_core::package")) errors.push("package co
 const downloadCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/download.rs"), "utf8");
 if (!downloadCommand.includes("DownloadExecutionRuntime")) errors.push("download command must delegate to the RustCore execution runtime");
 const bootstrap = await readFile(resolve(appRoot, "src-tauri/src/app_bootstrap.rs"), "utf8");
-if (!bootstrap.includes("DownloadExecutionRuntime::new") || !bootstrap.includes("app.manage(runtime)")) errors.push("application bootstrap must create and manage the RustCore download execution runtime");
+if (!bootstrap.includes("app.manage(runtime)")) errors.push("Tauri bootstrap must manage exactly one download execution runtime");
+if (!bootstrap.includes("HttpTransport")) errors.push("Tauri bootstrap must register the provider-neutral public HTTPS transport");
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

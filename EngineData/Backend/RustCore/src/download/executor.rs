@@ -5,7 +5,7 @@ use super::{
 };
 use crate::error::{BackendError, BackendResult};
 use std::{
-    io::{Read, Write},
+    io::{ErrorKind, Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     thread,
@@ -162,12 +162,13 @@ impl DownloadExecutionRuntime {
             let read = match stream.reader.read(&mut buffer) {
                 Ok(read) => read,
                 Err(error) => {
+                    let (code, retryable) = transfer_read_failure(error.kind());
                     self.fail_job(
                         job_id,
                         &plan,
-                        "download_transfer_read_failed",
+                        code,
                         &format!("Download transport read failed: {error}"),
-                        true,
+                        retryable,
                     )?;
                     return Ok(());
                 }
@@ -332,6 +333,14 @@ impl DownloadExecutionRuntime {
                 "Download manager state is unavailable.",
             )
         })
+    }
+}
+
+fn transfer_read_failure(kind: ErrorKind) -> (&'static str, bool) {
+    match kind {
+        ErrorKind::TimedOut | ErrorKind::WouldBlock => ("download_transfer_timeout", true),
+        ErrorKind::InvalidData => ("download_transfer_invalid_data", false),
+        _ => ("download_transfer_read_failed", true),
     }
 }
 

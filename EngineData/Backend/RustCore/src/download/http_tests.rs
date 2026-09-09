@@ -110,12 +110,23 @@ fn wait_for(
     }
 }
 
+fn expect_open_error(
+    result: Result<DownloadTransportStream, DownloadTransportFailure>,
+    message: &str,
+) -> DownloadTransportFailure {
+    match result {
+        Err(error) => error,
+        Ok(_) => panic!("{message}"),
+    }
+}
+
 #[test]
 fn production_http_transport_rejects_plain_http() {
     let transport = HttpTransport::new(test_policy()).expect("transport");
-    let error = transport
-        .open(&source("http://example.com/file.mcpack".into()))
-        .expect_err("plain HTTP must be rejected");
+    let error = expect_open_error(
+        transport.open(&source("http://example.com/file.mcpack".into())),
+        "plain HTTP must be rejected",
+    );
     assert_eq!(error.code, "download_http_scheme_rejected");
     assert!(!error.retryable);
 }
@@ -123,11 +134,12 @@ fn production_http_transport_rejects_plain_http() {
 #[test]
 fn public_http_job_rejects_persisted_query_string() {
     let transport = HttpTransport::new(test_policy()).expect("transport");
-    let error = transport
-        .open(&source(
+    let error = expect_open_error(
+        transport.open(&source(
             "https://example.com/file.mcpack?token=secret".into(),
-        ))
-        .expect_err("query strings must use a runtime resolver");
+        )),
+        "query strings must use a runtime resolver",
+    );
     assert_eq!(error.code, "download_http_query_not_persistable");
 }
 
@@ -190,9 +202,10 @@ fn declared_oversized_response_is_rejected_before_streaming() {
     let mut policy = test_policy();
     policy.max_response_bytes = 10;
     let transport = HttpTransport::new_test_http(policy).expect("transport");
-    let error = transport
-        .open(&source(format!("{base}/large")))
-        .expect_err("oversized response must fail");
+    let error = expect_open_error(
+        transport.open(&source(format!("{base}/large"))),
+        "oversized response must fail",
+    );
     assert_eq!(error.code, "download_http_response_too_large");
     assert!(!error.retryable);
 }
@@ -229,9 +242,10 @@ fn stalled_response_header_times_out_as_retryable() {
     policy.read_timeout = Duration::from_millis(50);
     policy.overall_timeout = Duration::from_secs(1);
     let transport = HttpTransport::new_test_http(policy).expect("transport");
-    let error = transport
-        .open(&source(format!("{base}/slow")))
-        .expect_err("stalled response must timeout");
+    let error = expect_open_error(
+        transport.open(&source(format!("{base}/slow"))),
+        "stalled response must timeout",
+    );
     assert_eq!(error.code, "download_http_request_failed");
     assert!(error.retryable);
 }

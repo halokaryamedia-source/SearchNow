@@ -1,8 +1,8 @@
 use super::*;
 use crate::{
     catalog::{
-        CatalogProvider, CatalogProviderFailure, CatalogProviderPage, CatalogQuery,
-        CatalogService, CatalogProviderRegistry,
+        CatalogProvider, CatalogProviderFailure, CatalogProviderPage, CatalogProviderRegistry,
+        CatalogQuery, CatalogService,
     },
     download::{ProviderResolveFailure, ResolvedResource, ResourceResolver},
 };
@@ -159,7 +159,10 @@ fn refresh_failure_is_sanitized_and_status_remains_secret_free() {
 
     let status = manager.status("fake");
     assert_eq!(status.state, ProviderSessionState::Failed);
-    assert_eq!(status.failure_code.as_deref(), Some("provider_session_failed"));
+    assert_eq!(
+        status.failure_code.as_deref(),
+        Some("provider_session_failed")
+    );
     let serialized = serde_json::to_string(&status).expect("safe status json");
     assert!(!serialized.contains("runtime-secret"));
 }
@@ -167,7 +170,9 @@ fn refresh_failure_is_sanitized_and_status_remains_secret_free() {
 #[test]
 fn missing_provider_session_is_explicitly_unavailable() {
     let manager = ProviderSessionManager::new(ProviderSessionRegistry::new());
-    let error = manager.acquire("missing").expect_err("missing session source");
+    let error = manager
+        .acquire("missing")
+        .expect_err("missing session source");
     assert_eq!(error.code, "provider_session_unavailable");
     assert!(!error.retryable);
     assert_eq!(
@@ -186,12 +191,13 @@ impl CatalogProvider for SessionCatalogProvider {
     }
 
     fn query(&self, _query: &CatalogQuery) -> Result<CatalogProviderPage, CatalogProviderFailure> {
-        let lease = self.sessions.acquire("fake").map_err(|error| {
-            CatalogProviderFailure::new(error.code, error.retryable)
-        })?;
-        let secret = lease.downcast::<SecretSession>().map_err(|error| {
-            CatalogProviderFailure::new(error.code, error.retryable)
-        })?;
+        let lease = self
+            .sessions
+            .acquire("fake")
+            .map_err(|error| CatalogProviderFailure::new(error.code, error.retryable))?;
+        let secret = lease
+            .downcast::<SecretSession>()
+            .map_err(|error| CatalogProviderFailure::new(error.code, error.retryable))?;
         assert!(!secret.value.is_empty());
         Ok(CatalogProviderPage {
             items: Vec::new(),
@@ -210,12 +216,13 @@ impl ResourceResolver for SessionResolver {
     }
 
     fn resolve(&self, _resource_id: &str) -> Result<ResolvedResource, ProviderResolveFailure> {
-        let lease = self.sessions.acquire("fake").map_err(|error| {
-            ProviderResolveFailure::new(error.code, error.retryable)
-        })?;
-        let secret = lease.downcast::<SecretSession>().map_err(|error| {
-            ProviderResolveFailure::new(error.code, error.retryable)
-        })?;
+        let lease = self
+            .sessions
+            .acquire("fake")
+            .map_err(|error| ProviderResolveFailure::new(error.code, error.retryable))?;
+        let secret = lease
+            .downcast::<SecretSession>()
+            .map_err(|error| ProviderResolveFailure::new(error.code, error.retryable))?;
         assert!(!secret.value.is_empty());
         Ok(ResolvedResource::new("https://example.com/resource"))
     }

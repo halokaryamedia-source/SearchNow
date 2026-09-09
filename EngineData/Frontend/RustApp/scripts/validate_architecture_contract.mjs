@@ -25,6 +25,7 @@ const required = [
 const backendRequired = [
   "Cargo.toml",
   "src/lib.rs",
+  "src/app_runtime.rs",
   "src/settings.rs",
   "src/minecraft.rs",
   "src/library.rs",
@@ -48,6 +49,9 @@ const backendRequired = [
   "src/provider_session/mod.rs",
   "src/provider_session/model.rs",
   "src/provider_session/runtime.rs",
+  "src/provider_adapter/mod.rs",
+  "src/provider_adapter/model.rs",
+  "src/provider_adapter/runtime.rs",
 ];
 const errors = [];
 
@@ -78,18 +82,58 @@ for (const path of await collect(resolve(appRoot, "src"))) {
 
 const tauriManifest = await readFile(resolve(appRoot, "src-tauri/Cargo.toml"), "utf8");
 if (!tauriManifest.includes('searchnow-core = { path = "../../../Backend/RustCore" }')) errors.push("Tauri runtime must link the in-process RustCore backend");
-const runtimeCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/runtime.rs"), "utf8");
-if (!runtimeCommand.includes("searchnow_core::runtime")) errors.push("runtime command must delegate to RustCore");
-const packageCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/package.rs"), "utf8");
-if (!packageCommand.includes("searchnow_core::package")) errors.push("package command must delegate to RustCore");
-const downloadCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/download.rs"), "utf8");
-if (!downloadCommand.includes("DownloadExecutionRuntime")) errors.push("download command must delegate to the RustCore execution runtime");
+
+const commandPaths = [
+  "runtime.rs",
+  "settings.rs",
+  "minecraft.rs",
+  "library.rs",
+  "package.rs",
+  "download.rs",
+];
+const forbiddenCommandOwners = [
+  "SettingsStore",
+  "PlatformContext",
+  "DownloadExecutionRuntime",
+  "DownloadTransportRegistry",
+  "ResourceResolverRegistry",
+  "HttpTransport",
+  "ProviderAdapterRuntime",
+  "IntegratedProvider",
+];
+for (const file of commandPaths) {
+  const text = await readFile(resolve(appRoot, `src-tauri/src/commands/${file}`), "utf8");
+  if (!text.includes("SearchNowBackendRuntime")) errors.push(`${file}: Tauri command must delegate through SearchNowBackendRuntime`);
+  for (const forbidden of forbiddenCommandOwners) {
+    if (text.includes(forbidden)) errors.push(`${file}: Tauri command must not own or construct backend component ${forbidden}`);
+  }
+}
+
 const bootstrap = await readFile(resolve(appRoot, "src-tauri/src/app_bootstrap.rs"), "utf8");
-if (!bootstrap.includes("app.manage(runtime)")) errors.push("Tauri bootstrap must manage exactly one download execution runtime");
-if (!bootstrap.includes("HttpTransport")) errors.push("Tauri bootstrap must register the provider-neutral public HTTPS transport");
+if (!bootstrap.includes("SearchNowBackendRuntime::new")) errors.push("Tauri bootstrap must construct the consolidated SearchNowBackendRuntime");
+if (!bootstrap.includes("app.manage(runtime)")) errors.push("Tauri bootstrap must manage one consolidated backend runtime");
+for (const forbidden of ["DownloadExecutionRuntime", "DownloadTransportRegistry", "ResourceResolverRegistry", "HttpTransport", "ProviderAdapterRuntime"]) {
+  if (bootstrap.includes(forbidden)) errors.push(`Tauri bootstrap must not construct backend sub-runtime ${forbidden}`);
+}
+
 const lib = await readFile(resolve(backendRoot, "src/lib.rs"), "utf8");
+if (!lib.includes("pub mod app_runtime")) errors.push("RustCore must expose the application backend runtime");
 if (!lib.includes("pub mod catalog")) errors.push("RustCore must expose the provider-neutral catalog domain");
 if (!lib.includes("pub mod provider_session")) errors.push("RustCore must expose the shared provider-session runtime boundary");
+if (!lib.includes("pub mod provider_adapter")) errors.push("RustCore must expose the integrated provider adapter boundary");
+
+const appRuntime = await readFile(resolve(backendRoot, "src/app_runtime.rs"), "utf8");
+for (const needle of [
+  "SearchNowBackendRuntime",
+  "SettingsStore::new",
+  "ProviderAdapterRuntime::compose",
+  "providers.resolvers()",
+  "ProviderResolvedTransport::new",
+  "DownloadExecutionRuntime::new",
+  "BackendRuntimeSnapshot",
+]) {
+  if (!appRuntime.includes(needle)) errors.push(`application backend runtime is missing composition contract ${needle}`);
+}
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

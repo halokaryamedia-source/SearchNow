@@ -130,8 +130,8 @@ if app_runtime.exists():
         if needle not in text:
             errors.append(f"{app_runtime.relative_to(ROOT)}: missing application composition/observability contract {needle!r}")
 
-# Diagnostics are intentionally bounded and static-message only. This keeps paths,
-# provider bodies, signed URLs, and credential-bearing runtime data out of public health state.
+# Diagnostics are intentionally bounded and static-message only. Guard ownership patterns,
+# not anti-leak assertion literals used by tests.
 diagnostics = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "diagnostics.rs"
 if diagnostics.exists():
     text = diagnostics.read_text(encoding="utf-8", errors="replace")
@@ -139,9 +139,14 @@ if diagnostics.exists():
         if needle not in text:
             errors.append(f"{diagnostics.relative_to(ROOT)}: missing bounded/static diagnostic contract {needle!r}")
     lowered = text.lower()
-    for forbidden in ["authorization:", "bearer ", "signed_url", "access_token", "refresh_token", "cookie:"]:
+    for forbidden in [
+        "pub authorization:", "authorization: string", "pub bearer_token:", "bearer_token: string",
+        "pub signed_url:", "signed_url: string", "pub access_token:", "access_token: string",
+        "pub refresh_token:", "refresh_token: string", "pub cookie:", "cookie: string",
+        "pub headers:", "headers: hashmap", "headers: vec<",
+    ]:
         if forbidden in lowered:
-            errors.append(f"{diagnostics.relative_to(ROOT)}: diagnostic implementation must not own credential material {forbidden!r}")
+            errors.append(f"{diagnostics.relative_to(ROOT)}: diagnostic implementation must not own credential field {forbidden!r}")
 
 build_rs = ROOT / "EngineData" / "Frontend" / "RustApp" / "src-tauri" / "build.rs"
 if build_rs.exists():

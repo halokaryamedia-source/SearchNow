@@ -18,10 +18,7 @@ struct SequenceResolver {
 }
 
 impl SequenceResolver {
-    fn new(
-        key: &str,
-        responses: Vec<Result<ResolvedResource, ProviderResolveFailure>>,
-    ) -> Self {
+    fn new(key: &str, responses: Vec<Result<ResolvedResource, ProviderResolveFailure>>) -> Self {
         Self {
             key: key.to_string(),
             responses: Mutex::new(responses.into()),
@@ -168,9 +165,10 @@ fn missing_provider_fails_without_retry_loop() {
         .expect("queue");
 
     let snapshot = wait_for(&runtime, |snapshot| {
-        snapshot.jobs.iter().any(|candidate| {
-            candidate.id == job.id && candidate.state == DownloadJobState::Failed
-        })
+        snapshot
+            .jobs
+            .iter()
+            .any(|candidate| candidate.id == job.id && candidate.state == DownloadJobState::Failed)
     });
     let failed = snapshot
         .jobs
@@ -189,11 +187,13 @@ fn expired_material_is_resolved_again_before_transfer() {
     let resolver = Arc::new(SequenceResolver::new(
         "fake",
         vec![
-            Ok(ResolvedResource::new(
-                "http://127.0.0.1:1/expired?sig=old-ephemeral-secret",
-            )
-            .with_expiry_ms(0)),
-            Ok(ResolvedResource::new(format!("{base}/fresh?sig=fresh-secret"))),
+            Ok(
+                ResolvedResource::new("http://127.0.0.1:1/expired?sig=old-ephemeral-secret")
+                    .with_expiry_ms(0),
+            ),
+            Ok(ResolvedResource::new(format!(
+                "{base}/fresh?sig=fresh-secret"
+            ))),
         ],
     ));
     let directory = tempfile::tempdir().expect("tempdir");
@@ -220,29 +220,38 @@ fn retry_re_resolves_instead_of_reusing_failed_material() {
     let resolver = Arc::new(SequenceResolver::new(
         "fake",
         vec![
-            Err(ProviderResolveFailure::new("provider_session_expired", true)),
-            Ok(ResolvedResource::new(format!("{base}/retry?sig=retry-secret"))),
+            Err(ProviderResolveFailure::new(
+                "provider_session_expired",
+                true,
+            )),
+            Ok(ResolvedResource::new(format!(
+                "{base}/retry?sig=retry-secret"
+            ))),
         ],
     ));
     let directory = tempfile::tempdir().expect("tempdir");
     let runtime = provider_runtime(directory.path(), Some(resolver.clone()));
     let job = runtime
-        .queue(request("fake", "item-retry", "retry-resolve", payload.len()))
+        .queue(request(
+            "fake",
+            "item-retry",
+            "retry-resolve",
+            payload.len(),
+        ))
         .expect("queue");
 
     let failed = wait_for(&runtime, |snapshot| {
-        snapshot.jobs.iter().any(|candidate| {
-            candidate.id == job.id && candidate.state == DownloadJobState::Failed
-        })
-    });
-    assert!(
-        failed
+        snapshot
             .jobs
             .iter()
-            .find(|candidate| candidate.id == job.id)
-            .and_then(|candidate| candidate.last_error.as_ref())
-            .is_some_and(|failure| failure.retryable)
-    );
+            .any(|candidate| candidate.id == job.id && candidate.state == DownloadJobState::Failed)
+    });
+    assert!(failed
+        .jobs
+        .iter()
+        .find(|candidate| candidate.id == job.id)
+        .and_then(|candidate| candidate.last_error.as_ref())
+        .is_some_and(|failure| failure.retryable));
 
     runtime.retry(&job.id).expect("retry");
     wait_for(&runtime, |snapshot| {
@@ -259,15 +268,20 @@ fn ephemeral_query_and_auth_header_are_used_but_never_persisted() {
     let (base, captured_request) = spawn_server(payload.clone());
     let resolver = Arc::new(SequenceResolver::new(
         "fake",
-        vec![Ok(
-            ResolvedResource::new(format!("{base}/file?sig=ephemeral-query-secret"))
-                .with_header("Authorization", "Bearer ephemeral-header-secret"),
-        )],
+        vec![Ok(ResolvedResource::new(format!(
+            "{base}/file?sig=ephemeral-query-secret"
+        ))
+        .with_header("Authorization", "Bearer ephemeral-header-secret"))],
     ));
     let directory = tempfile::tempdir().expect("tempdir");
     let runtime = provider_runtime(directory.path(), Some(resolver));
     let job = runtime
-        .queue(request("fake", "catalog-item-42", "secret-safe", payload.len()))
+        .queue(request(
+            "fake",
+            "catalog-item-42",
+            "secret-safe",
+            payload.len(),
+        ))
         .expect("queue");
 
     wait_for(&runtime, |snapshot| {

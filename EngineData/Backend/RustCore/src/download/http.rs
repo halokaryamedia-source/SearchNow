@@ -90,8 +90,8 @@ impl RuntimeHttpHeader {
         ]
         .iter()
         .any(|name| self.name.eq_ignore_ascii_case(name));
-        let valid_value = self.value.len() <= MAX_HEADER_VALUE_BYTES
-            && !self.value.chars().any(char::is_control);
+        let valid_value =
+            self.value.len() <= MAX_HEADER_VALUE_BYTES && !self.value.chars().any(char::is_control);
 
         if !valid_name || forbidden_name || !valid_value {
             return Err(DownloadTransportFailure::new(
@@ -222,7 +222,9 @@ impl HttpTransport {
                     )
                 })?;
                 validate_runtime_url(&next, self.allow_plain_http)?;
-                if sensitive_runtime_material && !headers.is_empty() && !same_origin(&current, &next)
+                if sensitive_runtime_material
+                    && !headers.is_empty()
+                    && !same_origin(&current, &next)
                 {
                     return Err(DownloadTransportFailure::new(
                         "download_http_sensitive_redirect_rejected",
@@ -358,14 +360,19 @@ fn ensure_overall_deadline(
     }
 }
 
-fn map_request_error(error: ureq::Error, sensitive_runtime_material: bool) -> DownloadTransportFailure {
+fn map_request_error(
+    error: ureq::Error,
+    sensitive_runtime_material: bool,
+) -> DownloadTransportFailure {
     match error {
         ureq::Error::Status(status, _) => status_failure(status),
-        ureq::Error::Transport(error) if !sensitive_runtime_material => DownloadTransportFailure::new(
-            "download_http_request_failed",
-            format!("HTTP request failed: {error}"),
-            true,
-        ),
+        ureq::Error::Transport(error) if !sensitive_runtime_material => {
+            DownloadTransportFailure::new(
+                "download_http_request_failed",
+                format!("HTTP request failed: {error}"),
+                true,
+            )
+        }
         ureq::Error::Transport(_) => DownloadTransportFailure::new(
             "download_http_request_failed",
             "Resolved provider HTTP request failed without exposing runtime request material.",

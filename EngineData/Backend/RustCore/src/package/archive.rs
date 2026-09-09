@@ -129,10 +129,8 @@ pub(crate) fn scan_archive(path: &Path) -> BackendResult<ArchiveScan> {
             .summary
             .compressed_bytes
             .saturating_add(entry.compressed_size());
-        scan.summary.uncompressed_bytes = scan
-            .summary
-            .uncompressed_bytes
-            .saturating_add(entry.size());
+        scan.summary.uncompressed_bytes =
+            scan.summary.uncompressed_bytes.saturating_add(entry.size());
 
         if entry.size() > MAX_SINGLE_ENTRY_BYTES {
             reject(

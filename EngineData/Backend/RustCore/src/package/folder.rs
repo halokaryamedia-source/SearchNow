@@ -32,7 +32,8 @@ pub(crate) fn scan_folder(root: &Path) -> FolderScan {
 
         let manifest = directory.join("manifest.json");
         if manifest.is_file() {
-            if let Some(candidate) = read_manifest_candidate(root, &directory, &manifest, &mut issues)
+            if let Some(candidate) =
+                read_manifest_candidate(root, &directory, &manifest, &mut issues)
             {
                 candidates.push(candidate);
             }
@@ -125,7 +126,11 @@ fn read_manifest_candidate(
     };
 
     let pack_root = display_relative(root, pack_root_path);
-    let pack_root = if pack_root.is_empty() { ".".into() } else { pack_root };
+    let pack_root = if pack_root.is_empty() {
+        ".".into()
+    } else {
+        pack_root
+    };
     Some(ManifestCandidate {
         manifest_path: display_relative(root, manifest_path),
         pack_root,

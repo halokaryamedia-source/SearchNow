@@ -105,11 +105,9 @@ fn parse_manifests(
                 packs.push(pack);
                 issues.extend(manifest_issues);
             }
-            Err(message) => issues.push(PackageIssue::error(
-                "manifest_invalid",
-                message,
-                Some(path),
-            )),
+            Err(message) => {
+                issues.push(PackageIssue::error("manifest_invalid", message, Some(path)))
+            }
         }
     }
     packs

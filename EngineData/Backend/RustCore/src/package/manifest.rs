@@ -155,7 +155,9 @@ pub(crate) fn inspect_manifest(
 }
 
 fn classify_modules(module_types: &[String]) -> PackKind {
-    let behavior = module_types.iter().any(|value| value == "data" || value == "script");
+    let behavior = module_types
+        .iter()
+        .any(|value| value == "data" || value == "script");
     let resource = module_types.iter().any(|value| value == "resources");
     let skin = module_types.iter().any(|value| value == "skin_pack");
     let world = module_types.iter().any(|value| value == "world_template");

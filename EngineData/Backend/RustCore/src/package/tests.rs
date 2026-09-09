@@ -95,8 +95,7 @@ fn duplicate_pack_uuid_is_reported() {
     for name in ["A", "B"] {
         let pack = directory.path().join(name);
         fs::create_dir_all(&pack).expect("pack folder");
-        fs::write(pack.join("manifest.json"), resource_manifest(RP_UUID))
-            .expect("manifest");
+        fs::write(pack.join("manifest.json"), resource_manifest(RP_UUID)).expect("manifest");
     }
 
     let inspection = inspect_package(directory.path()).expect("inspection");
@@ -112,7 +111,9 @@ fn write_archive(path: &Path, entries: &[(&str, &[u8])]) {
     let mut writer = ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
     for (name, bytes) in entries {
-        writer.start_file(*name, options).expect("start archive file");
+        writer
+            .start_file(*name, options)
+            .expect("start archive file");
         writer.write_all(bytes).expect("write archive file");
     }
     writer.finish().expect("finish archive");

@@ -9,10 +9,10 @@ use crate::{
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
+        Arc, Barrier,
     },
     thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 struct SecretSession {
@@ -23,6 +23,7 @@ struct FakeSessionSource {
     acquire_calls: AtomicUsize,
     refresh_calls: AtomicUsize,
     fail_refresh: AtomicBool,
+    block_refresh: AtomicBool,
     short_first_expiry: bool,
 }
 
@@ -32,6 +33,7 @@ impl FakeSessionSource {
             acquire_calls: AtomicUsize::new(0),
             refresh_calls: AtomicUsize::new(0),
             fail_refresh: AtomicBool::new(false),
+            block_refresh: AtomicBool::new(false),
             short_first_expiry: false,
         }
     }
@@ -72,6 +74,9 @@ impl ProviderSessionSource for FakeSessionSource {
             .downcast::<SecretSession>()
             .map_err(|_| ProviderSessionFailure::new("fake_type_mismatch", false))?;
         assert!(previous.value.starts_with("runtime-secret"));
+        while self.block_refresh.load(Ordering::SeqCst) {
+            thread::sleep(Duration::from_millis(1));
+        }
         thread::sleep(Duration::from_millis(40));
         if self.fail_refresh.load(Ordering::SeqCst) {
             return Err(ProviderSessionFailure::new(
@@ -141,6 +146,44 @@ fn concurrent_expired_session_refresh_is_deduplicated() {
         assert_eq!(worker.join().expect("worker"), "runtime-secret-refreshed");
     }
     assert_eq!(source.acquire_calls.load(Ordering::SeqCst), 1);
+    assert_eq!(source.refresh_calls.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn failed_refresh_wave_is_shared_without_refresh_storm() {
+    let source = Arc::new(FakeSessionSource::expiring());
+    let manager = session_manager(source.clone());
+    manager.acquire("fake").expect("initial session");
+    source.fail_refresh.store(true, Ordering::SeqCst);
+    source.block_refresh.store(true, Ordering::SeqCst);
+    thread::sleep(Duration::from_millis(45));
+
+    let start = Arc::new(Barrier::new(9));
+    let mut workers = Vec::new();
+    for _ in 0..8 {
+        let manager = manager.clone();
+        let start = start.clone();
+        workers.push(thread::spawn(move || {
+            start.wait();
+            match manager.acquire("fake") {
+                Ok(_) => panic!("expected shared refresh failure"),
+                Err(error) => error.code,
+            }
+        }));
+    }
+    start.wait();
+
+    let deadline = Instant::now() + Duration::from_secs(1);
+    while source.refresh_calls.load(Ordering::SeqCst) == 0 {
+        assert!(Instant::now() < deadline, "refresh did not start");
+        thread::sleep(Duration::from_millis(1));
+    }
+    thread::sleep(Duration::from_millis(50));
+    source.block_refresh.store(false, Ordering::SeqCst);
+
+    for worker in workers {
+        assert_eq!(worker.join().expect("worker"), "provider_session_failed");
+    }
     assert_eq!(source.refresh_calls.load(Ordering::SeqCst), 1);
 }
 

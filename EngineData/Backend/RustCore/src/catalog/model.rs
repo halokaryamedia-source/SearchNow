@@ -1,7 +1,5 @@
 use crate::{
-    download::{
-        provider_download_source, public_https_download_source, DownloadSourceRef,
-    },
+    download::{provider_download_source, public_https_download_source, DownloadSourceRef},
     error::BackendResult,
 };
 use serde::{Deserialize, Serialize};
@@ -70,8 +68,13 @@ pub struct CatalogRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum CatalogDownloadRef {
-    PublicHttps { url: String },
-    ProviderResolved { provider: String, resource_id: String },
+    PublicHttps {
+        url: String,
+    },
+    ProviderResolved {
+        provider: String,
+        resource_id: String,
+    },
 }
 
 impl CatalogDownloadRef {

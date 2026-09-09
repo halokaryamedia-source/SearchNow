@@ -1,7 +1,5 @@
 use super::error::CommandError;
-use searchnow_core::{
-    app_runtime::SearchNowBackendRuntime, minecraft::MinecraftDiscoverySnapshot,
-};
+use searchnow_core::{app_runtime::SearchNowBackendRuntime, minecraft::MinecraftDiscoverySnapshot};
 use tauri::State;
 
 #[tauri::command]

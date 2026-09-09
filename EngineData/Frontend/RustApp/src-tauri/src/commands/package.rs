@@ -1,7 +1,5 @@
 use super::error::CommandError;
-use searchnow_core::{
-    app_runtime::SearchNowBackendRuntime, package::PackageInspection,
-};
+use searchnow_core::{app_runtime::SearchNowBackendRuntime, package::PackageInspection};
 use std::path::PathBuf;
 use tauri::State;
 

@@ -152,7 +152,10 @@ fn refresh_failure_is_sanitized_and_status_remains_secret_free() {
     source.fail_refresh.store(true, Ordering::SeqCst);
     thread::sleep(Duration::from_millis(45));
 
-    let error = manager.acquire("fake").expect_err("refresh failure");
+    let error = match manager.acquire("fake") {
+        Ok(_) => panic!("expected refresh failure"),
+        Err(error) => error,
+    };
     assert_eq!(error.code, "provider_session_failed");
     assert!(error.retryable);
     assert!(!error.message.contains("runtime-secret"));
@@ -170,9 +173,10 @@ fn refresh_failure_is_sanitized_and_status_remains_secret_free() {
 #[test]
 fn missing_provider_session_is_explicitly_unavailable() {
     let manager = ProviderSessionManager::new(ProviderSessionRegistry::new());
-    let error = manager
-        .acquire("missing")
-        .expect_err("missing session source");
+    let error = match manager.acquire("missing") {
+        Ok(_) => panic!("expected missing session source"),
+        Err(error) => error,
+    };
     assert_eq!(error.code, "provider_session_unavailable");
     assert!(!error.retryable);
     assert_eq!(

@@ -141,7 +141,11 @@ impl DownloadManager {
 
     pub fn mark_transferring(&mut self, job_id: &str) -> BackendResult<DownloadJob> {
         let job = self.job_mut(job_id)?;
-        require_state(job, &[DownloadJobState::Preparing], "download_transfer_start_invalid")?;
+        require_state(
+            job,
+            &[DownloadJobState::Preparing],
+            "download_transfer_start_invalid",
+        )?;
         job.state = DownloadJobState::Transferring;
         job.updated_at_ms = now_ms();
         Ok(job.clone())
@@ -154,7 +158,11 @@ impl DownloadManager {
         total_bytes: Option<u64>,
     ) -> BackendResult<DownloadJob> {
         let job = self.job_mut(job_id)?;
-        require_state(job, &[DownloadJobState::Transferring], "download_progress_state_invalid")?;
+        require_state(
+            job,
+            &[DownloadJobState::Transferring],
+            "download_progress_state_invalid",
+        )?;
         if downloaded_bytes < job.progress.downloaded_bytes {
             return Err(BackendError::new(
                 "download_progress_regressed",
@@ -185,7 +193,11 @@ impl DownloadManager {
 
     pub fn begin_finalizing(&mut self, job_id: &str) -> BackendResult<DownloadJob> {
         let job = self.job_mut(job_id)?;
-        require_state(job, &[DownloadJobState::Transferring], "download_finalize_state_invalid")?;
+        require_state(
+            job,
+            &[DownloadJobState::Transferring],
+            "download_finalize_state_invalid",
+        )?;
         if job
             .progress
             .total_bytes
@@ -203,7 +215,11 @@ impl DownloadManager {
 
     pub fn mark_completed(&mut self, job_id: &str) -> BackendResult<DownloadJob> {
         let job = self.job_mut(job_id)?;
-        require_state(job, &[DownloadJobState::Finalizing], "download_complete_state_invalid")?;
+        require_state(
+            job,
+            &[DownloadJobState::Finalizing],
+            "download_complete_state_invalid",
+        )?;
         job.state = DownloadJobState::Completed;
         job.last_error = None;
         job.updated_at_ms = now_ms();
@@ -284,7 +300,10 @@ impl DownloadManager {
             ));
         }
         if job.state == DownloadJobState::Failed
-            && job.last_error.as_ref().is_some_and(|error| !error.retryable)
+            && job
+                .last_error
+                .as_ref()
+                .is_some_and(|error| !error.retryable)
         {
             return Err(BackendError::new(
                 "download_failure_not_retryable",
@@ -303,7 +322,9 @@ impl DownloadManager {
             .jobs
             .iter()
             .position(|job| job.id == job_id)
-            .ok_or_else(|| BackendError::new("download_job_not_found", "Download job was not found."))?;
+            .ok_or_else(|| {
+                BackendError::new("download_job_not_found", "Download job was not found.")
+            })?;
         if !self.jobs[index].state.is_terminal() {
             return Err(BackendError::new(
                 "download_remove_state_invalid",
@@ -318,7 +339,9 @@ impl DownloadManager {
         self.jobs
             .iter_mut()
             .find(|job| job.id == job_id)
-            .ok_or_else(|| BackendError::new("download_job_not_found", "Download job was not found."))
+            .ok_or_else(|| {
+                BackendError::new("download_job_not_found", "Download job was not found.")
+            })
     }
 
     fn next_id(&mut self) -> String {
@@ -360,9 +383,11 @@ fn validate_request(request: &DownloadRequest) -> BackendResult<()> {
     }
     if request.source.transport.is_empty()
         || request.source.transport.len() > MAX_TRANSPORT_KEY_BYTES
-        || !request.source.transport.bytes().all(|byte| {
-            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')
-        })
+        || !request
+            .source
+            .transport
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
     {
         return Err(BackendError::new(
             "download_transport_invalid",

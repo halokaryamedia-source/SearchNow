@@ -35,7 +35,9 @@ fn progress_is_monotonic_and_bounded() {
     let job = manager.enqueue(request("pack")).expect("queue");
     manager.claim_ready_jobs();
     manager.mark_transferring(&job.id).expect("transfer");
-    manager.report_progress(&job.id, 5, Some(10)).expect("progress");
+    manager
+        .report_progress(&job.id, 5, Some(10))
+        .expect("progress");
     let error = manager
         .report_progress(&job.id, 4, Some(10))
         .expect_err("regression must fail");
@@ -74,12 +76,16 @@ fn finalization_requires_complete_declared_size() {
     let job = manager.enqueue(request("pack")).expect("queue");
     manager.claim_ready_jobs();
     manager.mark_transferring(&job.id).expect("transfer");
-    manager.report_progress(&job.id, 9, Some(10)).expect("progress");
+    manager
+        .report_progress(&job.id, 9, Some(10))
+        .expect("progress");
     let error = manager
         .begin_finalizing(&job.id)
         .expect_err("incomplete download must not finalize");
     assert_eq!(error.code(), "download_finalize_incomplete");
-    manager.report_progress(&job.id, 10, Some(10)).expect("progress");
+    manager
+        .report_progress(&job.id, 10, Some(10))
+        .expect("progress");
     manager.begin_finalizing(&job.id).expect("finalizing");
     let completed = manager.mark_completed(&job.id).expect("complete");
     assert_eq!(completed.state, DownloadJobState::Completed);
@@ -103,8 +109,12 @@ fn recovery_marks_active_jobs_interrupted() {
     manager.enqueue(request("pack")).expect("queue");
     manager.claim_ready_jobs();
     let persisted = manager.persisted_state();
-    let recovered = DownloadManager::recover(DownloadPolicy::default(), persisted).expect("recover");
-    assert_eq!(recovered.snapshot().jobs[0].state, DownloadJobState::Interrupted);
+    let recovered =
+        DownloadManager::recover(DownloadPolicy::default(), persisted).expect("recover");
+    assert_eq!(
+        recovered.snapshot().jobs[0].state,
+        DownloadJobState::Interrupted
+    );
 }
 
 #[test]
@@ -114,8 +124,9 @@ fn store_round_trip_preserves_queue() {
     let mut manager = DownloadManager::new(DownloadPolicy::default()).expect("manager");
     manager.enqueue(request("pack")).expect("queue");
     store.save(&manager.persisted_state()).expect("save");
-    let recovered = DownloadManager::recover(DownloadPolicy::default(), store.load().expect("load"))
-        .expect("recover");
+    let recovered =
+        DownloadManager::recover(DownloadPolicy::default(), store.load().expect("load"))
+            .expect("recover");
     assert_eq!(recovered.snapshot().queued_jobs, 1);
 }
 
@@ -136,12 +147,15 @@ fn finalization_publishes_complete_file_without_overwrite() {
     let directory = tempfile::tempdir().expect("tempdir");
     let workspace = directory.path().join("workspace");
     let destination = directory.path().join("downloads");
-    let plan = plan_workspace(&workspace, &destination, "download-000001", "pack.mcpack")
-        .expect("plan");
+    let plan =
+        plan_workspace(&workspace, &destination, "download-000001", "pack.mcpack").expect("plan");
     ensure_workspace(&plan).expect("workspace");
     fs::write(&plan.payload_path, b"complete payload").expect("payload");
     let final_path = finalize_payload(&plan).expect("finalize");
-    assert_eq!(fs::read(&final_path).expect("final file"), b"complete payload");
+    assert_eq!(
+        fs::read(&final_path).expect("final file"),
+        b"complete payload"
+    );
     let error = finalize_payload(&plan).expect_err("overwrite must be rejected");
     assert_eq!(error.code(), "download_destination_exists");
 }

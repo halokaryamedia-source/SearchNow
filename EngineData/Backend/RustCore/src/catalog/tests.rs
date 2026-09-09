@@ -81,11 +81,11 @@ fn matches_query(item: &CatalogProviderItem, query: &CatalogQuery) -> bool {
         return false;
     }
     let item_tags = item.tags.iter().collect::<HashSet<_>>();
-    query
-        .filters
-        .tags
-        .iter()
-        .all(|required| item_tags.iter().any(|tag| tag.eq_ignore_ascii_case(required)))
+    query.filters.tags.iter().all(|required| {
+        item_tags
+            .iter()
+            .any(|tag| tag.eq_ignore_ascii_case(required))
+    })
 }
 
 fn apply_sort(items: &mut [CatalogProviderItem], sort: CatalogSort) {
@@ -153,8 +153,20 @@ fn query_validation_happens_before_provider_call() {
 #[test]
 fn fake_provider_supports_filter_sort_and_cursor_pagination() {
     let provider = Arc::new(FakeCatalogProvider::new(vec![
-        item("gamma", "Gamma Addon", CatalogContentType::Addon, &["tools"], 30),
-        item("alpha", "Alpha Addon", CatalogContentType::Addon, &["tools"], 10),
+        item(
+            "gamma",
+            "Gamma Addon",
+            CatalogContentType::Addon,
+            &["tools"],
+            30,
+        ),
+        item(
+            "alpha",
+            "Alpha Addon",
+            CatalogContentType::Addon,
+            &["tools"],
+            10,
+        ),
         item(
             "beta",
             "Beta Resource",

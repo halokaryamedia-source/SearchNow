@@ -21,6 +21,7 @@ docs/
 - [`foundation/05-application-architecture.md`](foundation/05-application-architecture.md) — desktop source/runtime architecture authority.
 - [`foundation/06-backend-architecture.md`](foundation/06-backend-architecture.md) — local core, package, download, transport and runtime-resource resolver authority.
 - [`foundation/07-catalog-architecture.md`](foundation/07-catalog-architecture.md) — provider-neutral catalog/query/domain authority.
+- [`foundation/08-provider-session-architecture.md`](foundation/08-provider-session-architecture.md) — shared runtime-only provider session/credential authority.
 
 ### Knowledge / continuity
 

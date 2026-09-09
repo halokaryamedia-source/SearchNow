@@ -15,6 +15,7 @@ REQUIRED = [
     "docs/foundation/05-application-architecture.md",
     "docs/foundation/06-backend-architecture.md",
     "docs/foundation/07-catalog-architecture.md",
+    "docs/foundation/08-provider-session-architecture.md",
     "docs/knowledge/next-action.md", "docs/knowledge/ownership.md", "docs/knowledge/source-authority.md",
     "docs/knowledge/work-routing.md", "docs/knowledge/work-modes/development.md", "docs/knowledge/work-modes/maintenance.md",
     "docs/legacy/01-current-state.md", "docs/legacy/04-recovered-source-architecture.md",
@@ -41,6 +42,7 @@ checks = {
     "GITHUB_RULES.md": ["PIN", "READ MINIMUM", "WRITE ONCE", "STOP"],
     "docs/foundation/06-backend-architecture.md": ["RustCore", "GDK", "read-only", "Tauri"],
     "docs/foundation/07-catalog-architecture.md": ["CatalogProvider", "CatalogService", "ProviderResourceRef"],
+    "docs/foundation/08-provider-session-architecture.md": ["ProviderSessionSource", "ProviderSessionManager", "non-serializable", "refresh storm"],
 }
 
 for rel, needles in checks.items():

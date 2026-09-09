@@ -36,4 +36,8 @@ All notable SearchNow repository/product changes will be recorded here.
 - `CatalogProvider` registry/service with request-before-provider validation, provider-output normalization, duplicate/malformed-result rejection, and safe provider error mapping.
 - Fake catalog-provider fixtures for search/filter/sort/pagination, missing providers, malformed provider output, secret-safe failures, and catalog-item → existing download-source mapping.
 - Catalog-domain repository guards preventing runtime credential fields from becoming catalog DTO ownership.
+- Shared runtime-only `ProviderSessionManager`/registry/source boundary for catalog and resource-resolver adapters.
+- Opaque non-serializable/non-Debug provider session material and lease carriers with safe serializable status only.
+- Provider session reuse, expiry refresh, successful concurrent refresh deduplication, and failed-refresh-wave deduplication to avoid provider refresh storms.
+- Provider-session failure sanitization plus deterministic fixtures proving CatalogProvider and ResourceResolver share one session owner without secret persistence.
 - Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.

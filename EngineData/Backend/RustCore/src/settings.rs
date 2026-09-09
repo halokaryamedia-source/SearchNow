@@ -166,14 +166,16 @@ impl SettingsStore {
                     error,
                 )
             })?;
-        file.write_all(&bytes).and_then(|_| file.sync_all()).map_err(|error| {
-            let _ = fs::remove_file(&temp);
-            BackendError::from_io(
-                "settings_stage_failed",
-                "SearchNow could not finish staging settings.",
-                error,
-            )
-        })?;
+        file.write_all(&bytes)
+            .and_then(|_| file.sync_all())
+            .map_err(|error| {
+                let _ = fs::remove_file(&temp);
+                BackendError::from_io(
+                    "settings_stage_failed",
+                    "SearchNow could not finish staging settings.",
+                    error,
+                )
+            })?;
 
         if self.path.exists() {
             let _ = fs::remove_file(&backup);

@@ -1,6 +1,9 @@
 use crate::minecraft::MinecraftStorageRoot;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 const MAX_ITEMS_PER_CONTAINER: usize = 5_000;
 const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
@@ -101,16 +104,44 @@ struct ContainerSpec {
 
 fn container_specs(include_development_content: bool) -> Vec<ContainerSpec> {
     let mut specs = vec![
-        ContainerSpec { folder: "behavior_packs", content_type: LocalContentType::BehaviorPack, development: false },
-        ContainerSpec { folder: "resource_packs", content_type: LocalContentType::ResourcePack, development: false },
-        ContainerSpec { folder: "skin_packs", content_type: LocalContentType::SkinPack, development: false },
-        ContainerSpec { folder: "minecraftWorlds", content_type: LocalContentType::World, development: false },
+        ContainerSpec {
+            folder: "behavior_packs",
+            content_type: LocalContentType::BehaviorPack,
+            development: false,
+        },
+        ContainerSpec {
+            folder: "resource_packs",
+            content_type: LocalContentType::ResourcePack,
+            development: false,
+        },
+        ContainerSpec {
+            folder: "skin_packs",
+            content_type: LocalContentType::SkinPack,
+            development: false,
+        },
+        ContainerSpec {
+            folder: "minecraftWorlds",
+            content_type: LocalContentType::World,
+            development: false,
+        },
     ];
     if include_development_content {
         specs.extend([
-            ContainerSpec { folder: "development_behavior_packs", content_type: LocalContentType::BehaviorPack, development: true },
-            ContainerSpec { folder: "development_resource_packs", content_type: LocalContentType::ResourcePack, development: true },
-            ContainerSpec { folder: "development_skin_packs", content_type: LocalContentType::SkinPack, development: true },
+            ContainerSpec {
+                folder: "development_behavior_packs",
+                content_type: LocalContentType::BehaviorPack,
+                development: true,
+            },
+            ContainerSpec {
+                folder: "development_resource_packs",
+                content_type: LocalContentType::ResourcePack,
+                development: true,
+            },
+            ContainerSpec {
+                folder: "development_skin_packs",
+                content_type: LocalContentType::SkinPack,
+                development: true,
+            },
         ]);
     }
     specs
@@ -142,13 +173,18 @@ fn scan_container(
     if entries.len() > MAX_ITEMS_PER_CONTAINER {
         warnings.push(LibraryWarning {
             code: "library_container_limit".into(),
-            message: format!("Only the first {MAX_ITEMS_PER_CONTAINER} items in {} were indexed.", spec.folder),
+            message: format!(
+                "Only the first {MAX_ITEMS_PER_CONTAINER} items in {} were indexed.",
+                spec.folder
+            ),
             path: Some(container.clone()),
         });
         entries.truncate(MAX_ITEMS_PER_CONTAINER);
     }
     for entry in entries {
-        let Ok(file_type) = entry.file_type() else { continue };
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
         if !file_type.is_dir() || file_type.is_symlink() {
             continue;
         }
@@ -228,7 +264,8 @@ fn read_manifest(path: &Path) -> Result<ManifestDocument, String> {
     if metadata.len() > MAX_MANIFEST_BYTES {
         return Err("manifest.json is larger than the supported metadata limit.".into());
     }
-    let text = fs::read_to_string(path).map_err(|error| format!("manifest.json could not be read: {error}"))?;
+    let text = fs::read_to_string(path)
+        .map_err(|error| format!("manifest.json could not be read: {error}"))?;
     serde_json::from_str(&text).map_err(|error| format!("manifest.json is invalid: {error}"))
 }
 
@@ -257,7 +294,10 @@ fn item_id(path: &Path) -> String {
 }
 
 fn summarize(items: &[LocalContentItem]) -> LibrarySummary {
-    let mut summary = LibrarySummary { total: items.len(), ..LibrarySummary::default() };
+    let mut summary = LibrarySummary {
+        total: items.len(),
+        ..LibrarySummary::default()
+    };
     for item in items {
         match item.content_type {
             LocalContentType::BehaviorPack => summary.behavior_packs += 1,
@@ -298,7 +338,10 @@ mod tests {
         fs::write(world.join("levelname.txt"), "My World").expect("level name");
         let snapshot = scan_library(&[root(directory.path())], false);
         assert_eq!(snapshot.summary.total, 2);
-        assert!(snapshot.items.iter().any(|item| item.title == "Example Pack"));
+        assert!(snapshot
+            .items
+            .iter()
+            .any(|item| item.title == "Example Pack"));
         assert!(snapshot.items.iter().any(|item| item.title == "My World"));
     }
 
@@ -310,7 +353,10 @@ mod tests {
         fs::write(pack.join("manifest.json"), "not-json").expect("manifest");
         let snapshot = scan_library(&[root(directory.path())], false);
         assert_eq!(snapshot.summary.invalid_items, 1);
-        assert_eq!(snapshot.items[0].status, LocalContentStatus::InvalidMetadata);
+        assert_eq!(
+            snapshot.items[0].status,
+            LocalContentStatus::InvalidMetadata
+        );
     }
 
     #[test]
@@ -318,8 +364,18 @@ mod tests {
         let directory = tempfile::tempdir().expect("tempdir");
         let pack = directory.path().join("development_resource_packs/dev");
         fs::create_dir_all(&pack).expect("pack");
-        fs::write(pack.join("manifest.json"), r#"{"header":{"name":"Dev","version":[1,0,0]}}"#).expect("manifest");
-        assert_eq!(scan_library(&[root(directory.path())], false).summary.total, 0);
-        assert_eq!(scan_library(&[root(directory.path())], true).summary.total, 1);
+        fs::write(
+            pack.join("manifest.json"),
+            r#"{"header":{"name":"Dev","version":[1,0,0]}}"#,
+        )
+        .expect("manifest");
+        assert_eq!(
+            scan_library(&[root(directory.path())], false).summary.total,
+            0
+        );
+        assert_eq!(
+            scan_library(&[root(directory.path())], true).summary.total,
+            1
+        );
     }
 }

@@ -16,11 +16,7 @@ impl BackendError {
         }
     }
 
-    pub fn from_io(
-        code: &'static str,
-        message: impl Into<String>,
-        error: std::io::Error,
-    ) -> Self {
+    pub fn from_io(code: &'static str, message: impl Into<String>, error: std::io::Error) -> Self {
         Self {
             code,
             message: message.into(),

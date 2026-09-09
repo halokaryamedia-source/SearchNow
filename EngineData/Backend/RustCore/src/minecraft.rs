@@ -1,6 +1,13 @@
-use crate::{platform::{PlatformContext, PlatformKind}, settings::MinecraftSettings};
+use crate::{
+    platform::{PlatformContext, PlatformKind},
+    settings::MinecraftSettings,
+};
 use serde::Serialize;
-use std::{collections::HashSet, fs, path::{Path, PathBuf}};
+use std::{
+    collections::HashSet,
+    fs,
+    path::{Path, PathBuf},
+};
 
 const MAX_ACCOUNT_ROOTS: usize = 64;
 
@@ -67,7 +74,8 @@ pub fn discover_minecraft_storage(
             roots: Vec::new(),
             warnings: Vec::new(),
             checked_candidates: 0,
-            message: "SearchNow currently supports Minecraft Bedrock discovery on Windows only.".into(),
+            message: "SearchNow currently supports Minecraft Bedrock discovery on Windows only."
+                .into(),
         };
     }
 
@@ -132,13 +140,13 @@ pub fn discover_minecraft_storage(
     collector.finish()
 }
 
-fn collect_gdk_product(
-    collector: &mut Collector,
-    product_root: &Path,
-    channel: MinecraftChannel,
-) {
+fn collect_gdk_product(collector: &mut Collector, product_root: &Path, channel: MinecraftChannel) {
     collector.add_candidate(
-        product_root.join("users").join("shared").join("games").join("com.mojang"),
+        product_root
+            .join("users")
+            .join("shared")
+            .join("games")
+            .join("com.mojang"),
         channel,
         MinecraftStorageKind::GdkShared,
         None,
@@ -155,13 +163,17 @@ fn collect_gdk_product(
     if directories.len() > MAX_ACCOUNT_ROOTS {
         collector.warnings.push(DiscoveryWarning {
             code: "minecraft_user_root_limit".into(),
-            message: format!("Only the first {MAX_ACCOUNT_ROOTS} Minecraft user roots were inspected."),
+            message: format!(
+                "Only the first {MAX_ACCOUNT_ROOTS} Minecraft user roots were inspected."
+            ),
             path: Some(user_root.clone()),
         });
         directories.truncate(MAX_ACCOUNT_ROOTS);
     }
     for entry in directories {
-        let Ok(file_type) = entry.file_type() else { continue };
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
         if !file_type.is_dir() || file_type.is_symlink() {
             continue;
         }
@@ -201,7 +213,8 @@ impl Collector {
             if warn_missing {
                 self.warnings.push(DiscoveryWarning {
                     code: "minecraft_override_missing".into(),
-                    message: "The configured Minecraft root does not exist or is not a directory.".into(),
+                    message: "The configured Minecraft root does not exist or is not a directory."
+                        .into(),
                     path: Some(path),
                 });
             }
@@ -224,7 +237,11 @@ impl Collector {
         self.roots.sort_by(|left, right| left.root.cmp(&right.root));
         let found = !self.roots.is_empty();
         MinecraftDiscoverySnapshot {
-            state: if found { MinecraftDiscoveryState::Found } else { MinecraftDiscoveryState::NotFound },
+            state: if found {
+                MinecraftDiscoveryState::Found
+            } else {
+                MinecraftDiscoveryState::NotFound
+            },
             roots: self.roots,
             warnings: self.warnings,
             checked_candidates: self.checked,
@@ -289,7 +306,8 @@ mod tests {
         let directory = tempfile::tempdir().expect("tempdir");
         let roaming = directory.path().join("Roaming");
         let local = directory.path().join("Local");
-        let root = local.join("Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang");
+        let root =
+            local.join("Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang");
         fs::create_dir_all(&root).expect("fixture");
         let snapshot = discover_minecraft_storage(
             &MinecraftSettings::default(),

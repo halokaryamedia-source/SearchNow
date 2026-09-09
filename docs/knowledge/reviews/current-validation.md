@@ -1,36 +1,36 @@
 # Current Validation
 
-## Backend local-core + package + transport + resolver + catalog + session target
+## Backend local-core + package + transport + resolver + catalog + session + provider-composition target
 
 Target claim:
 
-> SearchNow has a bounded local-first Rust backend for local/package workflows, persistent download execution, public HTTPS, credential-safe resource resolution, provider-neutral catalog queries, and a shared runtime-only provider session owner separated from Tauri IPC.
+> SearchNow has a bounded local-first Rust backend plus a provider-neutral integrated-provider composition that shares runtime-only session state across catalog and resolved downloads, while keeping provider credentials out of public/persisted DTOs and Tauri IPC ownership.
 
 Repository/CI evidence on `develop`:
 
 - repository contract: PASS;
 - RustCore format: PASS;
-- RustCore compile/tests: PASS — **54 tests, 0 failures**;
+- RustCore compile/tests: PASS — **56 tests, 0 failures**;
 - RustCore clippy with warnings denied: PASS;
 - Tauri adapter format: PASS;
 - frontend architecture/source-size/type/build gates: PASS;
-- package/download/HTTP/resolver/catalog regression fixtures remain passing;
-- provider-session fixtures prove initial acquire, valid-session reuse, expiry refresh, concurrent successful refresh deduplication, shared failed-refresh waves, sanitized refresh failure, missing-provider state, and shared CatalogProvider/ResourceResolver session ownership;
-- public `ProviderSessionStatus` JSON contains no runtime secret material;
-- architecture/repository guards require provider-session source ownership and reject Serialize/Deserialize/Debug on secret-bearing runtime carriers.
+- package/download/HTTP/resolver/catalog/session regression fixtures remain passing;
+- provider composition rejects mismatched component keys;
+- integrated fake provider proves catalog → stable provider resource → shared session → resource resolver → authenticated runtime HTTP → completed atomic file publication;
+- catalog + resolver reuse one provider-session acquisition in the integrated flow;
+- integrated fixture verifies provider runtime secret material is absent from catalog JSON, provider status JSON, and persisted download state.
 
-Provider-session boundary established by CI:
+Provider-adapter boundary established by CI:
 
-- `ProviderSessionMaterial` and `ProviderSessionLease` are runtime-only and non-serializable;
-- secret-bearing runtime carriers intentionally do not implement Debug;
-- session payload is opaque provider-defined `Any + Send + Sync` state;
-- valid material is reused instead of repeatedly acquiring credentials;
-- expired material refreshes through one source-owned refresh path;
-- concurrent callers wait on one refresh instead of launching duplicate refresh work;
-- a failed refresh result is shared with callers already waiting on that wave, preventing retry storms; a later independent acquire may retry when the failure is retryable;
-- provider failure details are reduced to stable code + generic message;
-- only safe status state/expiry/failure-code/retryability metadata is serializable;
-- CatalogProvider and ResourceResolver can share one `Arc<ProviderSessionManager>`.
+- `IntegratedProvider` is the single provider composition contract;
+- one canonical adapter key must match any contributed session source, catalog provider and resource resolver key;
+- duplicate/mismatched provider identities fail closed during composition;
+- one `ProviderSessionManager` is constructed before catalog/resolver components and injected into both;
+- provider capability metadata exposes only provider/session/catalog/resolved-download availability plus safe session status;
+- provider component construction failures are normalized by SearchNow rather than exposing provider details;
+- catalog items still map to the existing `provider-resolved` download model rather than creating a parallel provider download lifecycle;
+- ephemeral Authorization material is generated only during runtime resolution/HTTP and is absent from persisted/public provider DTOs;
+- final file publication remains owned by `DownloadExecutionRuntime`.
 
 Claims **not** established by hosted CI:
 
@@ -41,6 +41,7 @@ Claims **not** established by hosted CI:
 - any real provider login/acquire/refresh endpoint;
 - provider-specific token expiry/invalidation semantics;
 - any real remote catalog provider/API compatibility;
+- provider-specific terms/permissions and production download behavior;
 - secure OS credential storage, if a future provider requires durable user credentials.
 
 These remain TARGET_WINDOWS / REAL_FIXTURE / NETWORK / PROVIDER evidence.

@@ -16,6 +16,7 @@ REQUIRED = [
     "docs/foundation/06-backend-architecture.md",
     "docs/foundation/07-catalog-architecture.md",
     "docs/foundation/08-provider-session-architecture.md",
+    "docs/foundation/09-provider-adapter-architecture.md",
     "docs/knowledge/next-action.md", "docs/knowledge/ownership.md", "docs/knowledge/source-authority.md",
     "docs/knowledge/work-routing.md", "docs/knowledge/work-modes/development.md", "docs/knowledge/work-modes/maintenance.md",
     "docs/legacy/01-current-state.md", "docs/legacy/04-recovered-source-architecture.md",
@@ -28,6 +29,9 @@ REQUIRED = [
     "EngineData/Backend/RustCore/src/provider_session/mod.rs",
     "EngineData/Backend/RustCore/src/provider_session/model.rs",
     "EngineData/Backend/RustCore/src/provider_session/runtime.rs",
+    "EngineData/Backend/RustCore/src/provider_adapter/mod.rs",
+    "EngineData/Backend/RustCore/src/provider_adapter/model.rs",
+    "EngineData/Backend/RustCore/src/provider_adapter/runtime.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
     ".github/PULL_REQUEST_TEMPLATE.md", ".github/workflows/repository-verify.yml",
     ".github/workflows/local-promotion-verify.yml", ".github/workflows/release-verify.yml",
@@ -43,6 +47,7 @@ checks = {
     "docs/foundation/06-backend-architecture.md": ["RustCore", "GDK", "read-only", "Tauri"],
     "docs/foundation/07-catalog-architecture.md": ["CatalogProvider", "CatalogService", "ProviderResourceRef"],
     "docs/foundation/08-provider-session-architecture.md": ["ProviderSessionSource", "ProviderSessionManager", "non-serializable", "refresh storm"],
+    "docs/foundation/09-provider-adapter-architecture.md": ["IntegratedProvider", "ProviderAdapterRuntime", "CatalogProvider", "ResourceResolver"],
 }
 
 for rel, needles in checks.items():
@@ -65,14 +70,15 @@ for rel in [
     "EngineData/Backend/RustCore/src/download/model.rs",
     "EngineData/Backend/RustCore/src/download/store.rs",
     "EngineData/Backend/RustCore/src/catalog/model.rs",
+    "EngineData/Backend/RustCore/src/provider_adapter/model.rs",
 ]:
     path = ROOT / rel
     if not path.exists():
         continue
     lowered = path.read_text(encoding="utf-8", errors="replace").lower()
-    for forbidden in ["authorization", "bearer_token", "signed_url", "cookie", "headers", "access_token"]:
+    for forbidden in ["authorization", "bearer_token", "signed_url", "cookie", "headers", "access_token", "refresh_token"]:
         if forbidden in lowered:
-            errors.append(f"{rel}: runtime credential field must not enter persisted/domain DTO state: {forbidden!r}")
+            errors.append(f"{rel}: runtime credential field must not enter persisted/public DTO state: {forbidden!r}")
 
 session_runtime = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "provider_session" / "runtime.rs"
 if session_runtime.exists():
@@ -80,6 +86,21 @@ if session_runtime.exists():
     for forbidden in ["Serialize", "Deserialize", "#[derive(Debug", "impl std::fmt::Debug for ProviderSessionMaterial", "impl std::fmt::Debug for ProviderSessionLease"]:
         if forbidden in text:
             errors.append(f"{session_runtime.relative_to(ROOT)}: runtime session material must remain non-serializable/non-debug: {forbidden!r}")
+
+provider_boundary_names = ["IntegratedProvider", "ProviderSessionSource", "CatalogProvider", "ResourceResolver", "ProviderAdapterRuntime"]
+commands_root = ROOT / "EngineData" / "Frontend" / "RustApp" / "src-tauri" / "src" / "commands"
+for path in commands_root.glob("*.rs") if commands_root.exists() else []:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for forbidden in provider_boundary_names:
+        if forbidden in text:
+            errors.append(f"{path.relative_to(ROOT)}: provider implementation/composition belongs in RustCore, not Tauri commands: {forbidden!r}")
+
+public_http = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "http.rs"
+if public_http.exists():
+    text = public_http.read_text(encoding="utf-8", errors="replace")
+    for forbidden in provider_boundary_names:
+        if forbidden in text:
+            errors.append(f"{public_http.relative_to(ROOT)}: public HTTP transport must remain provider-neutral: {forbidden!r}")
 
 for legacy_old in [
     "docs/01-current-state.md", "docs/04-recovered-source-architecture.md", "docs/05-recovered-symbol-map.md",

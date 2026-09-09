@@ -27,6 +27,7 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | backend local/package/download/transport/resolver contract | `docs/foundation/06-backend-architecture.md` |
 | provider-neutral catalog/query/domain contract | `docs/foundation/07-catalog-architecture.md` |
 | provider session/credential runtime contract | `docs/foundation/08-provider-session-architecture.md` |
+| integrated provider composition/capability contract | `docs/foundation/09-provider-adapter-architecture.md` |
 
 ## Current implementation owners
 
@@ -41,6 +42,8 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | catalog provider registry + query validation + provider-result normalization | `EngineData/Backend/RustCore/src/catalog/provider.rs` |
 | safe provider-session status/error DTOs | `EngineData/Backend/RustCore/src/provider_session/model.rs` |
 | runtime-only provider session material/lease + acquire/reuse/refresh coordination | `EngineData/Backend/RustCore/src/provider_session/runtime.rs` |
+| safe integrated-provider capability/status DTOs | `EngineData/Backend/RustCore/src/provider_adapter/model.rs` |
+| integrated provider composition + canonical key/registry wiring | `EngineData/Backend/RustCore/src/provider_adapter/runtime.rs` |
 | persisted download DTO/state contract | `EngineData/Backend/RustCore/src/download/model.rs` |
 | download lifecycle/state machine/concurrency | `EngineData/Backend/RustCore/src/download/manager.rs` |
 | download persistence/recovery | `EngineData/Backend/RustCore/src/download/store.rs` |
@@ -60,9 +63,9 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | Tauri download adaptation | `.../commands/download.rs` |
 | frontend raw invoke boundary | `EngineData/Frontend/RustApp/src/app/bridge/runtimeApi.ts` |
 
-Tauri commands must remain adapters. Queue lifecycle, network policy, catalog validation, provider resolution/session state, persistence, filesystem, package, and Minecraft behavior belong in RustCore rather than IPC wrappers or Svelte pages.
+Tauri commands must remain adapters. Queue lifecycle, network policy, catalog validation, provider composition/resolution/session state, persistence, filesystem, package, and Minecraft behavior belong in RustCore rather than IPC wrappers or Svelte pages.
 
-`provider_session/runtime.rs` owns generic acquire/reuse/refresh coordination and secret-bearing runtime leases, **not provider-specific login endpoints**. `catalog/provider.rs` owns catalog coordination, `resolver.rs` owns resource resolution, and `http.rs` owns HTTP mechanics. A real provider adapter should compose these existing interfaces around one shared session manager rather than duplicating state machines or pushing credential values into persisted DTOs.
+`provider_adapter/runtime.rs` owns generic integrated-provider composition and capability registration, **not provider protocols**. `provider_session/runtime.rs` owns generic acquire/reuse/refresh coordination and secret-bearing runtime leases. `catalog/provider.rs` owns catalog coordination, `resolver.rs` owns resource resolution, and `http.rs` owns HTTP mechanics. A real provider implementation must use these existing boundaries instead of putting provider-specific protocol code into Tauri commands, persisted DTOs, or the public HTTP transport.
 
 ## Legacy evidence
 

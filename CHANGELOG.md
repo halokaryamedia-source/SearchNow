@@ -40,4 +40,7 @@ All notable SearchNow repository/product changes will be recorded here.
 - Opaque non-serializable/non-Debug provider session material and lease carriers with safe serializable status only.
 - Provider session reuse, expiry refresh, successful concurrent refresh deduplication, and failed-refresh-wave deduplication to avoid provider refresh storms.
 - Provider-session failure sanitization plus deterministic fixtures proving CatalogProvider and ResourceResolver share one session owner without secret persistence.
+- Provider-neutral `IntegratedProvider` / `ProviderAdapterRuntime` composition with canonical component-key validation and safe capability metadata.
+- Deterministic integrated-provider fixture proving catalog → stable provider download identity → shared session → resolver → authenticated runtime HTTP → completed atomic file publication.
+- Provider adapter fixture verifies catalog and resolver reuse one session acquisition and no runtime secret enters catalog JSON, provider status JSON, or persisted download state.
 - Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.

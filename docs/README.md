@@ -22,6 +22,7 @@ docs/
 - [`foundation/06-backend-architecture.md`](foundation/06-backend-architecture.md) — local core, package, download, transport and runtime-resource resolver authority.
 - [`foundation/07-catalog-architecture.md`](foundation/07-catalog-architecture.md) — provider-neutral catalog/query/domain authority.
 - [`foundation/08-provider-session-architecture.md`](foundation/08-provider-session-architecture.md) — shared runtime-only provider session/credential authority.
+- [`foundation/09-provider-adapter-architecture.md`](foundation/09-provider-adapter-architecture.md) — integrated provider composition/capability authority.
 
 ### Knowledge / continuity
 

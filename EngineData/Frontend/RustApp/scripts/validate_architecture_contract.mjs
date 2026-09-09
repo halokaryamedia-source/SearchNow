@@ -18,8 +18,20 @@ const required = [
   "src-tauri/src/commands/settings.rs",
   "src-tauri/src/commands/minecraft.rs",
   "src-tauri/src/commands/library.rs",
+  "src-tauri/src/commands/package.rs",
 ];
-const backendRequired = ["Cargo.toml", "src/lib.rs", "src/settings.rs", "src/minecraft.rs", "src/library.rs"];
+const backendRequired = [
+  "Cargo.toml",
+  "src/lib.rs",
+  "src/settings.rs",
+  "src/minecraft.rs",
+  "src/library.rs",
+  "src/package/mod.rs",
+  "src/package/model.rs",
+  "src/package/manifest.rs",
+  "src/package/archive.rs",
+  "src/package/folder.rs",
+];
 const errors = [];
 
 for (const path of required) {
@@ -51,6 +63,8 @@ const tauriManifest = await readFile(resolve(appRoot, "src-tauri/Cargo.toml"), "
 if (!tauriManifest.includes('searchnow-core = { path = "../../../Backend/RustCore" }')) errors.push("Tauri runtime must link the in-process RustCore backend");
 const runtimeCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/runtime.rs"), "utf8");
 if (!runtimeCommand.includes("searchnow_core::runtime")) errors.push("runtime command must delegate to RustCore");
+const packageCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/package.rs"), "utf8");
+if (!packageCommand.includes("searchnow_core::package")) errors.push("package command must delegate to RustCore");
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

@@ -142,12 +142,10 @@ impl ProviderSessionManager {
         if !valid_provider_key(provider) {
             return ProviderSessionStatus::unavailable("invalid");
         }
-        self.entries
-            .get(provider)
-            .map_or_else(
-                || ProviderSessionStatus::unavailable(provider),
-                |entry| entry.status(provider),
-            )
+        self.entries.get(provider).map_or_else(
+            || ProviderSessionStatus::unavailable(provider),
+            |entry| entry.status(provider),
+        )
     }
 }
 
@@ -192,9 +190,12 @@ impl ProviderSessionEntry {
                 }
             }
 
-            let previous = state.material.as_ref().map(|material| ProviderSessionLease {
-                material: material.clone(),
-            });
+            let previous = state
+                .material
+                .as_ref()
+                .map(|material| ProviderSessionLease {
+                    material: material.clone(),
+                });
             state.phase = ProviderSessionPhase::Refreshing;
             drop(state);
 

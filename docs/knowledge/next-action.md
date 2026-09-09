@@ -2,7 +2,7 @@
 
 ## Current Status
 
-`RESOURCE_RESOLVER_BOUNDARY_READY`
+`CATALOG_DOMAIN_READY`
 
 Completed:
 
@@ -10,44 +10,41 @@ Completed:
 2. backend logic lives in one in-process `EngineData/Backend/RustCore` library, with Tauri kept as an IPC/bootstrap adapter;
 3. typed settings, Minecraft storage discovery, bounded local library indexing, and read-only package inspection are implemented;
 4. package classification, UUID dependency mapping, and bounded archive safety are implemented;
-5. persistent `DownloadJob` lifecycle, bounded concurrency, cancellation/retry, restart recovery, progress checkpoints, safe workspace ownership, and atomic no-overwrite publication are implemented;
-6. provider-neutral `DownloadTransport` and `DownloadExecutionRuntime` execute queue jobs on bounded native worker threads;
-7. deterministic `local-file` transport proves the full queue → transfer → publication path;
-8. provider-neutral `https-public` uses pinned blocking `ureq`/rustls with HTTPS-only production policy, manual redirect validation, socket timeouts, SearchNow-owned overall deadline, response-size bounds, and Content-Length validation;
-9. public persisted URLs reject query strings, embedded credentials, and fragments;
-10. `provider-resolved` now provides a separate runtime-only path for authenticated/signed resources without weakening `https-public` persistence rules;
-11. persisted provider references contain only stable `provider:opaque-resource-id` identity; URL/query/header runtime material is rejected from that reference;
-12. `ResourceResolver` + `ResourceResolverRegistry` resolve stable identity into ephemeral in-memory `ResolvedResource` immediately before transport execution;
-13. resolved URLs may contain temporary signed query material and bounded runtime headers such as `Authorization`, but resolved objects are not serialized into download state;
-14. expired resolved material is refreshed before transfer, and an explicit job retry resolves again instead of reusing stale transfer material;
-15. sensitive runtime HTTP request errors and stream-read errors are sanitized before they can become persisted `lastError` text;
-16. authenticated runtime requests cannot forward credential headers across origins through redirects;
-17. Tauri bootstrap registers `local-file`, `https-public`, and `provider-resolved` into one managed `DownloadExecutionRuntime`; the provider resolver registry is intentionally empty until a real provider adapter is added;
-18. repository/architecture guards reject runtime credential fields from persisted download DTO/store ownership;
-19. repository CI passes with **42 RustCore tests**, strict clippy, Tauri formatting, architecture/source-size validation, Svelte typecheck, and frontend build.
+5. persistent download lifecycle, bounded concurrency, cancellation/retry, restart recovery, progress checkpoints, workspace safety, and atomic no-overwrite publication are implemented;
+6. provider-neutral transport execution supports deterministic `local-file`, bounded `https-public`, and credential-safe `provider-resolved` runtime resolution;
+7. stable provider resource identity is separated from ephemeral signed URL/query/header transfer material;
+8. provider resolver expiry refresh, explicit retry re-resolution, sensitive error sanitization, and credential-safe redirect behavior are implemented;
+9. provider-neutral catalog DTOs now define typed query/filter/sort/page requests, item/page outputs, content types, and explicit public-vs-provider download references;
+10. `CatalogProvider` + `CatalogProviderRegistry` + `CatalogService` provide a narrow backend query boundary without owning UI/download lifecycle;
+11. catalog request bounds cover provider/query/filter/page/cursor input before provider execution;
+12. provider output is validated for page count, cursor, duplicate ids, title/description/tags, total item text size, and downloadable identity before reaching public `CatalogPage`;
+13. catalog provider failures are normalized to stable safe errors without provider exception/secret text;
+14. catalog items map into the existing `https-public` or `provider-resolved` download boundaries rather than creating a parallel download model;
+15. catalog DTOs are covered by credential-field repository guards;
+16. deterministic fake catalog fixtures cover filtering, sorting, pagination, invalid query, missing provider, malformed provider data, safe failure normalization, and download-source mapping;
+17. repository CI passes with **48 RustCore tests**, strict clippy, Tauri formatting, architecture/source-size validation, Svelte typecheck, and frontend build.
 
 ## Active Boundary
 
 Keep work on `develop`. `Local` and `main` remain untouched until explicit promotion.
 
-The resolver boundary is generic only. SearchNow still has no real provider login, PlayFab/Marketplace-specific catalog implementation, protected-content bypass, package mutation/export, or frontend download-page wiring.
+No real catalog provider, provider login, PlayFab/Marketplace endpoint, protected-content bypass, package mutation/export, or Discover-page wiring is implemented in this completed slice.
 
-Hosted loopback fixtures do not replace real Windows/network/TLS/provider evidence.
+Hosted fixtures do not replace real provider/network/Windows evidence.
 
 ## Next Step
 
-Continue backend-first with **Catalog Domain / Provider Query Boundary**.
+Continue backend-first with **Provider Session / Credential Runtime Boundary**.
 
-Build the provider-neutral discovery/catalog model before any provider-specific endpoint work:
+Build the final generic session boundary before any real provider adapter:
 
-- define typed `CatalogQuery`, filter/sort/page request, `CatalogItem`, `CatalogPage`, and stable provider identity contracts;
-- define a `CatalogProvider` interface and registry without owning UI or download lifecycle;
-- make catalog items that are legitimately downloadable expose only stable provider/resource identity compatible with `ProviderResourceRef`;
-- enforce bounded page size, pagination/cursor length, text/filter lengths, result count, and metadata sizes;
-- distinguish ordinary public resource identity from provider-resolved identity explicitly;
-- normalize provider failures into stable, non-secret catalog errors;
-- implement deterministic fake catalog-provider fixtures first for search, pagination, filtering, missing provider, malformed provider data, and catalog-item → download-source mapping;
-- keep provider credentials/session material out of catalog DTOs, persisted download state, and logs;
-- keep PlayFab login, Marketplace endpoints, provider-specific authentication, and frontend wiring out of this slice.
+- define one provider-session interface that catalog providers and resource resolvers can share instead of implementing parallel login/refresh logic;
+- keep session/credential material runtime-only: do not derive `Serialize`, do not persist it into app settings/catalog DTOs/download state, and do not expose secret-bearing `Debug` output;
+- represent only safe provider/session status publicly (available, unavailable, expired/refreshing, failure code) without token/session values;
+- define expiry + refresh semantics and ensure concurrent provider work does not trigger duplicate refresh/login attempts unnecessarily;
+- normalize provider-session failures to stable safe code + retryability without exception/body/token leakage;
+- implement deterministic fake session-provider fixtures for acquire, reuse, expiry refresh, refresh failure, concurrent refresh deduplication, and secret-non-persistence checks;
+- keep catalog query retries/download retries owned by their existing runtimes; the session boundary only supplies current runtime session context;
+- keep real PlayFab login, Marketplace endpoints, title secrets, provider credentials, and frontend authentication flows out of this slice.
 
 Do not implement DRM/key-sharing/protected-content bypass paths.

@@ -32,4 +32,8 @@ All notable SearchNow repository/product changes will be recorded here.
 - Runtime HTTP header bounds, cross-origin credential redirect rejection, and sanitized sensitive request/read errors.
 - Repository guards preventing authorization headers, bearer-token/signed-URL/cookie/header fields from entering persisted download DTO/store ownership.
 - Deterministic resolver fixtures proving missing-provider behavior, expiry refresh, retry re-resolution, and signed-query/Authorization use without state persistence.
+- Provider-neutral catalog domain with typed query/filter/sort/page, bounded item/page contracts, and explicit public-vs-provider download identity.
+- `CatalogProvider` registry/service with request-before-provider validation, provider-output normalization, duplicate/malformed-result rejection, and safe provider error mapping.
+- Fake catalog-provider fixtures for search/filter/sort/pagination, missing providers, malformed provider output, secret-safe failures, and catalog-item → existing download-source mapping.
+- Catalog-domain repository guards preventing runtime credential fields from becoming catalog DTO ownership.
 - Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.

@@ -236,8 +236,10 @@ mod tests {
 
     #[test]
     fn future_schema_fails_closed() {
-        let mut settings = AppSettings::default();
-        settings.schema_version = CURRENT_SCHEMA_VERSION + 1;
+        let settings = AppSettings {
+            schema_version: CURRENT_SCHEMA_VERSION + 1,
+            ..AppSettings::default()
+        };
         let error = settings.validate().expect_err("future schema must fail");
         assert_eq!(error.code(), "settings_schema_unsupported");
     }

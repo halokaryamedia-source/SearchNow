@@ -11,6 +11,9 @@ use url::Url;
 pub const PUBLIC_HTTPS_TRANSPORT_KEY: &str = "https-public";
 const HARD_MAX_RESPONSE_BYTES: u64 = 32 * 1024 * 1024 * 1024;
 const HARD_MAX_REDIRECTS: u32 = 10;
+const MAX_RUNTIME_HEADERS: usize = 32;
+const MAX_HEADER_NAME_BYTES: usize = 128;
+const MAX_HEADER_VALUE_BYTES: usize = 8 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HttpTransportPolicy {
@@ -53,6 +56,54 @@ impl HttpTransportPolicy {
     }
 }
 
+pub(crate) struct RuntimeHttpHeader {
+    name: String,
+    value: String,
+}
+
+impl RuntimeHttpHeader {
+    pub(crate) fn new(
+        name: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Result<Self, DownloadTransportFailure> {
+        let header = Self {
+            name: name.into(),
+            value: value.into(),
+        };
+        header.validate()?;
+        Ok(header)
+    }
+
+    fn validate(&self) -> Result<(), DownloadTransportFailure> {
+        let valid_name = !self.name.is_empty()
+            && self.name.len() <= MAX_HEADER_NAME_BYTES
+            && self
+                .name
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-');
+        let forbidden_name = [
+            "host",
+            "content-length",
+            "connection",
+            "transfer-encoding",
+            "proxy-authorization",
+        ]
+        .iter()
+        .any(|name| self.name.eq_ignore_ascii_case(name));
+        let valid_value = self.value.len() <= MAX_HEADER_VALUE_BYTES
+            && !self.value.chars().any(char::is_control);
+
+        if !valid_name || forbidden_name || !valid_value {
+            return Err(DownloadTransportFailure::new(
+                "download_http_runtime_header_invalid",
+                "Resolved runtime HTTP headers contain an unsupported name or value.",
+                false,
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone)]
 pub struct HttpTransport {
     agent: ureq::Agent,
@@ -85,6 +136,29 @@ impl HttpTransport {
         Self::build(policy, true)
     }
 
+    pub(crate) fn open_runtime_request(
+        &self,
+        url: &str,
+        headers: &[RuntimeHttpHeader],
+    ) -> Result<DownloadTransportStream, DownloadTransportFailure> {
+        if headers.len() > MAX_RUNTIME_HEADERS {
+            return Err(DownloadTransportFailure::new(
+                "download_http_runtime_headers_too_many",
+                "Resolved runtime HTTP request contains too many headers.",
+                false,
+            ));
+        }
+        let parsed = Url::parse(url).map_err(|_| {
+            DownloadTransportFailure::new(
+                "download_http_runtime_url_invalid",
+                "Resolved runtime HTTP URL is invalid.",
+                false,
+            )
+        })?;
+        validate_runtime_url(&parsed, self.allow_plain_http)?;
+        self.open_parsed_url(parsed, headers, true)
+    }
+
     fn open_url(
         &self,
         source: &DownloadSourceRef,
@@ -97,15 +171,30 @@ impl HttpTransport {
             ));
         }
 
+        let current = parse_source_url(&source.resource_id, self.allow_plain_http)?;
+        self.open_parsed_url(current, &[], false)
+    }
+
+    fn open_parsed_url(
+        &self,
+        mut current: Url,
+        headers: &[RuntimeHttpHeader],
+        sensitive_runtime_material: bool,
+    ) -> Result<DownloadTransportStream, DownloadTransportFailure> {
         let started_at = Instant::now();
-        let mut current = parse_source_url(&source.resource_id, self.allow_plain_http)?;
         let mut redirects = 0_u32;
 
         loop {
             ensure_overall_deadline(started_at, self.policy.overall_timeout)?;
-            let response = match self.agent.get(current.as_str()).call() {
+            let mut request = self.agent.get(current.as_str());
+            for header in headers {
+                request = request.set(&header.name, &header.value);
+            }
+            let response = match request.call() {
                 Ok(response) => response,
-                Err(error) => return Err(map_request_error(error)),
+                Err(error) => {
+                    return Err(map_request_error(error, sensitive_runtime_material));
+                }
             };
             ensure_overall_deadline(started_at, self.policy.overall_timeout)?;
             let status = response.status();
@@ -125,14 +214,22 @@ impl HttpTransport {
                         false,
                     )
                 })?;
-                let next = current.join(location).map_err(|error| {
+                let next = current.join(location).map_err(|_| {
                     DownloadTransportFailure::new(
                         "download_http_redirect_invalid",
-                        format!("HTTP redirect target is invalid: {error}"),
+                        "HTTP redirect target is invalid.",
                         false,
                     )
                 })?;
                 validate_runtime_url(&next, self.allow_plain_http)?;
+                if sensitive_runtime_material && !headers.is_empty() && !same_origin(&current, &next)
+                {
+                    return Err(DownloadTransportFailure::new(
+                        "download_http_sensitive_redirect_rejected",
+                        "Resolved authenticated HTTP requests cannot redirect credentials across origins.",
+                        false,
+                    ));
+                }
                 current = next;
                 redirects += 1;
                 continue;
@@ -261,12 +358,17 @@ fn ensure_overall_deadline(
     }
 }
 
-fn map_request_error(error: ureq::Error) -> DownloadTransportFailure {
+fn map_request_error(error: ureq::Error, sensitive_runtime_material: bool) -> DownloadTransportFailure {
     match error {
         ureq::Error::Status(status, _) => status_failure(status),
-        ureq::Error::Transport(error) => DownloadTransportFailure::new(
+        ureq::Error::Transport(error) if !sensitive_runtime_material => DownloadTransportFailure::new(
             "download_http_request_failed",
             format!("HTTP request failed: {error}"),
+            true,
+        ),
+        ureq::Error::Transport(_) => DownloadTransportFailure::new(
+            "download_http_request_failed",
+            "Resolved provider HTTP request failed without exposing runtime request material.",
             true,
         ),
     }
@@ -279,6 +381,12 @@ fn status_failure(status: u16) -> DownloadTransportFailure {
         format!("HTTP server returned status {status}."),
         retryable,
     )
+}
+
+fn same_origin(left: &Url, right: &Url) -> bool {
+    left.scheme() == right.scheme()
+        && left.host_str() == right.host_str()
+        && left.port_or_known_default() == right.port_or_known_default()
 }
 
 struct OverallDeadlineReader<R> {

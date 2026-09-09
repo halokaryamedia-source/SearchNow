@@ -1,12 +1,6 @@
 use super::model::DownloadSourceRef;
 use crate::error::{BackendError, BackendResult};
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::Read,
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::HashMap, fs::File, io::Read, path::Path, sync::Arc};
 
 pub struct DownloadTransportStream {
     pub reader: Box<dyn Read + Send>,

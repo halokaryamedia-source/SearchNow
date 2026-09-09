@@ -1,0 +1,27 @@
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+secrets/
+
+# Local workspace / user data
+workspace/
+output/
+temp/
+logs/
+
+# .NET / IDE (anticipated; refine when stack is finalized)
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Python verification cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db

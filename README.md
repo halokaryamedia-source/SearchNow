@@ -1,44 +1,77 @@
 # SearchNow
 
-SearchNow is currently in its documentation-first planning stage.
+SearchNow is a documentation-first modernization of the inspected BlueCoin 2.4 desktop application into a clearer, maintainable Minecraft Bedrock content-management client.
 
-Development planning is maintained on the `Local` branch before implementation begins.
+The legacy executable is preserved only as behavioral and architectural evidence. SearchNow does **not** treat DRM bypass, paid-to-free conversion, protected-content key distribution, or hidden credential behavior as product requirements.
 
-## Start Here
+## Canonical Development Workflow
 
-- [`docs/README.md`](docs/README.md) — full documentation index and current status.
-- [`docs/01-current-state.md`](docs/01-current-state.md) — behavior baseline reconstructed from BlueCoin 2.4.
-- [`docs/04-recovered-source-architecture.md`](docs/04-recovered-source-architecture.md) — **primary legacy source architecture reference**.
-- [`docs/05-recovered-symbol-map.md`](docs/05-recovered-symbol-map.md) — recovered CLR types, fields, methods, generated helpers, events, and call relationships.
-- [`docs/06-runtime-data-contracts.md`](docs/06-runtime-data-contracts.md) — filesystem, settings, network, package, runtime-state, and data-boundary map.
-- [`docs/07-reconstruction-evidence.md`](docs/07-reconstruction-evidence.md) — evidence, bundle manifest, hashes, metadata counts, and confidence levels.
-- [`docs/02-target-product-flow.md`](docs/02-target-product-flow.md) — proposed SearchNow user workflow and UX model.
-- [`docs/03-implementation-roadmap.md`](docs/03-implementation-roadmap.md) — architecture and staged development plan.
+```text
+Context Recovery
+→ Product Requirements
+→ Architecture & UX
+→ Implementation
+→ Verification
+→ Local Promotion
+→ Stable Promotion
+```
+
+These names are used consistently in repository policy, continuation notes, development reports, and handoff.
+
+## Branch Model
+
+```text
+develop  → active repository development
+Local    → verified integration baseline; one squash commit per approved promotion
+main     → stable repository history
+```
+
+Routine work happens on `develop`.
+
+- `develop → Local`: dedicated PR, promotion gate, **squash merge**.
+- after promotion: synchronize `develop` to the resulting `Local` HEAD before new work.
+- `Local → main`: explicit stable PR, stable gate, normal **merge commit**.
+- tags/releases are separate publishing actions.
+
+## Repository Map
+
+```text
+AGENTS.md            work routing, authority, boot, continuity, branch kernel
+GITHUB_RULES.md      GitHub mutation, proof, CI, promotion discipline
+CONTEXT.md           stable product/repository orientation
+docs/foundation/     durable SearchNow product/development policy
+docs/knowledge/      active continuation, ownership, decisions, evidence
+docs/legacy/         recovered BlueCoin 2.4 evidence and architecture
+.agents/skills/      reusable development judgment
+tools/               repository verification/operator utilities
+.github/             PR template and promotion gates
+src/                 application source once implementation begins
+tests/               executable regression contracts once implementation begins
+```
+
+## Development Boot
+
+For non-trivial development:
+
+```text
+AGENTS.md
+→ CONTEXT.md
+→ docs/knowledge/next-action.md
+→ .agents/skills/development-brief/SKILL.md
+→ exact owner
+→ GITHUB_RULES.md before material GitHub mutation
+```
+
+Do not broad-read the repository when the smallest owner can settle the task.
 
 ## Current Stage
 
-```text
-Legacy architecture capture       ✓
-        ↓
-Product / UX specification
-        ↓
-Technical decisions
-        ↓
-Repository foundation
-        ↓
-Implementation
-        ↓
-Testing / release
+The recovered legacy architecture is documented. The repository workflow is being standardized before application source implementation begins.
+
+Repository contract check:
+
+```bash
+python tools/verify_repository.py
 ```
 
-## Legacy Reference Status
-
-The supplied `BlueCoin_2.4.exe` has been statically decomposed to its .NET single-file manifest and embedded application assembly. The documentation now records the meaningful source types, responsibilities, internal call chains, local files, configuration, network boundaries, and runtime data flow.
-
-The executable was not run during this architecture pass, and the repository does not contain BlueCoin's original source code. Reconstructed physical `.cs` file layout is therefore explicitly distinguished from directly observed CLR metadata.
-
-Sensitive credential values found in the legacy executable are intentionally not copied here. Legacy protected-content bypass/key-sharing behavior is documented only as historical architecture and is not a SearchNow implementation requirement.
-
-## Working Rule
-
-Do not begin implementation by rediscovering or copying the legacy `DownloadForm` architecture. Use the recovered documents as the baseline, then implement the separated SearchNow architecture defined by the product and technical specifications.
+See [docs/README.md](docs/README.md) for the documentation map.

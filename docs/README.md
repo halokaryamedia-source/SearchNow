@@ -1,52 +1,50 @@
 # SearchNow Documentation
 
-This branch is the planning and development workspace for SearchNow.
+SearchNow follows the same repository-memory and development-routing pattern as PRD-Creator, adapted to a Windows desktop application.
 
-The repository was initially empty. Documentation is being established before implementation so product flow, architecture, scope, privacy, and development priorities remain explicit.
-
-## Documentation Index
-
-1. [`01-current-state.md`](01-current-state.md) — baseline reconstructed from static analysis of the supplied BlueCoin 2.4 executable.
-2. [`02-target-product-flow.md`](02-target-product-flow.md) — proposed user-facing workflow and UX model.
-3. [`03-implementation-roadmap.md`](03-implementation-roadmap.md) — phased development plan and technical boundaries.
-4. [`04-recovered-source-architecture.md`](04-recovered-source-architecture.md) — detailed source-level reconstruction: modules, classes, responsibilities, startup/search/download call chains, filesystem/network architecture, and migration map.
-5. [`05-recovered-symbol-map.md`](05-recovered-symbol-map.md) — CLR symbol inventory for meaningful types, fields, methods, generated helpers, event bindings, and high-value internal call relationships.
-6. [`06-runtime-data-contracts.md`](06-runtime-data-contracts.md) — local files, configuration, runtime state, package metadata, network contracts, download state, and target data-ownership boundaries.
-7. [`07-reconstruction-evidence.md`](07-reconstruction-evidence.md) — artifact hash, .NET bundle manifest, CLR evidence, analysis method, and confidence matrix.
-
-## Current Status
-
-- Repository initialized.
-- `Local` branch created for planning and development.
-- No SearchNow source implementation has been added yet.
-- Legacy BlueCoin architecture has been statically mapped before redesign begins.
-- `BlueCoin_2.4.exe` was **not executed** during the architecture pass.
-- Current-state knowledge comes from static analysis of the supplied executable, not from original BlueCoin source code.
-
-## Legacy Architecture Freeze
-
-The recovered BlueCoin architecture is now documented at four levels:
+## Documentation Map
 
 ```text
-Behavior baseline
-    ↓
-Source/module architecture
-    ↓
-CLR symbol map
-    ↓
-Runtime data/network/filesystem contracts
-    ↓
-Evidence + confidence boundary
+docs/
+├── foundation/   durable product, architecture, development and promotion policy
+├── knowledge/    active continuation, ownership, decisions, reviews and work modes
+└── legacy/       recovered BlueCoin 2.4 evidence
 ```
 
-Normal SearchNow development should use these documents as the legacy reference instead of repeatedly reverse-engineering the executable.
+### Foundation
 
-Additional legacy analysis should only be performed when a specific unresolved behavior blocks a documented requirement.
+- [`foundation/00-product-boundaries.md`](foundation/00-product-boundaries.md)
+- [`foundation/01-development-flow.md`](foundation/01-development-flow.md)
+- [`foundation/02-target-product-flow.md`](foundation/02-target-product-flow.md)
+- [`foundation/03-implementation-roadmap.md`](foundation/03-implementation-roadmap.md)
+- [`foundation/04-verification-promotion.md`](foundation/04-verification-promotion.md)
 
-## Security / Product Boundary
+### Knowledge / continuity
 
-Sensitive credential values discovered in the executable are intentionally not copied into this repository. Legacy protected-content bypass and shared decryption-key behavior are documented only as architectural facts; they are not SearchNow product requirements.
+- [`knowledge/next-action.md`](knowledge/next-action.md) — active continuation only.
+- [`knowledge/ownership.md`](knowledge/ownership.md) — who owns what.
+- [`knowledge/source-authority.md`](knowledge/source-authority.md) — evidence/decision precedence.
+- [`knowledge/work-routing.md`](knowledge/work-routing.md) — compact mode routing.
+- [`knowledge/work-modes/development.md`](knowledge/work-modes/development.md)
+- [`knowledge/work-modes/maintenance.md`](knowledge/work-modes/maintenance.md)
 
-## Working Principle
+### Legacy evidence
 
-Documentation is authoritative before implementation. Significant behavior should first be represented in the product flow or architecture documentation, then implemented and tested against that documented behavior.
+- [`legacy/01-current-state.md`](legacy/01-current-state.md)
+- [`legacy/04-recovered-source-architecture.md`](legacy/04-recovered-source-architecture.md)
+- [`legacy/05-recovered-symbol-map.md`](legacy/05-recovered-symbol-map.md)
+- [`legacy/06-runtime-data-contracts.md`](legacy/06-runtime-data-contracts.md)
+- [`legacy/07-reconstruction-evidence.md`](legacy/07-reconstruction-evidence.md)
+
+## Authority rule
+
+```text
+current explicit user instruction
+→ approved SearchNow decisions
+→ current SearchNow requirements/foundation
+→ legacy evidence when legacy behavior is the question
+→ implementation
+→ tests/runtime/generated evidence
+```
+
+Do not use generated/build output to repair upstream product or architecture meaning.

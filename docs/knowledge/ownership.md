@@ -29,12 +29,14 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | provider session/credential runtime contract | `docs/foundation/08-provider-session-architecture.md` |
 | integrated provider composition/capability contract | `docs/foundation/09-provider-adapter-architecture.md` |
 | consolidated application backend runtime / Tauri state contract | `docs/foundation/10-application-runtime-architecture.md` |
+| safe observability / health / hosted Windows readiness contract | `docs/foundation/11-observability-windows-readiness.md` |
 
 ## Current implementation owners
 
 | Boundary | Owner |
 |---|---|
 | application backend composition + safe aggregate runtime snapshot | `EngineData/Backend/RustCore/src/app_runtime.rs` |
+| bounded safe diagnostics + health snapshot | `EngineData/Backend/RustCore/src/diagnostics.rs` |
 | typed settings + persistence | `EngineData/Backend/RustCore/src/settings.rs` |
 | platform/AppData context | `EngineData/Backend/RustCore/src/platform.rs` |
 | Minecraft storage discovery | `EngineData/Backend/RustCore/src/minecraft.rs` |
@@ -57,13 +59,15 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | local backend snapshot helper/module exports | `EngineData/Backend/RustCore/src/lib.rs` |
 | backend error semantics | `EngineData/Backend/RustCore/src/error.rs` |
 | one Tauri backend runtime construction/management | `EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs` |
+| Tauri Windows resource/build-only icon fallback | `EngineData/Frontend/RustApp/src-tauri/build.rs` |
 | Tauri IPC registration | `EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs` |
 | thin Tauri runtime/settings/Minecraft/library/package/download adaptation | `EngineData/Frontend/RustApp/src-tauri/src/commands/` |
+| deferred non-destructive Windows smoke helper | `tools/windows_smoke_readiness.ps1` |
 | frontend raw invoke boundary | `EngineData/Frontend/RustApp/src/app/bridge/runtimeApi.ts` |
 
-Tauri commands must remain adapters over `State<SearchNowBackendRuntime>`. Queue lifecycle, network policy, catalog validation, provider composition/resolution/session state, persistence, filesystem, package, and Minecraft behavior belong in RustCore rather than IPC wrappers or Svelte pages.
+Tauri commands must remain adapters over `State<SearchNowBackendRuntime>`. Queue lifecycle, network policy, catalog validation, provider composition/resolution/session state, diagnostics, persistence, filesystem, package, and Minecraft behavior belong in RustCore rather than IPC wrappers or Svelte pages.
 
-`app_runtime.rs` owns application composition, **not the underlying domain logic**. `provider_adapter/runtime.rs` owns integrated-provider composition, `provider_session/runtime.rs` owns session coordination, `catalog/provider.rs` owns catalog coordination, `resolver.rs` owns runtime resource resolution, and `http.rs` owns HTTP mechanics. Tauri must not reconstruct those owners independently.
+`app_runtime.rs` owns application composition, **not the underlying domain logic**. `diagnostics.rs` owns only safe bounded observability. `provider_adapter/runtime.rs` owns integrated-provider composition, `provider_session/runtime.rs` owns session coordination, `catalog/provider.rs` owns catalog coordination, `resolver.rs` owns runtime resource resolution, and `http.rs` owns HTTP mechanics. Tauri must not reconstruct those owners independently.
 
 ## Legacy evidence
 

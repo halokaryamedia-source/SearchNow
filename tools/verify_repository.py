@@ -24,6 +24,9 @@ REQUIRED = [
     "EngineData/Backend/RustCore/src/library.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
     "EngineData/Backend/RustCore/src/catalog/mod.rs", "EngineData/Backend/RustCore/src/catalog/model.rs",
     "EngineData/Backend/RustCore/src/catalog/provider.rs",
+    "EngineData/Backend/RustCore/src/provider_session/mod.rs",
+    "EngineData/Backend/RustCore/src/provider_session/model.rs",
+    "EngineData/Backend/RustCore/src/provider_session/runtime.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
     ".github/PULL_REQUEST_TEMPLATE.md", ".github/workflows/repository-verify.yml",
     ".github/workflows/local-promotion-verify.yml", ".github/workflows/release-verify.yml",
@@ -37,7 +40,7 @@ checks = {
     "CONTEXT.md": ["Development branch: `develop`", "Verified integration baseline: `Local`", "Stable branch: `main`"],
     "GITHUB_RULES.md": ["PIN", "READ MINIMUM", "WRITE ONCE", "STOP"],
     "docs/foundation/06-backend-architecture.md": ["RustCore", "GDK", "read-only", "Tauri"],
-    "docs/foundation/07-catalog-architecture.md": ["CatalogProvider", "CatalogQuery", "ProviderResolved"],
+    "docs/foundation/07-catalog-architecture.md": ["CatalogProvider", "CatalogService", "ProviderResourceRef"],
 }
 
 for rel, needles in checks.items():
@@ -68,6 +71,13 @@ for rel in [
     for forbidden in ["authorization", "bearer_token", "signed_url", "cookie", "headers", "access_token"]:
         if forbidden in lowered:
             errors.append(f"{rel}: runtime credential field must not enter persisted/domain DTO state: {forbidden!r}")
+
+session_runtime = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "provider_session" / "runtime.rs"
+if session_runtime.exists():
+    text = session_runtime.read_text(encoding="utf-8", errors="replace")
+    for forbidden in ["Serialize", "Deserialize", "#[derive(Debug", "impl std::fmt::Debug for ProviderSessionMaterial", "impl std::fmt::Debug for ProviderSessionLease"]:
+        if forbidden in text:
+            errors.append(f"{session_runtime.relative_to(ROOT)}: runtime session material must remain non-serializable/non-debug: {forbidden!r}")
 
 for legacy_old in [
     "docs/01-current-state.md", "docs/04-recovered-source-architecture.md", "docs/05-recovered-symbol-map.md",

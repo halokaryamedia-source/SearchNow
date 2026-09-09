@@ -45,6 +45,9 @@ const backendRequired = [
   "src/catalog/mod.rs",
   "src/catalog/model.rs",
   "src/catalog/provider.rs",
+  "src/provider_session/mod.rs",
+  "src/provider_session/model.rs",
+  "src/provider_session/runtime.rs",
 ];
 const errors = [];
 
@@ -84,7 +87,9 @@ if (!downloadCommand.includes("DownloadExecutionRuntime")) errors.push("download
 const bootstrap = await readFile(resolve(appRoot, "src-tauri/src/app_bootstrap.rs"), "utf8");
 if (!bootstrap.includes("app.manage(runtime)")) errors.push("Tauri bootstrap must manage exactly one download execution runtime");
 if (!bootstrap.includes("HttpTransport")) errors.push("Tauri bootstrap must register the provider-neutral public HTTPS transport");
-if (!bootstrap.includes("ProviderResolvedTransport")) errors.push("Tauri bootstrap must register the generic resolved-provider transport boundary");
+const lib = await readFile(resolve(backendRoot, "src/lib.rs"), "utf8");
+if (!lib.includes("pub mod catalog")) errors.push("RustCore must expose the provider-neutral catalog domain");
+if (!lib.includes("pub mod provider_session")) errors.push("RustCore must expose the shared provider-session runtime boundary");
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

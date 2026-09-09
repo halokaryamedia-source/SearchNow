@@ -5,6 +5,7 @@ pub mod library;
 pub mod minecraft;
 pub mod package;
 pub mod platform;
+pub mod provider_adapter;
 pub mod provider_session;
 pub mod runtime;
 pub mod settings;

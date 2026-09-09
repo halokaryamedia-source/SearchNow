@@ -1,8 +1,8 @@
+use super::http::RuntimeHttpHeader;
 use super::{
     DownloadSourceRef, DownloadTransport, DownloadTransportFailure, DownloadTransportStream,
     HttpTransport,
 };
-use super::http::RuntimeHttpHeader;
 use crate::error::{BackendError, BackendResult};
 use std::{
     collections::HashMap,
@@ -23,17 +23,13 @@ pub struct ProviderResourceRef {
 }
 
 impl ProviderResourceRef {
-    pub fn new(
-        provider: impl Into<String>,
-        resource_id: impl Into<String>,
-    ) -> BackendResult<Self> {
+    pub fn new(provider: impl Into<String>, resource_id: impl Into<String>) -> BackendResult<Self> {
         let reference = Self {
             provider: provider.into(),
             resource_id: resource_id.into(),
         };
-        validate_provider_reference(&reference).map_err(|message| {
-            BackendError::new("download_provider_reference_invalid", message)
-        })?;
+        validate_provider_reference(&reference)
+            .map_err(|message| BackendError::new("download_provider_reference_invalid", message))?;
         Ok(reference)
     }
 

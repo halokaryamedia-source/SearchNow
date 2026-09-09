@@ -102,7 +102,10 @@ fn wait_for(
         if predicate(&snapshot) {
             return snapshot;
         }
-        assert!(started.elapsed() < Duration::from_secs(5), "HTTP fixture timed out");
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "HTTP fixture timed out"
+        );
         thread::sleep(Duration::from_millis(10));
     }
 }
@@ -137,7 +140,10 @@ fn local_http_fixture_streams_successfully() {
         .open(&source(format!("{base}/file.mcpack")))
         .expect("open HTTP fixture");
     let mut output = Vec::new();
-    stream.reader.read_to_end(&mut output).expect("read fixture");
+    stream
+        .reader
+        .read_to_end(&mut output)
+        .expect("read fixture");
     assert_eq!(stream.total_bytes, Some(payload.len() as u64));
     assert_eq!(output, payload);
 }
@@ -164,7 +170,10 @@ fn relative_redirect_is_followed_within_limit() {
         .open(&source(format!("{base}/start")))
         .expect("follow redirect");
     let mut output = Vec::new();
-    stream.reader.read_to_end(&mut output).expect("read redirect");
+    stream
+        .reader
+        .read_to_end(&mut output)
+        .expect("read redirect");
     assert_eq!(output, payload);
 }
 

@@ -152,10 +152,8 @@ impl HttpTransport {
                 ));
             }
 
-            let reader = ResponseLimitReader::new(
-                response.into_reader(),
-                self.policy.max_response_bytes,
-            );
+            let reader =
+                ResponseLimitReader::new(response.into_reader(), self.policy.max_response_bytes);
             return Ok(DownloadTransportStream {
                 reader: Box::new(reader),
                 total_bytes,
@@ -177,10 +175,7 @@ impl DownloadTransport for HttpTransport {
     }
 }
 
-fn parse_source_url(
-    value: &str,
-    allow_plain_http: bool,
-) -> Result<Url, DownloadTransportFailure> {
+fn parse_source_url(value: &str, allow_plain_http: bool) -> Result<Url, DownloadTransportFailure> {
     let url = Url::parse(value).map_err(|error| {
         DownloadTransportFailure::new(
             "download_http_url_invalid",
@@ -199,10 +194,7 @@ fn parse_source_url(
     Ok(url)
 }
 
-fn validate_runtime_url(
-    url: &Url,
-    allow_plain_http: bool,
-) -> Result<(), DownloadTransportFailure> {
+fn validate_runtime_url(url: &Url, allow_plain_http: bool) -> Result<(), DownloadTransportFailure> {
     let scheme_allowed = url.scheme() == "https" || (allow_plain_http && url.scheme() == "http");
     if !scheme_allowed {
         return Err(DownloadTransportFailure::new(

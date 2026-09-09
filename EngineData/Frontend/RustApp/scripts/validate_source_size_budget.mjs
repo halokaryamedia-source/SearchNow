@@ -6,7 +6,7 @@ const appRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const roots = [
   resolve(appRoot, "src"),
   resolve(appRoot, "src-tauri", "src"),
-  resolve(appRoot, "../../../Backend/RustCore/src"),
+  resolve(appRoot, "../../Backend/RustCore/src"),
 ];
 const tracked = new Set([".rs", ".svelte", ".ts"]);
 const budgets = { ".rs": 20_000, ".svelte": 18_000, ".ts": 16_000 };

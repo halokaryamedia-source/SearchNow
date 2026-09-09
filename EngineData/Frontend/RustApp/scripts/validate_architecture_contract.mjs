@@ -3,7 +3,7 @@ import { extname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const appRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const backendRoot = resolve(appRoot, "../../../Backend/RustCore");
+const backendRoot = resolve(appRoot, "../../Backend/RustCore");
 const required = [
   "src/App.svelte",
   "src/app/bridge/runtimeApi.ts",

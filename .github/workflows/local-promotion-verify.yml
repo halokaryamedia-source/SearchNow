@@ -55,3 +55,17 @@ jobs:
         run: |
           echo "Required merge method: squash."
           echo "After merge, synchronize develop to the resulting Local HEAD before new development."
+
+  windows-readiness:
+    name: Windows Rust/Tauri compile gate
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify RustCore on Windows
+        run: cargo test --manifest-path EngineData/Backend/RustCore/Cargo.toml
+      - name: Verify Tauri crate compiles on Windows
+        run: cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml

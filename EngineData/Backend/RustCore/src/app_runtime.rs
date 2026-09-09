@@ -1,6 +1,9 @@
 use crate::{
     build_local_backend_snapshot,
     catalog::{CatalogError, CatalogPage, CatalogRequest},
+    diagnostics::{
+        BackendDiagnosticsSnapshot, DiagnosticComponent, DiagnosticSeverity, DiagnosticsBuffer,
+    },
     download::{
         default_download_paths, DownloadExecutionRuntime, DownloadJob, DownloadManagerSnapshot,
         DownloadPolicy, DownloadRequest, DownloadStore, DownloadTransportRegistry, HttpTransport,
@@ -19,6 +22,7 @@ use serde::Serialize;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+    time::Instant,
 };
 
 #[derive(Debug, Clone)]
@@ -49,6 +53,7 @@ pub struct BackendRuntimeSnapshot {
     pub minecraft: MinecraftDiscoverySnapshot,
     pub providers: Vec<ProviderRuntimeStatus>,
     pub downloads: DownloadManagerSnapshot,
+    pub diagnostics: BackendDiagnosticsSnapshot,
 }
 
 #[derive(Clone)]
@@ -57,6 +62,7 @@ pub struct SearchNowBackendRuntime {
     platform: PlatformContext,
     providers: Arc<ProviderAdapterRuntime>,
     downloads: DownloadExecutionRuntime,
+    diagnostics: DiagnosticsBuffer,
 }
 
 impl SearchNowBackendRuntime {
@@ -75,7 +81,26 @@ impl SearchNowBackendRuntime {
         integrated_providers: Vec<Arc<dyn IntegratedProvider>>,
         http: HttpTransport,
     ) -> BackendResult<Self> {
+        let diagnostics = DiagnosticsBuffer::default();
+        let startup_started = Instant::now();
+        diagnostics.record(
+            DiagnosticComponent::Runtime,
+            DiagnosticSeverity::Info,
+            "backend_runtime_starting",
+            "SearchNow backend runtime is starting.",
+            None,
+        );
+
+        let provider_started = Instant::now();
         let providers = Arc::new(ProviderAdapterRuntime::compose(integrated_providers)?);
+        diagnostics.record(
+            DiagnosticComponent::Provider,
+            DiagnosticSeverity::Info,
+            "provider_runtime_ready",
+            "Provider runtime composition is ready.",
+            Some(provider_started.elapsed()),
+        );
+
         let mut transports = DownloadTransportRegistry::with_local_file()?;
         transports.register(Arc::new(http.clone()))?;
         transports.register(Arc::new(ProviderResolvedTransport::new(
@@ -83,6 +108,7 @@ impl SearchNowBackendRuntime {
             http,
         )))?;
 
+        let download_started = Instant::now();
         let downloads = DownloadExecutionRuntime::new(
             DownloadPolicy::default(),
             DownloadStore::new(&paths.download_state_path),
@@ -90,43 +116,126 @@ impl SearchNowBackendRuntime {
             &paths.download_destination_root,
             transports,
         )?;
+        diagnostics.record(
+            DiagnosticComponent::Download,
+            DiagnosticSeverity::Info,
+            "download_runtime_ready",
+            "Download runtime is ready.",
+            Some(download_started.elapsed()),
+        );
+
+        diagnostics.mark_ready();
+        diagnostics.record(
+            DiagnosticComponent::Runtime,
+            DiagnosticSeverity::Info,
+            "backend_runtime_ready",
+            "SearchNow backend runtime is ready.",
+            Some(startup_started.elapsed()),
+        );
 
         Ok(Self {
             settings: SettingsStore::new(paths.settings_path),
             platform,
             providers,
             downloads,
+            diagnostics,
         })
     }
 
     pub fn load_settings(&self) -> BackendResult<AppSettings> {
-        self.settings.load()
+        let started = Instant::now();
+        let result = self.settings.load();
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Settings,
+            started,
+            result.is_ok(),
+            "settings_load_ok",
+            "Settings loaded successfully.",
+            "settings_load_failed",
+            "Settings could not be loaded.",
+            DiagnosticSeverity::Error,
+        );
+        result
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> BackendResult<AppSettings> {
-        self.settings.save(settings)?;
-        Ok(settings.clone())
+        let started = Instant::now();
+        let result = self.settings.save(settings).map(|()| settings.clone());
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Settings,
+            started,
+            result.is_ok(),
+            "settings_save_ok",
+            "Settings saved successfully.",
+            "settings_save_failed",
+            "Settings could not be saved.",
+            DiagnosticSeverity::Error,
+        );
+        result
     }
 
     pub fn discover_minecraft(&self) -> BackendResult<MinecraftDiscoverySnapshot> {
-        let settings = self.settings.load()?;
-        Ok(discover_minecraft_storage(
-            &settings.minecraft,
-            &self.platform,
-        ))
+        let started = Instant::now();
+        let result = self.discover_minecraft_raw();
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Minecraft,
+            started,
+            result.is_ok(),
+            "minecraft_discovery_ok",
+            "Minecraft storage discovery completed.",
+            "minecraft_discovery_failed",
+            "Minecraft storage discovery could not complete.",
+            DiagnosticSeverity::Error,
+        );
+        result
     }
 
     pub fn scan_local_library(&self) -> BackendResult<LocalBackendSnapshot> {
-        let settings = self.settings.load()?;
-        Ok(build_local_backend_snapshot(&settings, &self.platform))
+        let started = Instant::now();
+        let result = self.scan_local_library_raw();
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Library,
+            started,
+            result.is_ok(),
+            "library_scan_ok",
+            "Local library scan completed.",
+            "library_scan_failed",
+            "Local library scan could not complete.",
+            DiagnosticSeverity::Error,
+        );
+        result
     }
 
     pub fn inspect_package(&self, path: &Path) -> BackendResult<PackageInspection> {
-        inspect_package(path)
+        let started = Instant::now();
+        let result = inspect_package(path);
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Package,
+            started,
+            result.is_ok(),
+            "package_inspection_ok",
+            "Package inspection completed.",
+            "package_inspection_failed",
+            "Package inspection could not complete.",
+            DiagnosticSeverity::Warning,
+        );
+        result
     }
 
     pub fn query_catalog(&self, request: &CatalogRequest) -> Result<CatalogPage, CatalogError> {
-        self.providers.catalog().query(request)
+        let started = Instant::now();
+        let result = self.providers.catalog().query(request);
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Catalog,
+            started,
+            result.is_ok(),
+            "catalog_query_ok",
+            "Catalog query completed.",
+            "catalog_query_failed",
+            "Catalog query could not complete.",
+            DiagnosticSeverity::Warning,
+        );
+        result
     }
 
     pub fn provider_status(&self) -> Vec<ProviderRuntimeStatus> {
@@ -137,13 +246,32 @@ impl SearchNowBackendRuntime {
         runtime_status()
     }
 
+    pub fn diagnostics_snapshot(&self) -> BackendDiagnosticsSnapshot {
+        self.diagnostics.snapshot()
+    }
+
     pub fn snapshot(&self) -> BackendResult<BackendRuntimeSnapshot> {
-        Ok(BackendRuntimeSnapshot {
-            runtime: self.runtime_status(),
-            minecraft: self.discover_minecraft()?,
-            providers: self.provider_status(),
-            downloads: self.downloads.snapshot()?,
-        })
+        let started = Instant::now();
+        let result = (|| {
+            Ok(BackendRuntimeSnapshot {
+                runtime: self.runtime_status(),
+                minecraft: self.discover_minecraft_raw()?,
+                providers: self.provider_status(),
+                downloads: self.downloads.snapshot()?,
+                diagnostics: self.diagnostics_snapshot(),
+            })
+        })();
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Runtime,
+            started,
+            result.is_ok(),
+            "backend_snapshot_ok",
+            "Backend runtime snapshot completed.",
+            "backend_snapshot_failed",
+            "Backend runtime snapshot could not complete.",
+            DiagnosticSeverity::Error,
+        );
+        result
     }
 
     pub fn download_snapshot(&self) -> BackendResult<DownloadManagerSnapshot> {
@@ -151,19 +279,80 @@ impl SearchNowBackendRuntime {
     }
 
     pub fn queue_download(&self, request: DownloadRequest) -> BackendResult<DownloadJob> {
-        self.downloads.queue(request)
+        let started = Instant::now();
+        let result = self.downloads.queue(request);
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Download,
+            started,
+            result.is_ok(),
+            "download_queue_ok",
+            "Download job queued.",
+            "download_queue_failed",
+            "Download job could not be queued.",
+            DiagnosticSeverity::Warning,
+        );
+        result
     }
 
     pub fn cancel_download(&self, job_id: &str) -> BackendResult<DownloadJob> {
-        self.downloads.cancel(job_id)
+        let started = Instant::now();
+        let result = self.downloads.cancel(job_id);
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Download,
+            started,
+            result.is_ok(),
+            "download_cancel_ok",
+            "Download cancellation requested.",
+            "download_cancel_failed",
+            "Download cancellation could not be requested.",
+            DiagnosticSeverity::Warning,
+        );
+        result
     }
 
     pub fn retry_download(&self, job_id: &str) -> BackendResult<DownloadJob> {
-        self.downloads.retry(job_id)
+        let started = Instant::now();
+        let result = self.downloads.retry(job_id);
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Download,
+            started,
+            result.is_ok(),
+            "download_retry_ok",
+            "Download retry queued.",
+            "download_retry_failed",
+            "Download retry could not be queued.",
+            DiagnosticSeverity::Warning,
+        );
+        result
     }
 
     pub fn remove_download(&self, job_id: &str) -> BackendResult<DownloadManagerSnapshot> {
-        self.downloads.remove_terminal(job_id)
+        let started = Instant::now();
+        let result = self.downloads.remove_terminal(job_id);
+        self.diagnostics.record_outcome(
+            DiagnosticComponent::Download,
+            started,
+            result.is_ok(),
+            "download_remove_ok",
+            "Terminal download job removed.",
+            "download_remove_failed",
+            "Terminal download job could not be removed.",
+            DiagnosticSeverity::Warning,
+        );
+        result
+    }
+
+    fn discover_minecraft_raw(&self) -> BackendResult<MinecraftDiscoverySnapshot> {
+        let settings = self.settings.load()?;
+        Ok(discover_minecraft_storage(
+            &settings.minecraft,
+            &self.platform,
+        ))
+    }
+
+    fn scan_local_library_raw(&self) -> BackendResult<LocalBackendSnapshot> {
+        let settings = self.settings.load()?;
+        Ok(build_local_backend_snapshot(&settings, &self.platform))
     }
 }
 
@@ -171,6 +360,7 @@ impl SearchNowBackendRuntime {
 mod tests {
     use super::*;
     use crate::{
+        diagnostics::{BackendStartupPhase, DiagnosticSeverity},
         download::{
             provider_download_source, DownloadJobState, HttpTransportPolicy,
             ProviderResolveFailure, ResolvedResource, ResourceResolver,
@@ -250,6 +440,10 @@ mod tests {
         assert!(snapshot.providers.is_empty());
         assert_eq!(snapshot.downloads.active_jobs, 0);
         assert_eq!(snapshot.downloads.queued_jobs, 0);
+        assert_eq!(
+            snapshot.diagnostics.health.startup_phase,
+            BackendStartupPhase::Ready
+        );
     }
 
     #[test]
@@ -306,6 +500,29 @@ mod tests {
             Ok(_) => panic!("invalid provider must prevent runtime construction"),
         };
         assert_eq!(error.code(), "provider_adapter_key_invalid");
+    }
+
+    #[test]
+    fn failed_package_diagnostic_does_not_expose_input_path() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let paths =
+            SearchNowBackendPaths::from_roots(temp.path().join("config"), temp.path().join("data"));
+        let runtime = SearchNowBackendRuntime::compose(
+            paths,
+            PlatformContext::windows(temp.path().join("roaming"), temp.path().join("local")),
+            Vec::new(),
+            HttpTransport::new_test_http(test_http_policy()).expect("test HTTP"),
+        )
+        .expect("runtime");
+        let secret_path = temp.path().join("private-user-path-secret.mcaddon");
+        assert!(runtime.inspect_package(&secret_path).is_err());
+        let diagnostics = runtime.diagnostics_snapshot();
+        assert!(diagnostics.events.iter().any(|event| {
+            event.code == "package_inspection_failed"
+                && event.severity == DiagnosticSeverity::Warning
+        }));
+        let json = serde_json::to_string(&diagnostics).expect("diagnostics json");
+        assert!(!json.contains("private-user-path-secret"));
     }
 
     fn spawn_server(payload: Vec<u8>) -> String {

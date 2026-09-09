@@ -1,6 +1,7 @@
 use super::error::CommandError;
 use searchnow_core::{
     app_runtime::{BackendRuntimeSnapshot, SearchNowBackendRuntime},
+    diagnostics::BackendDiagnosticsSnapshot,
     runtime::RuntimeStatus,
 };
 use tauri::State;
@@ -11,7 +12,7 @@ pub fn get_runtime_status(state: State<'_, SearchNowBackendRuntime>) -> RuntimeS
 }
 
 #[tauri::command]
-pub async fn get_backend_runtime_snapshot(
+pub async fn get_backend_snapshot(
     state: State<'_, SearchNowBackendRuntime>,
 ) -> Result<BackendRuntimeSnapshot, CommandError> {
     let runtime = state.inner().clone();
@@ -24,4 +25,11 @@ pub async fn get_backend_runtime_snapshot(
             )
         })?
         .map_err(CommandError::from)
+}
+
+#[tauri::command]
+pub fn get_backend_diagnostics(
+    state: State<'_, SearchNowBackendRuntime>,
+) -> BackendDiagnosticsSnapshot {
+    state.diagnostics_snapshot()
 }

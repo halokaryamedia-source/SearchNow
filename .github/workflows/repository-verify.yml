@@ -42,3 +42,15 @@ jobs:
       - name: Verify frontend architecture and build
         working-directory: EngineData/Frontend/RustApp
         run: npm run validate:quick
+
+  windows-readiness:
+    name: Windows Rust/Tauri compile gate
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify RustCore on Windows
+        run: cargo test --manifest-path EngineData/Backend/RustCore/Cargo.toml
+      - name: Verify Tauri crate compiles on Windows
+        run: cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml

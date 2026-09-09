@@ -229,25 +229,57 @@ fn short_body_with_content_length_surfaces_read_failure() {
 }
 
 #[test]
-fn stalled_response_header_times_out_as_retryable() {
+fn stalled_response_body_times_out_as_retryable() {
+    let payload = vec![5_u8; 2];
     let base = spawn_server(vec![ResponseSpec {
         status: "200 OK",
-        headers: vec![("Content-Length".into(), "0".into())],
-        body: Vec::new(),
-        header_delay: Duration::from_millis(200),
-        chunk_size: usize::MAX,
-        chunk_delay: Duration::ZERO,
+        headers: vec![("Content-Length".into(), payload.len().to_string())],
+        body: payload.clone(),
+        header_delay: Duration::ZERO,
+        chunk_size: 1,
+        chunk_delay: Duration::from_millis(200),
     }]);
     let mut policy = test_policy();
     policy.read_timeout = Duration::from_millis(50);
     policy.overall_timeout = Duration::from_secs(1);
-    let transport = HttpTransport::new_test_http(policy).expect("transport");
-    let error = expect_open_error(
-        transport.open(&source(format!("{base}/slow"))),
-        "stalled response must timeout",
-    );
-    assert_eq!(error.code, "download_http_request_failed");
-    assert!(error.retryable);
+    let directory = tempfile::tempdir().expect("tempdir");
+    let mut registry = DownloadTransportRegistry::new();
+    registry
+        .register(Arc::new(
+            HttpTransport::new_test_http(policy).expect("HTTP transport"),
+        ))
+        .expect("register HTTP transport");
+    let runtime = DownloadExecutionRuntime::new(
+        DownloadPolicy::default(),
+        DownloadStore::new(directory.path().join("state.json")),
+        directory.path().join("workspace"),
+        directory.path().join("files"),
+        registry,
+    )
+    .expect("runtime");
+    let job = runtime
+        .queue(DownloadRequest {
+            source: source(format!("{base}/stalled-body")),
+            display_name: "http-timeout".into(),
+            destination_file_name: "http-timeout.mcpack".into(),
+            expected_bytes: Some(payload.len() as u64),
+        })
+        .expect("queue");
+
+    let snapshot = wait_for(&runtime, |snapshot| {
+        snapshot
+            .jobs
+            .iter()
+            .any(|candidate| candidate.id == job.id && candidate.state == DownloadJobState::Failed)
+    });
+    let failed = snapshot
+        .jobs
+        .iter()
+        .find(|candidate| candidate.id == job.id)
+        .expect("failed timeout job");
+    let failure = failed.last_error.as_ref().expect("timeout failure");
+    assert_eq!(failure.code, "download_transfer_timeout");
+    assert!(failure.retryable);
 }
 
 #[test]

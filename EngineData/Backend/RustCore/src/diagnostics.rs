@@ -155,13 +155,7 @@ impl DiagnosticsBuffer {
         } else {
             (failure_severity, failure_code, failure_message)
         };
-        self.record(
-            component,
-            severity,
-            code,
-            message,
-            Some(started.elapsed()),
-        );
+        self.record(component, severity, code, message, Some(started.elapsed()));
     }
 
     pub fn snapshot(&self) -> BackendDiagnosticsSnapshot {

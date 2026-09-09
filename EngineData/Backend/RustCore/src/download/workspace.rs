@@ -68,10 +68,94 @@ pub fn plan_workspace(
 }
 
 pub fn ensure_workspace(plan: &DownloadWorkspacePlan) -> BackendResult<()> {
+    if plan.workspace_dir.exists() {
+        let metadata = fs::symlink_metadata(&plan.workspace_dir).map_err(|error| {
+            BackendError::from_io(
+                "download_workspace_metadata_failed",
+                "SearchNow could not inspect the download workspace.",
+                error,
+            )
+        })?;
+        if metadata.file_type().is_symlink() || !metadata.file_type().is_dir() {
+            return Err(BackendError::new(
+                "download_workspace_invalid",
+                "Download workspace must be a regular non-symlink directory.",
+            ));
+        }
+        return Ok(());
+    }
+
     fs::create_dir_all(&plan.workspace_dir).map_err(|error| {
         BackendError::from_io(
             "download_workspace_create_failed",
             "SearchNow could not create the download workspace.",
+            error,
+        )
+    })
+}
+
+pub fn prepare_payload_file(plan: &DownloadWorkspacePlan) -> BackendResult<File> {
+    ensure_workspace(plan)?;
+
+    if plan.payload_path.exists() {
+        let metadata = fs::symlink_metadata(&plan.payload_path).map_err(|error| {
+            BackendError::from_io(
+                "download_payload_metadata_failed",
+                "SearchNow could not inspect the existing download payload.",
+                error,
+            )
+        })?;
+        if metadata.file_type().is_symlink() || !metadata.file_type().is_file() {
+            return Err(BackendError::new(
+                "download_payload_invalid",
+                "Download payload must be a regular non-symlink file.",
+            ));
+        }
+        fs::remove_file(&plan.payload_path).map_err(|error| {
+            BackendError::from_io(
+                "download_payload_reset_failed",
+                "SearchNow could not reset the existing download payload.",
+                error,
+            )
+        })?;
+    }
+
+    OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&plan.payload_path)
+        .map_err(|error| {
+            BackendError::from_io(
+                "download_payload_create_failed",
+                "SearchNow could not create the download payload.",
+                error,
+            )
+        })
+}
+
+pub fn cleanup_workspace(plan: &DownloadWorkspacePlan) -> BackendResult<()> {
+    if !plan.workspace_dir.exists() {
+        return Ok(());
+    }
+
+    let metadata = fs::symlink_metadata(&plan.workspace_dir).map_err(|error| {
+        BackendError::from_io(
+            "download_workspace_metadata_failed",
+            "SearchNow could not inspect the download workspace.",
+            error,
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.file_type().is_dir() {
+        return Err(BackendError::new(
+            "download_workspace_invalid",
+            "Download workspace cleanup refused a non-directory or symlink path.",
+        ));
+    }
+
+    fs::remove_dir_all(&plan.workspace_dir).map_err(|error| {
+        BackendError::from_io(
+            "download_workspace_cleanup_failed",
+            "SearchNow could not clean the download workspace.",
             error,
         )
     })

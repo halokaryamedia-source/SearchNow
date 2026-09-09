@@ -18,12 +18,13 @@ REQUIRED = [
     "docs/foundation/08-provider-session-architecture.md",
     "docs/foundation/09-provider-adapter-architecture.md",
     "docs/foundation/10-application-runtime-architecture.md",
+    "docs/foundation/11-observability-windows-readiness.md",
     "docs/knowledge/next-action.md", "docs/knowledge/ownership.md", "docs/knowledge/source-authority.md",
     "docs/knowledge/work-routing.md", "docs/knowledge/work-modes/development.md", "docs/knowledge/work-modes/maintenance.md",
     "docs/legacy/01-current-state.md", "docs/legacy/04-recovered-source-architecture.md",
     "docs/legacy/05-recovered-symbol-map.md", "docs/legacy/06-runtime-data-contracts.md", "docs/legacy/07-reconstruction-evidence.md",
     "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/src/lib.rs",
-    "EngineData/Backend/RustCore/src/app_runtime.rs",
+    "EngineData/Backend/RustCore/src/app_runtime.rs", "EngineData/Backend/RustCore/src/diagnostics.rs",
     "EngineData/Backend/RustCore/src/settings.rs", "EngineData/Backend/RustCore/src/minecraft.rs",
     "EngineData/Backend/RustCore/src/library.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
     "EngineData/Backend/RustCore/src/catalog/mod.rs", "EngineData/Backend/RustCore/src/catalog/model.rs",
@@ -34,8 +35,10 @@ REQUIRED = [
     "EngineData/Backend/RustCore/src/provider_adapter/mod.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/model.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/runtime.rs",
+    "EngineData/Frontend/RustApp/src-tauri/build.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
+    "tools/windows_smoke_readiness.ps1",
     ".github/PULL_REQUEST_TEMPLATE.md", ".github/workflows/repository-verify.yml",
     ".github/workflows/local-promotion-verify.yml", ".github/workflows/release-verify.yml",
 ]
@@ -52,6 +55,7 @@ checks = {
     "docs/foundation/08-provider-session-architecture.md": ["ProviderSessionSource", "ProviderSessionManager", "non-serializable", "refresh storm"],
     "docs/foundation/09-provider-adapter-architecture.md": ["IntegratedProvider", "ProviderAdapterRuntime", "CatalogProvider", "ResourceResolver"],
     "docs/foundation/10-application-runtime-architecture.md": ["SearchNowBackendRuntime", "one managed state", "ProviderResolvedTransport", "BackendRuntimeSnapshot"],
+    "docs/foundation/11-observability-windows-readiness.md": ["DiagnosticsBuffer", "bounded", "Windows RustCore + Tauri compile gate", "OUT_DIR"],
 }
 
 for rel, needles in checks.items():
@@ -122,9 +126,41 @@ if bootstrap.exists():
 app_runtime = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "app_runtime.rs"
 if app_runtime.exists():
     text = app_runtime.read_text(encoding="utf-8", errors="replace")
-    for needle in ["SearchNowBackendRuntime", "ProviderAdapterRuntime::compose", "providers.resolvers()", "ProviderResolvedTransport::new", "DownloadExecutionRuntime::new", "SettingsStore::new", "BackendRuntimeSnapshot"]:
+    for needle in ["SearchNowBackendRuntime", "ProviderAdapterRuntime::compose", "providers.resolvers()", "ProviderResolvedTransport::new", "DownloadExecutionRuntime::new", "SettingsStore::new", "BackendRuntimeSnapshot", "DiagnosticsBuffer"]:
         if needle not in text:
-            errors.append(f"{app_runtime.relative_to(ROOT)}: missing application composition contract {needle!r}")
+            errors.append(f"{app_runtime.relative_to(ROOT)}: missing application composition/observability contract {needle!r}")
+
+# Diagnostics are intentionally bounded and static-message only. This keeps paths,
+# provider bodies, signed URLs, and credential-bearing runtime data out of public health state.
+diagnostics = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "diagnostics.rs"
+if diagnostics.exists():
+    text = diagnostics.read_text(encoding="utf-8", errors="replace")
+    for needle in ["DEFAULT_DIAGNOSTIC_CAPACITY", "MAX_DIAGNOSTIC_CAPACITY", "VecDeque", "pub message: &'static str", "BackendHealthSnapshot"]:
+        if needle not in text:
+            errors.append(f"{diagnostics.relative_to(ROOT)}: missing bounded/static diagnostic contract {needle!r}")
+    lowered = text.lower()
+    for forbidden in ["authorization:", "bearer ", "signed_url", "access_token", "refresh_token", "cookie:"]:
+        if forbidden in lowered:
+            errors.append(f"{diagnostics.relative_to(ROOT)}: diagnostic implementation must not own credential material {forbidden!r}")
+
+build_rs = ROOT / "EngineData" / "Frontend" / "RustApp" / "src-tauri" / "build.rs"
+if build_rs.exists():
+    text = build_rs.read_text(encoding="utf-8", errors="replace")
+    for needle in ["OUT_DIR", "window_icon_path", "build_placeholder_ico", "tauri_build::try_build"]:
+        if needle not in text:
+            errors.append(f"{build_rs.relative_to(ROOT)}: missing Windows build-readiness fallback contract {needle!r}")
+
+for workflow_rel in [
+    ".github/workflows/repository-verify.yml",
+    ".github/workflows/local-promotion-verify.yml",
+    ".github/workflows/release-verify.yml",
+]:
+    workflow = ROOT / workflow_rel
+    if workflow.exists():
+        text = workflow.read_text(encoding="utf-8", errors="replace")
+        for needle in ["windows-latest", "cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml"]:
+            if needle not in text:
+                errors.append(f"{workflow_rel}: missing hosted Windows Tauri compile gate {needle!r}")
 
 public_http = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "http.rs"
 if public_http.exists():

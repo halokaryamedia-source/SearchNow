@@ -1,5 +1,8 @@
 use super::{context::settings_store, error::CommandError};
-use searchnow_core::{minecraft::{discover_minecraft_storage, MinecraftDiscoverySnapshot}, platform::PlatformContext};
+use searchnow_core::{
+    minecraft::{discover_minecraft_storage, MinecraftDiscoverySnapshot},
+    platform::PlatformContext,
+};
 use tauri::AppHandle;
 
 #[tauri::command]

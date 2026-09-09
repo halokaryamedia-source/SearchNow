@@ -18,5 +18,9 @@ All notable SearchNow repository/product changes will be recorded here.
 - ZIP archive safety checks for traversal, symlinks, duplicate paths, size bounds, and extreme compression ratios without extraction.
 - Transport-agnostic persistent download manager with typed job states, bounded concurrency, cancellation/retry semantics, progress validation, restart recovery, and terminal-job cleanup.
 - Download workspace planning with safe destination file names and destination-local staged atomic no-overwrite publication.
-- Tauri-managed download queue state with transactional clone → persist → commit mutations.
+- Provider-neutral download transport registry and execution runtime.
+- Deterministic `local-file` transport for end-to-end queue → transfer → progress → final publication testing.
+- Native bounded worker scheduling with cooperative cancellation and queued-job pumping.
+- Progress persistence checkpointing at 1 MiB plus lifecycle boundaries to reduce state-write overhead.
+- Tauri-managed `DownloadExecutionRuntime` created during application bootstrap; download IPC commands delegate to RustCore runtime ownership.
 - Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.

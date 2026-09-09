@@ -1,4 +1,5 @@
 use crate::{
+    build_local_backend_snapshot,
     catalog::{CatalogError, CatalogPage, CatalogRequest},
     download::{
         default_download_paths, DownloadExecutionRuntime, DownloadJob, DownloadManagerSnapshot,
@@ -12,7 +13,7 @@ use crate::{
     provider_adapter::{IntegratedProvider, ProviderAdapterRuntime, ProviderRuntimeStatus},
     runtime::{runtime_status, RuntimeStatus},
     settings::{AppSettings, SettingsStore},
-    build_local_backend_snapshot, LocalBackendSnapshot,
+    LocalBackendSnapshot,
 };
 use serde::Serialize;
 use std::{
@@ -220,12 +221,12 @@ mod tests {
             "runtime-fixture"
         }
 
-        fn resolve(
-            &self,
-            resource_id: &str,
-        ) -> Result<ResolvedResource, ProviderResolveFailure> {
+        fn resolve(&self, resource_id: &str) -> Result<ResolvedResource, ProviderResolveFailure> {
             if resource_id != "asset" {
-                return Err(ProviderResolveFailure::new("fixture_resource_missing", false));
+                return Err(ProviderResolveFailure::new(
+                    "fixture_resource_missing",
+                    false,
+                ));
             }
             Ok(ResolvedResource::new(format!("{}/asset", self.base_url)))
         }
@@ -234,10 +235,8 @@ mod tests {
     #[test]
     fn runtime_snapshot_is_safe_and_consistent_without_providers() {
         let temp = tempfile::tempdir().expect("tempdir");
-        let paths = SearchNowBackendPaths::from_roots(
-            temp.path().join("config"),
-            temp.path().join("data"),
-        );
+        let paths =
+            SearchNowBackendPaths::from_roots(temp.path().join("config"), temp.path().join("data"));
         let runtime = SearchNowBackendRuntime::compose(
             paths,
             PlatformContext::windows(temp.path().join("roaming"), temp.path().join("local")),
@@ -258,10 +257,8 @@ mod tests {
         let payload = b"searchnow-backend-runtime".repeat(1024);
         let base_url = spawn_server(payload.clone());
         let temp = tempfile::tempdir().expect("tempdir");
-        let paths = SearchNowBackendPaths::from_roots(
-            temp.path().join("config"),
-            temp.path().join("data"),
-        );
+        let paths =
+            SearchNowBackendPaths::from_roots(temp.path().join("config"), temp.path().join("data"));
         let destination = paths.download_destination_root.clone();
         let runtime = SearchNowBackendRuntime::compose(
             paths,
@@ -296,10 +293,8 @@ mod tests {
     #[test]
     fn invalid_provider_prevents_application_runtime_construction() {
         let temp = tempfile::tempdir().expect("tempdir");
-        let paths = SearchNowBackendPaths::from_roots(
-            temp.path().join("config"),
-            temp.path().join("data"),
-        );
+        let paths =
+            SearchNowBackendPaths::from_roots(temp.path().join("config"), temp.path().join("data"));
         let result = SearchNowBackendRuntime::compose(
             paths,
             PlatformContext::windows(temp.path().join("roaming"), temp.path().join("local")),
@@ -353,7 +348,11 @@ mod tests {
         let started = Instant::now();
         loop {
             let snapshot = runtime.download_snapshot().expect("download snapshot");
-            if snapshot.jobs.first().is_some_and(|job| job.state.is_terminal()) {
+            if snapshot
+                .jobs
+                .first()
+                .is_some_and(|job| job.state.is_terminal())
+            {
                 return snapshot;
             }
             assert!(

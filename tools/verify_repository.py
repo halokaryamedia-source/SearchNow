@@ -163,9 +163,14 @@ for workflow_rel in [
     workflow = ROOT / workflow_rel
     if workflow.exists():
         text = workflow.read_text(encoding="utf-8", errors="replace")
-        for needle in ["windows-latest", "cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml"]:
+        for needle in [
+            "windows-latest",
+            'node-version: "22"',
+            "npm run build:frontend",
+            "cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml",
+        ]:
             if needle not in text:
-                errors.append(f"{workflow_rel}: missing hosted Windows Tauri compile gate {needle!r}")
+                errors.append(f"{workflow_rel}: missing hosted Windows Tauri compile prerequisite/gate {needle!r}")
 
 public_http = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "http.rs"
 if public_http.exists():

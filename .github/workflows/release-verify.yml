@@ -64,5 +64,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify RustCore on Windows
         run: cargo test --manifest-path EngineData/Backend/RustCore/Cargo.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend dependencies on Windows
+        working-directory: EngineData/Frontend/RustApp
+        run: npm install --no-audit --no-fund
+      - name: Build frontend for Tauri context
+        working-directory: EngineData/Frontend/RustApp
+        run: npm run build:frontend
       - name: Verify Tauri crate compiles on Windows
         run: cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml

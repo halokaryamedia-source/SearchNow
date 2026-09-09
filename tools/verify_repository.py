@@ -20,7 +20,7 @@ REQUIRED = [
     "docs/legacy/05-recovered-symbol-map.md", "docs/legacy/06-runtime-data-contracts.md", "docs/legacy/07-reconstruction-evidence.md",
     "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/src/lib.rs",
     "EngineData/Backend/RustCore/src/settings.rs", "EngineData/Backend/RustCore/src/minecraft.rs",
-    "EngineData/Backend/RustCore/src/library.rs",
+    "EngineData/Backend/RustCore/src/library.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
     ".github/PULL_REQUEST_TEMPLATE.md", ".github/workflows/repository-verify.yml",
     ".github/workflows/local-promotion-verify.yml", ".github/workflows/release-verify.yml",
@@ -51,6 +51,18 @@ for path in active_backend.rglob("*.rs") if active_backend.exists() else []:
     for forbidden in ["mc-prod.vercel.app", "ContentKey", "keys.tsv", "decryptEntitlementFile"]:
         if forbidden in text:
             errors.append(f"{path.relative_to(ROOT)}: forbidden legacy protected-content dependency {forbidden!r}")
+
+for rel in [
+    "EngineData/Backend/RustCore/src/download/model.rs",
+    "EngineData/Backend/RustCore/src/download/store.rs",
+]:
+    path = ROOT / rel
+    if not path.exists():
+        continue
+    lowered = path.read_text(encoding="utf-8", errors="replace").lower()
+    for forbidden in ["authorization", "bearer_token", "signed_url", "cookie", "headers"]:
+        if forbidden in lowered:
+            errors.append(f"{rel}: runtime credential field must not enter persisted download state: {forbidden!r}")
 
 for legacy_old in [
     "docs/01-current-state.md", "docs/04-recovered-source-architecture.md", "docs/05-recovered-symbol-map.md",

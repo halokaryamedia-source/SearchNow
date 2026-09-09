@@ -1,18 +1,28 @@
 # Current Validation
 
-## Repository development-system baseline
+## Architecture scaffold
 
 Target claim:
 
-> SearchNow has a coherent PRD-Creator-style development-routing and promotion model adapted to application development.
+> SearchNow has a coherent, lightweight Tauri/Svelte/Rust source scaffold with an enforced frontend/native/runtime ownership boundary.
 
-Evidence required:
+Repository/static evidence expected for the current `develop` HEAD:
 
-- required routing/policy/knowledge files exist;
-- branch roles are consistent: `develop` → `Local` → `main`;
-- repository verification script passes;
-- promotion workflows enforce expected source branches;
-- legacy recovered docs remain preserved under `docs/legacy/`;
-- application runtime is **not** claimed verified because implementation has not begun.
+- repository contract verifier passes;
+- architecture validator passes;
+- source-size budget passes;
+- Svelte typecheck passes;
+- Vite frontend build passes;
+- Rust formatting check passes;
+- `get_runtime_status` follows product facade → runtime API → Tauri command → Rust engine ownership.
 
-Update this note only when current validation state changes materially.
+## Not proven by hosted/static checks
+
+- actual Tauri desktop launch on Windows;
+- WebView2/native IPC behavior on target Windows;
+- installer/bundle behavior;
+- Minecraft installation discovery;
+- catalog/network behavior;
+- download/package/export behavior.
+
+These claims require their matching local/target runtime proof after implementation.

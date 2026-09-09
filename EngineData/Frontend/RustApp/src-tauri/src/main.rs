@@ -1,0 +1,11 @@
+mod app_bootstrap;
+mod commands;
+mod engine;
+
+fn main() {
+    let builder = tauri::Builder::default().setup(|app| app_bootstrap::configure_main_window(app));
+
+    commands::registry::register(builder)
+        .run(tauri::generate_context!())
+        .expect("SearchNow app failed to run");
+}

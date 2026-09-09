@@ -1,8 +1,8 @@
 # SearchNow
 
-SearchNow is a documentation-first modernization of the inspected BlueCoin 2.4 desktop application into a clearer, maintainable Minecraft Bedrock content-management client.
+SearchNow is a clean modernization of the inspected BlueCoin 2.4 desktop application into a maintainable Minecraft Bedrock content-management client.
 
-The legacy executable is preserved only as behavioral and architectural evidence. SearchNow does **not** treat DRM bypass, paid-to-free conversion, protected-content key distribution, or hidden credential behavior as product requirements.
+The legacy executable is preserved as behavioral/architectural evidence only. SearchNow does **not** treat DRM bypass, paid-to-free conversion, protected-content key distribution, or hidden credential/data behavior as product requirements.
 
 ## Canonical Development Workflow
 
@@ -16,8 +16,6 @@ Context Recovery
 → Stable Promotion
 ```
 
-These names are used consistently in repository policy, continuation notes, development reports, and handoff.
-
 ## Branch Model
 
 ```text
@@ -28,45 +26,70 @@ main     → stable repository history
 
 Routine work happens on `develop`.
 
-- `develop → Local`: dedicated PR, promotion gate, **squash merge**.
-- after promotion: synchronize `develop` to the resulting `Local` HEAD before new work.
-- `Local → main`: explicit stable PR, stable gate, normal **merge commit**.
-- tags/releases are separate publishing actions.
-
-## Repository Map
+## Application Architecture
 
 ```text
-AGENTS.md            work routing, authority, boot, continuity, branch kernel
-GITHUB_RULES.md      GitHub mutation, proof, CI, promotion discipline
-CONTEXT.md           stable product/repository orientation
-docs/foundation/     durable SearchNow product/development policy
-docs/knowledge/      active continuation, ownership, decisions, evidence
-docs/legacy/         recovered BlueCoin 2.4 evidence and architecture
-.agents/skills/      reusable development judgment
-tools/               repository verification/operator utilities
-.github/             PR template and promotion gates
-src/                 application source once implementation begins
-tests/               executable regression contracts once implementation begins
+Tauri 2 desktop shell
+├─ Svelte 5 + Vite + TypeScript frontend
+│  ├─ pages/components
+│  ├─ product facade
+│  └─ thin Tauri API bridge
+└─ Rust backend/runtime
+   ├─ commands/  thin IPC boundary
+   └─ engine/    application/runtime truth
 ```
 
-## Development Boot
+No Python worker or second backend process exists in the current architecture.
 
-For non-trivial development:
+Current product surfaces:
 
 ```text
-AGENTS.md
-→ CONTEXT.md
-→ docs/knowledge/next-action.md
-→ .agents/skills/development-brief/SKILL.md
-→ exact owner
-→ GITHUB_RULES.md before material GitHub mutation
+Library
+Discover
+Downloads
+Settings
 ```
 
-Do not broad-read the repository when the smallest owner can settle the task.
+## Source Map
 
-## Current Stage
+```text
+EngineData/
+└── Frontend/RustApp/
+    ├── src/                 Svelte product UI + bridge
+    └── src-tauri/src/       Rust commands + engine
 
-The recovered legacy architecture is documented. The repository workflow is being standardized before application source implementation begins.
+UserData/                    runtime-data ownership contract
+docs/foundation/             durable product/architecture policy
+docs/knowledge/              continuation, ownership, decisions, evidence
+docs/legacy/                 recovered BlueCoin 2.4 evidence
+```
+
+## Current Executable Slice
+
+The first implemented vertical slice proves the architecture itself:
+
+```text
+Svelte App
+→ runtimeProductFacade
+→ runtimeApi
+→ Tauri get_runtime_status
+→ Rust command
+→ Rust engine
+→ runtime status returned to UI
+```
+
+Minecraft discovery/catalog/download logic is intentionally not implemented yet.
+
+## Developer Quick Start
+
+Prerequisites: Node.js 22+, Rust toolchain, and Tauri Windows prerequisites for local desktop execution.
+
+```bash
+cd EngineData/Frontend/RustApp
+npm install
+npm run validate:quick
+npm run dev:app
+```
 
 Repository contract check:
 
@@ -74,4 +97,4 @@ Repository contract check:
 python tools/verify_repository.py
 ```
 
-See [docs/README.md](docs/README.md) for the documentation map.
+Repository/static checks do not prove installed Windows runtime behavior. See `docs/knowledge/reviews/current-validation.md`.

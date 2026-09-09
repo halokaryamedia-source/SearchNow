@@ -1,6 +1,6 @@
 # SearchNow Documentation
 
-SearchNow follows the same repository-memory and development-routing pattern as PRD-Creator, adapted to a Windows desktop application.
+SearchNow follows the PRD-Creator repository-memory/development-routing pattern, adapted to a Windows desktop application.
 
 ## Documentation Map
 
@@ -18,6 +18,7 @@ docs/
 - [`foundation/02-target-product-flow.md`](foundation/02-target-product-flow.md)
 - [`foundation/03-implementation-roadmap.md`](foundation/03-implementation-roadmap.md)
 - [`foundation/04-verification-promotion.md`](foundation/04-verification-promotion.md)
+- [`foundation/05-application-architecture.md`](foundation/05-application-architecture.md) — current source/runtime architecture authority.
 
 ### Knowledge / continuity
 
@@ -25,8 +26,8 @@ docs/
 - [`knowledge/ownership.md`](knowledge/ownership.md) — who owns what.
 - [`knowledge/source-authority.md`](knowledge/source-authority.md) — evidence/decision precedence.
 - [`knowledge/work-routing.md`](knowledge/work-routing.md) — compact mode routing.
-- [`knowledge/work-modes/development.md`](knowledge/work-modes/development.md)
-- [`knowledge/work-modes/maintenance.md`](knowledge/work-modes/maintenance.md)
+- [`knowledge/decisions/D-001-application-stack.md`](knowledge/decisions/D-001-application-stack.md) — durable architecture decision.
+- [`knowledge/reviews/current-validation.md`](knowledge/reviews/current-validation.md) — current proof boundary.
 
 ### Legacy evidence
 

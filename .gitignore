@@ -4,24 +4,32 @@
 !.env.example
 secrets/
 
-# Local workspace / user data
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Rust / Tauri
+EngineData/Frontend/RustApp/src-tauri/target/
+
+# Local runtime / user data
+UserData/CacheData/
+UserData/LogData/
+UserData/AppData/
 workspace/
 output/
 temp/
 logs/
-
-# .NET / IDE (anticipated; refine when stack is finalized)
-bin/
-obj/
-.vs/
-*.user
-*.suo
+*.log
 
 # Python verification cache
 __pycache__/
 *.pyc
 .pytest_cache/
 
-# OS
+# IDE / OS
+.vs/
+*.user
+*.suo
 .DS_Store
 Thumbs.db

@@ -25,6 +25,11 @@ All notable SearchNow repository/product changes will be recorded here.
 - Tauri-managed `DownloadExecutionRuntime` created during application bootstrap; download IPC commands delegate to RustCore runtime ownership.
 - Provider-neutral `https-public` transport using pinned `ureq`/rustls with explicit timeout, redirect, HTTPS-only, response-size, and content-length safeguards.
 - Manual redirect handling revalidates every destination and prevents production HTTPS downloads from downgrading to plain HTTP.
-- Public HTTPS queue entries reject persisted query strings and embedded credentials so signed/authenticated request material remains a future runtime-resolver concern rather than download-state data.
-- Deterministic local HTTP fixtures for success, redirects, timeout/failure, oversized responses, declared-length mismatch, and cooperative cancellation.
+- Public HTTPS queue entries reject persisted query strings and embedded credentials.
+- Credential-safe `provider-resolved` transport plus `ResourceResolver` registry for converting stable provider identity into ephemeral URL/query/header transfer material only at execution time.
+- Stable `ProviderResourceRef` validation that rejects URL/query/fragment runtime material from persisted provider resource ids.
+- Resolver expiry refresh and explicit retry re-resolution, so stale signed material is never persisted/reused.
+- Runtime HTTP header bounds, cross-origin credential redirect rejection, and sanitized sensitive request/read errors.
+- Repository guards preventing authorization headers, bearer-token/signed-URL/cookie/header fields from entering persisted download DTO/store ownership.
+- Deterministic resolver fixtures proving missing-provider behavior, expiry refresh, retry re-resolution, and signed-query/Authorization use without state persistence.
 - Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.

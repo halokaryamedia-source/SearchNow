@@ -1,39 +1,47 @@
 # Current Validation
 
-## Backend local-core + package + HTTP transport target
+## Backend local-core + package + HTTP + resource-resolver target
 
 Target claim:
 
-> SearchNow has a bounded, local-first Rust backend core for settings, Minecraft storage discovery, local library indexing, read-only package inspection, persistent download lifecycle management, provider-neutral transport execution, and a bounded public-HTTPS transport separated from Tauri IPC.
+> SearchNow has a bounded local-first Rust backend for settings, Minecraft storage discovery, local library indexing, read-only package inspection, persistent download lifecycle management, provider-neutral execution, public HTTPS transport, and a credential-safe runtime provider resolver separated from Tauri IPC.
 
 Repository/CI evidence on `develop`:
 
 - repository contract: PASS;
 - RustCore format: PASS;
-- RustCore compile/tests: PASS — **37 tests, 0 failures**;
+- RustCore compile/tests: PASS — **42 tests, 0 failures**;
 - RustCore clippy with warnings denied: PASS;
 - Tauri adapter format: PASS;
 - frontend architecture/source-size/type/build gates: PASS;
 - package fixtures cover folder, `.mcpack`, `.mcaddon`, BP→RP UUID dependency, duplicate UUID, and archive path-traversal rejection;
-- download-manager fixtures cover bounded concurrency, monotonic progress, cooperative cancellation, retryability, interrupted-job recovery, staged persistence, destination traversal rejection, and no-overwrite atomic publication;
-- transport-execution fixtures cover local-file end-to-end publication, scheduler concurrency, cooperative active cancellation, and unavailable-transport failure;
-- HTTP fixtures cover public policy rejection of plain HTTP/query-bearing persisted URLs, ordinary streaming, relative redirects, declared oversize rejection, Content-Length truncation, stalled body-read timeout through the executor, and cooperative active cancellation;
-- Tauri bootstrap creates and manages one `DownloadExecutionRuntime` and registers both `local-file` and `https-public`; download commands delegate to that RustCore owner.
+- download fixtures cover bounded concurrency, monotonic progress, cooperative cancellation, retryability, interrupted-job recovery, staged persistence, destination traversal rejection, and no-overwrite atomic publication;
+- transport fixtures cover local-file end-to-end publication, scheduler concurrency, cooperative cancellation, and unavailable transport;
+- HTTP fixtures cover public HTTPS policy, ordinary streaming, relative redirects, oversize rejection, Content-Length truncation, stalled read timeout, and cancellation;
+- resolver fixtures prove stable provider reference validation, missing-provider failure, expired-material refresh, explicit retry re-resolution, and use of ephemeral signed query + Authorization header without persistence;
+- state persistence retains stable identity such as `fake:catalog-item-42` while fixture secrets are absent from `state.json`;
+- architecture/repository guards prevent runtime credential fields from becoming persisted download DTO/store owners;
+- Tauri bootstrap manages one `DownloadExecutionRuntime` and registers `local-file`, `https-public`, and the generic `provider-resolved` boundary.
 
-HTTP timeout behavior has an explicit ownership split: the client retains connect/read socket timeouts while SearchNow enforces the overall transfer deadline in its own stream wrapper. This avoids `ureq 2.x` request-level timeout precedence from weakening the shorter stalled-read timeout.
+Credential boundary established by CI:
 
-Queue persistence still stores transport/resource identity only. It does not persist auth headers, bearer tokens, cookies, signed URLs, or provider secrets. `https-public` additionally rejects query-bearing persisted URLs and embedded URL credentials so authenticated/signed request material must later be resolved only at runtime.
+- queue state persists transport + stable resource identity only;
+- provider resource ids reject URL/query/fragment shapes;
+- signed query/header material exists only in runtime resolver output;
+- resolver errors are reduced to stable safe code + generic message;
+- sensitive HTTP transport/read errors are sanitized;
+- credential-bearing headers are rejected on cross-origin redirects;
+- retry performs a new resolution rather than persisting/reusing previous ephemeral transfer material.
 
-Runtime claims **not** established by hosted CI:
+Claims **not** established by hosted CI:
 
-- real Windows AppData discovery;
-- real Minecraft account-scoped directory behavior;
-- Tauri IPC execution on an installed Windows app;
-- scan performance against a large real library;
-- compatibility across a representative set of real-world `.mcpack` / `.mcaddon` files;
-- download persistence/finalization behavior on representative Windows filesystems and user destination folders;
-- cancellation timing under real slow/unstable internet I/O;
-- production HTTPS/TLS behavior against representative public remote servers/CDNs;
-- provider authentication, runtime resource resolution, catalog APIs, or provider-specific endpoint behavior.
+- real Windows AppData/Minecraft account-scoped behavior;
+- Tauri IPC execution in an installed Windows build;
+- performance against large real libraries/packages;
+- publication behavior across representative Windows destination filesystems;
+- production HTTPS/TLS reliability against representative servers/CDNs;
+- any real provider authentication/session lifecycle;
+- real catalog API/provider endpoints;
+- provider-specific resolved-resource behavior.
 
-These remain TARGET_WINDOWS/REAL_FIXTURE/NETWORK evidence.
+These remain TARGET_WINDOWS / REAL_FIXTURE / NETWORK / PROVIDER evidence.

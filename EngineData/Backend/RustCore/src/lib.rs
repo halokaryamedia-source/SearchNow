@@ -1,3 +1,4 @@
+pub mod app_runtime;
 pub mod catalog;
 pub mod download;
 pub mod error;

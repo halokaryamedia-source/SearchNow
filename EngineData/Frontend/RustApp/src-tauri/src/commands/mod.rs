@@ -1,4 +1,3 @@
-mod context;
 pub mod download;
 mod error;
 pub mod library;

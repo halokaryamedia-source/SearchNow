@@ -1,10 +1,17 @@
 use super::error::CommandError;
-use searchnow_core::package::{inspect_package, PackageInspection};
+use searchnow_core::{
+    app_runtime::SearchNowBackendRuntime, package::PackageInspection,
+};
 use std::path::PathBuf;
+use tauri::State;
 
 #[tauri::command]
-pub async fn inspect_local_package(path: PathBuf) -> Result<PackageInspection, CommandError> {
-    tauri::async_runtime::spawn_blocking(move || inspect_package(&path))
+pub async fn inspect_local_package(
+    state: State<'_, SearchNowBackendRuntime>,
+    path: PathBuf,
+) -> Result<PackageInspection, CommandError> {
+    let runtime = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || runtime.inspect_package(&path))
         .await
         .map_err(|error| {
             CommandError::new(

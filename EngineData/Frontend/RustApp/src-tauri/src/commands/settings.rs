@@ -1,17 +1,18 @@
-use super::{context::settings_store, error::CommandError};
-use searchnow_core::settings::AppSettings;
-use tauri::AppHandle;
+use super::error::CommandError;
+use searchnow_core::{app_runtime::SearchNowBackendRuntime, settings::AppSettings};
+use tauri::State;
 
 #[tauri::command]
-pub fn load_app_settings(app: AppHandle) -> Result<AppSettings, CommandError> {
-    Ok(settings_store(&app)?.load()?)
+pub fn load_app_settings(
+    state: State<'_, SearchNowBackendRuntime>,
+) -> Result<AppSettings, CommandError> {
+    state.load_settings().map_err(CommandError::from)
 }
 
 #[tauri::command]
 pub fn save_app_settings(
-    app: AppHandle,
+    state: State<'_, SearchNowBackendRuntime>,
     settings: AppSettings,
 ) -> Result<AppSettings, CommandError> {
-    settings_store(&app)?.save(&settings)?;
-    Ok(settings)
+    state.save_settings(&settings).map_err(CommandError::from)
 }

@@ -1,24 +1,21 @@
-use super::{context::settings_store, error::CommandError};
+use super::error::CommandError;
 use searchnow_core::{
-    minecraft::{discover_minecraft_storage, MinecraftDiscoverySnapshot},
-    platform::PlatformContext,
+    app_runtime::SearchNowBackendRuntime, minecraft::MinecraftDiscoverySnapshot,
 };
-use tauri::AppHandle;
+use tauri::State;
 
 #[tauri::command]
 pub async fn discover_minecraft_storage_command(
-    app: AppHandle,
+    state: State<'_, SearchNowBackendRuntime>,
 ) -> Result<MinecraftDiscoverySnapshot, CommandError> {
-    let settings = settings_store(&app)?.load()?;
-    let platform = PlatformContext::from_process();
-    tauri::async_runtime::spawn_blocking(move || {
-        discover_minecraft_storage(&settings.minecraft, &platform)
-    })
-    .await
-    .map_err(|error| {
-        CommandError::new(
-            "minecraft_discovery_task_failed",
-            format!("Minecraft discovery task failed: {error}"),
-        )
-    })
+    let runtime = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || runtime.discover_minecraft())
+        .await
+        .map_err(|error| {
+            CommandError::new(
+                "minecraft_discovery_task_failed",
+                format!("Minecraft discovery task failed: {error}"),
+            )
+        })?
+        .map_err(CommandError::from)
 }

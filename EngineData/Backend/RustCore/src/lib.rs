@@ -12,6 +12,9 @@ pub mod provider_session;
 pub mod runtime;
 pub mod settings;
 
+#[cfg(test)]
+mod app_runtime_tests;
+
 use library::LibrarySnapshot;
 use minecraft::MinecraftDiscoverySnapshot;
 use platform::PlatformContext;

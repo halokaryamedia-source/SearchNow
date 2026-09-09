@@ -1,6 +1,6 @@
 use super::{
-    CatalogContentType, CatalogError, CatalogItem, CatalogPage, CatalogProviderFailure,
-    CatalogProviderItem, CatalogProviderPage, CatalogQuery, CatalogRequest,
+    CatalogError, CatalogItem, CatalogPage, CatalogProviderFailure, CatalogProviderItem,
+    CatalogProviderPage, CatalogQuery, CatalogRequest,
 };
 use crate::error::{BackendError, BackendResult};
 use std::{collections::HashMap, collections::HashSet, sync::Arc};
@@ -75,7 +75,9 @@ impl CatalogService {
                 false,
             )
         })?;
-        let raw_page = provider.query(&request.query).map_err(map_provider_failure)?;
+        let raw_page = provider
+            .query(&request.query)
+            .map_err(map_provider_failure)?;
         normalize_page(&request.provider, &request.query, raw_page)
     }
 }
@@ -89,11 +91,15 @@ fn validate_request(request: &CatalogRequest) -> Result<(), CatalogError> {
             || text.len() > MAX_QUERY_TEXT_BYTES
             || text.chars().any(char::is_control)
         {
-            return Err(invalid_request("Catalog search text is invalid or too long."));
+            return Err(invalid_request(
+                "Catalog search text is invalid or too long.",
+            ));
         }
     }
     if request.query.filters.content_types.len() > MAX_CONTENT_TYPE_FILTERS {
-        return Err(invalid_request("Catalog content-type filters exceed the supported bound."));
+        return Err(invalid_request(
+            "Catalog content-type filters exceed the supported bound.",
+        ));
     }
     if request.query.filters.tags.len() > MAX_QUERY_TAGS
         || request
@@ -103,10 +109,14 @@ fn validate_request(request: &CatalogRequest) -> Result<(), CatalogError> {
             .iter()
             .any(|tag| !valid_compact_text(tag, MAX_TAG_BYTES))
     {
-        return Err(invalid_request("Catalog tag filters are invalid or too numerous."));
+        return Err(invalid_request(
+            "Catalog tag filters are invalid or too numerous.",
+        ));
     }
     if request.query.page.limit == 0 || request.query.page.limit > MAX_PAGE_SIZE {
-        return Err(invalid_request("Catalog page size is outside the supported bound."));
+        return Err(invalid_request(
+            "Catalog page size is outside the supported bound.",
+        ));
     }
     if request
         .query
@@ -115,7 +125,9 @@ fn validate_request(request: &CatalogRequest) -> Result<(), CatalogError> {
         .as_ref()
         .is_some_and(|cursor| !valid_compact_text(cursor, MAX_CURSOR_BYTES))
     {
-        return Err(invalid_request("Catalog page cursor is invalid or too long."));
+        return Err(invalid_request(
+            "Catalog page cursor is invalid or too long.",
+        ));
     }
     Ok(())
 }
@@ -242,9 +254,4 @@ fn invalid_provider_data() -> CatalogError {
         "Catalog provider returned malformed or unsupported item data.",
         false,
     )
-}
-
-#[allow(dead_code)]
-fn _content_type_exhaustiveness(value: CatalogContentType) -> CatalogContentType {
-    value
 }

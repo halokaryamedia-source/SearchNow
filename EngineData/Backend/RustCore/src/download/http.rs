@@ -56,7 +56,9 @@ impl HttpTransportPolicy {
     }
 }
 
-pub fn public_https_download_source(resource_url: impl Into<String>) -> BackendResult<DownloadSourceRef> {
+pub fn public_https_download_source(
+    resource_url: impl Into<String>,
+) -> BackendResult<DownloadSourceRef> {
     let resource_id = resource_url.into();
     parse_source_url(&resource_id, false).map_err(|_| {
         BackendError::new(

@@ -1,9 +1,5 @@
 use super::{manifest::ManifestCandidate, model::PackageIssue, MAX_MANIFEST_BYTES};
-use std::{
-    collections::VecDeque,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{collections::VecDeque, fs, path::Path};
 
 const MAX_SEARCH_DEPTH: usize = 2;
 const MAX_DIRECTORIES: usize = 512;

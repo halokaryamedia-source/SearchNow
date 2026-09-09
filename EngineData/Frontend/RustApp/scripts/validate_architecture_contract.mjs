@@ -19,6 +19,7 @@ const required = [
   "src-tauri/src/commands/minecraft.rs",
   "src-tauri/src/commands/library.rs",
   "src-tauri/src/commands/package.rs",
+  "src-tauri/src/commands/download.rs",
 ];
 const backendRequired = [
   "Cargo.toml",
@@ -31,6 +32,11 @@ const backendRequired = [
   "src/package/manifest.rs",
   "src/package/archive.rs",
   "src/package/folder.rs",
+  "src/download/mod.rs",
+  "src/download/model.rs",
+  "src/download/manager.rs",
+  "src/download/store.rs",
+  "src/download/workspace.rs",
 ];
 const errors = [];
 
@@ -65,6 +71,8 @@ const runtimeCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/r
 if (!runtimeCommand.includes("searchnow_core::runtime")) errors.push("runtime command must delegate to RustCore");
 const packageCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/package.rs"), "utf8");
 if (!packageCommand.includes("searchnow_core::package")) errors.push("package command must delegate to RustCore");
+const downloadCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/download.rs"), "utf8");
+if (!downloadCommand.includes("searchnow_core::download")) errors.push("download command must delegate to RustCore");
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

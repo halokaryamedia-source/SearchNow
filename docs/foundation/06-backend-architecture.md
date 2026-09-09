@@ -23,15 +23,22 @@ EngineData/Backend/RustCore/src/
 ├─ minecraft.rs   Bedrock storage discovery
 ├─ library.rs     bounded read-only local index
 ├─ package/       bounded read-only package inspection
-├─ download/      transport-agnostic job lifecycle/persistence/workspace
+├─ download/
+│  ├─ model.rs       download DTOs/state contract
+│  ├─ manager.rs     job lifecycle/state machine/concurrency
+│  ├─ store.rs       schema-versioned persistence/recovery
+│  ├─ workspace.rs   payload workspace + atomic publication
+│  ├─ transport.rs   provider-neutral transport contract
+│  └─ executor.rs    scheduler/execution/progress checkpoints
 ├─ runtime.rs     backend identity
 └─ error.rs       internal structured failures
 
-EngineData/Frontend/RustApp/src-tauri/src/commands/
-→ Tauri IPC adaptation only
+EngineData/Frontend/RustApp/src-tauri/src/
+├─ app_bootstrap.rs          construct/manage application runtime owners
+└─ commands/                 Tauri IPC adaptation only
 ```
 
-The Tauri command boundary must delegate to RustCore. Business/filesystem/archive/download lifecycle logic does not accumulate in commands.
+The Tauri command boundary must delegate to RustCore. Business/filesystem/archive/download lifecycle/transport execution logic does not accumulate in commands.
 
 ## Minecraft storage discovery
 
@@ -86,7 +93,7 @@ Archive inspection never extracts a package. It rejects traversal/absolute escap
 
 ## Download manager
 
-`RustCore/src/download/` owns download lifecycle without owning a network provider.
+`RustCore/src/download/manager.rs` owns download lifecycle without owning a network provider.
 
 Persisted source identity is intentionally narrow:
 
@@ -95,7 +102,7 @@ transport key
 resource id
 ```
 
-Do **not** persist authorization headers, bearer tokens, signed URLs, cookies, provider secrets, or other short-lived credentials in download queue state. A future transport adapter resolves a resource id into a live transfer request at execution time.
+Do **not** persist authorization headers, bearer tokens, signed URLs, cookies, provider secrets, or other short-lived credentials in download queue state. A transport adapter resolves a resource id into a live transfer stream at execution time.
 
 ### State machine
 
@@ -151,7 +158,7 @@ On restart:
 - `Preparing`, `Transferring`, `Finalizing`, and `CancelRequested` become `Interrupted` with a retryable interruption reason;
 - no active job silently resumes without an explicit transport/resume contract.
 
-Tauri queue mutations use clone → mutate → persist → replace-memory semantics, so a failed persistence write does not leave in-memory state claiming a mutation that was not stored.
+Lifecycle mutations use clone → mutate → persist → replace-memory semantics. Transfer progress is cheaper: memory is updated every chunk, but disk persistence is checkpointed at 1 MiB boundaries and completion/lifecycle transitions. A crash therefore never silently resumes an active transfer; recovered active work becomes `Interrupted` even if the last persisted byte counter trails memory.
 
 ### Workspace and final publication
 
@@ -171,7 +178,59 @@ final destination file
 
 The staging file lives in the destination directory, so final publication is on the destination filesystem and the final name never becomes visible as a partial file. Existing destinations are not overwritten automatically.
 
-This atomic-publication strategy still requires TARGET_WINDOWS/filesystem evidence on representative user volumes before release claims are made.
+Workspace reuse is guarded: existing workspace/payload paths must be regular non-symlink filesystem objects. Completed/cancelled/failed execution attempts clean their job workspace best-effort because range/resume is not yet supported.
+
+## Transport execution
+
+`RustCore/src/download/transport.rs` defines the transport adapter contract. A transport owns only how a `DownloadSourceRef` becomes a readable byte stream plus optional declared total size. It does **not** own queue state, retries, persistence, finalization, destination paths, or UI state.
+
+`RustCore/src/download/executor.rs` owns scheduling and execution:
+
+```text
+claim queued jobs
+      ↓
+Preparing
+      ↓ open transport
+create/reset app workspace payload
+      ↓
+Transferring
+      ↓ read bounded chunks
+write payload + report progress
+      ↓
+Finalizing
+      ↓ atomic publication
+Completed / Failed / Cancelled
+      ↓
+pump next queued jobs
+```
+
+The executor uses native worker threads inside the same SearchNow process. It does not create a daemon, local HTTP service, or second runtime. Multiple `pump()` calls are safe at the scheduling boundary because claims happen while the manager is locked and active-slot accounting is authoritative.
+
+Cancellation is cooperative. A worker checks `CancelRequested` between transport reads; cancellation wins over a concurrent transfer/progress error when the cancellation state is already recorded. `Finalizing` remains non-cancellable.
+
+### Current concrete transport
+
+The only concrete desktop transport in this slice is:
+
+```text
+local-file
+```
+
+It reads a regular non-symlink local file and reports its metadata size. It exists to prove the complete lifecycle without network variability. Missing/temporarily inaccessible files can be marked retryable; invalid local source shapes are non-retryable.
+
+There is intentionally **no HTTP transport, provider auth, catalog lookup, PlayFab coupling, or Marketplace endpoint logic** in the current execution core.
+
+### Runtime bootstrap
+
+Tauri startup constructs exactly one `DownloadExecutionRuntime` using app-owned paths:
+
+```text
+<AppData>/downloads/state.json
+<AppData>/downloads/workspace/
+<AppData>/downloads/files/
+```
+
+The runtime is registered through `app.manage(...)`. Tauri download commands resolve that state and delegate queue/snapshot/cancel/retry/remove behavior to RustCore. Tauri does not duplicate manager/executor truth.
 
 ## Settings
 
@@ -194,8 +253,10 @@ Persistence uses staged write + replacement/rollback behavior. Future unsupporte
 - world name reads are capped at 4 KiB;
 - package/archive inspection is bounded and read-only;
 - download concurrency is bounded and queue state has a persistence size cap;
-- symlink directories/package inputs are skipped or rejected at their boundaries;
-- filesystem/archive scans run behind appropriate native boundaries, never as frontend logic.
+- transfer buffers are fixed at 256 KiB;
+- progress persistence is checkpointed at 1 MiB instead of rewriting queue state for every chunk;
+- symlink directories/package inputs/download workspaces are skipped or rejected at their boundaries;
+- filesystem/archive/transfer work stays in native backend boundaries, never in frontend logic.
 
 These are safety/performance bounds, not product limits. Raising them requires evidence from real workloads.
 
@@ -207,7 +268,7 @@ Expected absence is state, not exception:
 Found | NotFound | UnsupportedPlatform
 ```
 
-Corrupt individual content/package metadata becomes an item/inspection issue. Download lifecycle uses explicit job state plus stable failure codes. Hard settings/storage/input failures use stable backend errors. Tauri maps internal errors to a small serializable command error without making IPC the domain owner.
+Corrupt individual content/package metadata becomes an item/inspection issue. Download lifecycle uses explicit job state plus stable failure codes. Transport failures additionally declare retryability. Hard settings/storage/input failures use stable backend errors. Tauri maps internal errors to a small serializable command error without making IPC the domain owner.
 
 ## Verification boundary
 
@@ -221,6 +282,10 @@ REMOTE_GITHUB can prove:
 - dependency-based BP↔RP relationship detection works;
 - path-traversal archive fixtures are rejected;
 - download state transitions/concurrency/progress/recovery/persistence behave on deterministic fixtures;
-- destination traversal is rejected and atomic no-overwrite publication works on the CI filesystem.
+- destination traversal is rejected and atomic no-overwrite publication works on the CI filesystem;
+- local-file transport runs end-to-end through queue → executor → progress → final publication;
+- executor respects bounded active concurrency;
+- active cancellation is cooperative;
+- unavailable transports fail without entering an automatic retry loop.
 
-TARGET_WINDOWS is still required to prove real AppData paths, permissions, actual Minecraft content, Tauri IPC runtime behavior, destination-filesystem behavior, and performance on representative real packages/libraries/download workloads.
+TARGET_WINDOWS is still required to prove real AppData paths, permissions, actual Minecraft content, Tauri IPC runtime behavior, destination-filesystem behavior, and performance on representative real packages/libraries/download workloads. NETWORK evidence is required before any remote transport/provider claim.

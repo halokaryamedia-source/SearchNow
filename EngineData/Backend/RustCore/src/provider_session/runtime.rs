@@ -165,6 +165,7 @@ impl ProviderSessionEntry {
     }
 
     fn acquire(&self) -> Result<ProviderSessionLease, ProviderSessionError> {
+        let mut waited_for_refresh = false;
         loop {
             let mut state = self.lock_state();
             if let Some(material) = state.material.as_ref() {
@@ -180,12 +181,13 @@ impl ProviderSessionEntry {
                     .changed
                     .wait(state)
                     .unwrap_or_else(|poisoned| poisoned.into_inner());
+                waited_for_refresh = true;
                 drop(state);
                 continue;
             }
 
             if let ProviderSessionPhase::Failed(error) = &state.phase {
-                if !error.retryable {
+                if waited_for_refresh || !error.retryable {
                     return Err(error.clone());
                 }
             }

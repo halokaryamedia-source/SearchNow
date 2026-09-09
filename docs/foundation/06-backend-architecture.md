@@ -28,8 +28,9 @@ EngineData/Backend/RustCore/src/
 │  ├─ manager.rs     job lifecycle/state machine/concurrency
 │  ├─ store.rs       schema-versioned persistence/recovery
 │  ├─ workspace.rs   payload workspace + atomic publication
-│  ├─ transport.rs   provider-neutral transport contract
-│  └─ executor.rs    scheduler/execution/progress checkpoints
+│  ├─ transport.rs   provider-neutral transport contract + local-file
+│  ├─ executor.rs    scheduler/execution/progress checkpoints
+│  └─ http.rs        provider-neutral public HTTPS transport
 ├─ runtime.rs     backend identity
 └─ error.rs       internal structured failures
 
@@ -102,7 +103,7 @@ transport key
 resource id
 ```
 
-Do **not** persist authorization headers, bearer tokens, signed URLs, cookies, provider secrets, or other short-lived credentials in download queue state. A transport adapter resolves a resource id into a live transfer stream at execution time.
+Do **not** persist authorization headers, bearer tokens, signed URLs, cookies, provider secrets, or other short-lived credentials in download queue state. Provider/authenticated resources must later resolve their opaque resource id into ephemeral runtime request material outside persisted job state.
 
 ### State machine
 
@@ -208,17 +209,45 @@ The executor uses native worker threads inside the same SearchNow process. It do
 
 Cancellation is cooperative. A worker checks `CancelRequested` between transport reads; cancellation wins over a concurrent transfer/progress error when the cancellation state is already recorded. `Finalizing` remains non-cancellable.
 
-### Current concrete transport
+Transport read errors are normalized by the executor: socket timeout/would-block failures become retryable `download_transfer_timeout`; bounded-stream invalid-data failures become non-retryable transfer-data failures; other read failures remain retryable unless a transport has already provided a more specific pre-stream failure.
 
-The only concrete desktop transport in this slice is:
+### Concrete transport: `local-file`
+
+`local-file` reads a regular non-symlink local file and reports its metadata size. It exists to prove the complete lifecycle without network variability. Missing/temporarily inaccessible files can be marked retryable; invalid local source shapes are non-retryable.
+
+### Concrete transport: `https-public`
+
+`RustCore/src/download/http.rs` owns ordinary unauthenticated public HTTPS transfer behavior. It uses pinned blocking `ureq` with rustls so it fits the existing worker-thread executor without introducing Tokio or another runtime.
+
+Production `https-public` accepts only ordinary HTTPS URLs and rejects:
+
+- non-HTTPS schemes;
+- missing hosts;
+- URL username/password user-info;
+- fragments;
+- persisted query strings.
+
+Persisted query strings are deliberately rejected because signed URLs and provider/authentication parameters can contain short-lived credentials. Those belong in a future runtime resolver, not `DownloadJob.resourceId`.
+
+Redirects are handled manually rather than delegated to the HTTP client. Supported redirect statuses are 301/302/303/307/308. Every redirect target is resolved and revalidated before use, so production HTTPS work cannot silently downgrade to plain HTTP. Default redirect limit is 5; the hard validated ceiling is 10.
+
+Default HTTP policy:
 
 ```text
-local-file
+connect timeout      10 seconds
+read timeout         15 seconds
+overall deadline     30 minutes
+redirect limit       5
+response limit       8 GiB
 ```
 
-It reads a regular non-symlink local file and reports its metadata size. It exists to prove the complete lifecycle without network variability. Missing/temporarily inaccessible files can be marked retryable; invalid local source shapes are non-retryable.
+Hard response-size validation ceiling is 32 GiB. A declared `Content-Length` above the configured response limit is rejected before streaming. Unknown-length responses are wrapped in a byte-counting reader so they cannot grow past the same configured limit. A body shorter than its declared Content-Length surfaces as a transfer read failure rather than being finalized as complete.
 
-There is intentionally **no HTTP transport, provider auth, catalog lookup, PlayFab coupling, or Marketplace endpoint logic** in the current execution core.
+Socket connect/read timeouts remain owned by `ureq`. SearchNow owns the overall deadline separately with a monotonic `Instant` wrapper. This split is intentional: `ureq 2.x`'s request-level `timeout()` takes precedence over the dedicated read timeout, so SearchNow does **not** use it for the overall deadline. The separate wrapper preserves both a short stalled-read bound and a longer total-transfer deadline.
+
+HTTP status failures are retryable only for the bounded transient set currently recognized by the transport (`408`, `425`, `429`, `500`, `502`, `503`, `504`). Other HTTP status failures are treated as non-retryable by default.
+
+Local test fixtures may explicitly allow plain HTTP only inside the RustCore test build. This is not a production transport mode.
 
 ### Runtime bootstrap
 
@@ -228,6 +257,13 @@ Tauri startup constructs exactly one `DownloadExecutionRuntime` using app-owned 
 <AppData>/downloads/state.json
 <AppData>/downloads/workspace/
 <AppData>/downloads/files/
+```
+
+The runtime registry currently includes:
+
+```text
+local-file
+https-public
 ```
 
 The runtime is registered through `app.manage(...)`. Tauri download commands resolve that state and delegate queue/snapshot/cancel/retry/remove behavior to RustCore. Tauri does not duplicate manager/executor truth.
@@ -255,6 +291,7 @@ Persistence uses staged write + replacement/rollback behavior. Future unsupporte
 - download concurrency is bounded and queue state has a persistence size cap;
 - transfer buffers are fixed at 256 KiB;
 - progress persistence is checkpointed at 1 MiB instead of rewriting queue state for every chunk;
+- public HTTPS responses have bounded redirects, socket timeouts, overall deadline, and byte limits;
 - symlink directories/package inputs/download workspaces are skipped or rejected at their boundaries;
 - filesystem/archive/transfer work stays in native backend boundaries, never in frontend logic.
 
@@ -284,8 +321,8 @@ REMOTE_GITHUB can prove:
 - download state transitions/concurrency/progress/recovery/persistence behave on deterministic fixtures;
 - destination traversal is rejected and atomic no-overwrite publication works on the CI filesystem;
 - local-file transport runs end-to-end through queue → executor → progress → final publication;
-- executor respects bounded active concurrency;
-- active cancellation is cooperative;
-- unavailable transports fail without entering an automatic retry loop.
+- executor respects bounded active concurrency and cooperative cancellation;
+- public-HTTPS policy rejects plain HTTP/query credentials and enforces redirect/size/content-length rules;
+- deterministic loopback HTTP fixtures prove success, redirect, stalled-read timeout, length mismatch, oversized-response rejection, and executor cancellation behavior.
 
-TARGET_WINDOWS is still required to prove real AppData paths, permissions, actual Minecraft content, Tauri IPC runtime behavior, destination-filesystem behavior, and performance on representative real packages/libraries/download workloads. NETWORK evidence is required before any remote transport/provider claim.
+TARGET_WINDOWS is still required to prove real AppData paths, permissions, actual Minecraft content, Tauri IPC runtime behavior, destination-filesystem behavior, and performance on representative real packages/libraries/download workloads. NETWORK evidence is still required before claiming real public HTTPS/TLS reliability or any provider-specific integration.

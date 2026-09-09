@@ -2,7 +2,7 @@
 
 ## Current Status
 
-`TRANSPORT_EXECUTION_CORE_READY`
+`HTTP_TRANSPORT_FOUNDATION_READY`
 
 Completed:
 
@@ -14,38 +14,40 @@ Completed:
 6. read-only folder / `.mcpack` / `.mcaddon` package inspection implemented;
 7. typed package classification, UUID validation, BP↔RP dependency mapping, and archive safety implemented;
 8. transport-agnostic `DownloadJob` lifecycle/state machine, bounded concurrency, retry/cancellation, persistence/recovery, and atomic finalization implemented;
-9. provider-neutral `DownloadTransport` contract and registry implemented;
-10. `DownloadExecutionRuntime` now claims available jobs, runs bounded worker threads, writes app-owned payload workspaces, reports progress, finalizes, persists lifecycle transitions, and pumps queued work;
-11. transfer buffer is fixed at 256 KiB and progress persistence is checkpointed at 1 MiB plus lifecycle boundaries rather than rewriting state every chunk;
-12. cooperative `CancelRequested` handling is integrated into the worker loop and cancellation wins over concurrent transfer errors once recorded;
-13. `local-file` transport provides deterministic end-to-end execution without network;
-14. download workspaces/payloads reject unsafe symlink/non-file shapes and are cleaned after terminal execution attempts;
-15. Tauri startup creates and `manage`s exactly one `DownloadExecutionRuntime`; download IPC commands now delegate directly to this RustCore owner;
-16. architecture validation requires executor/transport/bootstrap ownership;
-17. repository CI passes with **29 RustCore tests**, strict clippy, Tauri format, architecture/source-size validation, Svelte typecheck, and frontend build.
+9. provider-neutral `DownloadTransport` registry and `DownloadExecutionRuntime` implemented with bounded worker threads and progress checkpoints;
+10. deterministic `local-file` transport proves the complete queue → transfer → publication lifecycle without network;
+11. provider-neutral `https-public` transport is implemented using pinned blocking `ureq` with rustls and a dedicated RustCore owner;
+12. production public transport is HTTPS-only and rejects embedded URL credentials, fragments, and persisted query strings;
+13. redirects are manual, bounded, and every target is revalidated, preventing production HTTPS→HTTP downgrade;
+14. connect/read socket timeouts remain separate from a SearchNow-owned overall transfer deadline so stalled reads stay bounded without sacrificing the total deadline;
+15. declared and observed response sizes are bounded; Content-Length mismatch/short bodies cannot finalize as successful downloads;
+16. HTTP status retryability is explicit and conservative;
+17. Tauri bootstrap registers `local-file` and `https-public` into exactly one managed execution runtime;
+18. architecture validation requires HTTP transport ownership and bootstrap registration;
+19. repository CI passes with **37 RustCore tests**, strict clippy, Tauri format, architecture/source-size validation, Svelte typecheck, and frontend build.
 
 ## Active Boundary
 
 Keep work on `develop`. `Local` and `main` remain untouched until explicit promotion.
 
-The completed executor is still provider-neutral. There is no real HTTP transport, provider authentication, catalog API, protected-content processing, package mutation/export, or frontend download-page wiring in this slice.
+The public HTTPS transport is intentionally unauthenticated/provider-neutral. There is still no provider login, PlayFab/Marketplace-specific catalog logic, protected-content processing, package mutation/export, or frontend download-page wiring in this completed slice.
 
-Hosted CI does not replace real Windows/filesystem/network testing.
+Hosted CI loopback fixtures do not replace real Windows/network/TLS testing.
 
 ## Next Step
 
-Continue backend-first with **HTTP Transport Foundation (provider-neutral)**.
+Continue backend-first with **Runtime Resource Resolver / Provider Adapter Boundary**.
 
-Build only generic network transport behavior first:
+Build the generic credential-safe boundary before any provider-specific API:
 
-- add a Rust HTTP client boundary without coupling it to Marketplace/PlayFab/catalog code;
-- support ordinary public HTTPS resources through a dedicated transport key;
-- enforce bounded connect/read/overall timeout behavior so cooperative cancellation cannot block indefinitely on a stalled socket;
-- apply conservative redirect limits and reject unsupported/non-HTTPS schemes by default;
-- validate declared/observed content length against download progress and configurable safety limits;
-- keep auth headers/tokens/signed URLs out of persisted `DownloadJob` state;
-- define the later resolver boundary for authenticated/provider resources instead of embedding credentials in `resourceId`;
-- test success, redirects, timeout/failure, oversized response, length mismatch, and cancellation using deterministic local HTTP fixtures where possible;
-- keep catalog search, provider login, Marketplace-specific endpoints, and frontend wiring out of the same slice.
+- define an opaque persisted provider resource reference that contains stable non-secret identity only;
+- define a resolver interface that converts that identity into ephemeral in-memory transfer material immediately before transport execution;
+- allow resolved runtime material to carry temporary URL/query/header/auth context without serializing it back into `DownloadJob` or logs;
+- define clear expiry/re-resolution semantics so retries do not reuse stale signed URLs or tokens;
+- keep the existing `https-public` path for truly public resources and introduce a separate resolved/provider transport path rather than weakening its persistence rules;
+- make cancellation and retry continue to be owned by `DownloadExecutionRuntime`, not by resolvers;
+- implement deterministic fake resolver/provider fixtures first, including success, expired/refresh, resolver failure, missing provider, and secret-non-persistence assertions;
+- add architecture guards preventing provider credentials from entering queue DTOs/persisted state;
+- keep PlayFab login, Marketplace endpoints, catalog search, and any provider-specific credential implementation out of the same slice.
 
 Do not implement DRM/key-sharing/protected-content bypass paths.

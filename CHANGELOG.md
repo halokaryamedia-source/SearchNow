@@ -23,4 +23,8 @@ All notable SearchNow repository/product changes will be recorded here.
 - Native bounded worker scheduling with cooperative cancellation and queued-job pumping.
 - Progress persistence checkpointing at 1 MiB plus lifecycle boundaries to reduce state-write overhead.
 - Tauri-managed `DownloadExecutionRuntime` created during application bootstrap; download IPC commands delegate to RustCore runtime ownership.
+- Provider-neutral `https-public` transport using pinned `ureq`/rustls with explicit timeout, redirect, HTTPS-only, response-size, and content-length safeguards.
+- Manual redirect handling revalidates every destination and prevents production HTTPS downloads from downgrading to plain HTTP.
+- Public HTTPS queue entries reject persisted query strings and embedded credentials so signed/authenticated request material remains a future runtime-resolver concern rather than download-state data.
+- Deterministic local HTTP fixtures for success, redirects, timeout/failure, oversized responses, declared-length mismatch, and cooperative cancellation.
 - Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.

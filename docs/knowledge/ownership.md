@@ -14,43 +14,36 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | durable decisions/rationale | `docs/knowledge/decisions/` |
 | current validation evidence | `docs/knowledge/reviews/current-validation.md` |
 
-## Product/foundation owners
+## Foundation owners
 
 | Boundary | Owner |
 |---|---|
-| allowed/disallowed behavior + privacy/safety | `docs/foundation/00-product-boundaries.md` |
-| canonical development lifecycle | `docs/foundation/01-development-flow.md` |
+| allowed/disallowed product behavior | `docs/foundation/00-product-boundaries.md` |
+| development lifecycle | `docs/foundation/01-development-flow.md` |
 | target user workflow | `docs/foundation/02-target-product-flow.md` |
-| staged implementation direction | `docs/foundation/03-implementation-roadmap.md` |
-| verification/promotion semantics | `docs/foundation/04-verification-promotion.md` |
-| current source/runtime architecture | `docs/foundation/05-application-architecture.md` |
+| implementation direction | `docs/foundation/03-implementation-roadmap.md` |
+| verification/promotion | `docs/foundation/04-verification-promotion.md` |
+| desktop application topology | `docs/foundation/05-application-architecture.md` |
+| backend topology/data/performance contract | `docs/foundation/06-backend-architecture.md` |
 
-## Legacy evidence owners
-
-| Boundary | Owner |
-|---|---|
-| legacy behavioral baseline | `docs/legacy/01-current-state.md` |
-| recovered CLR/source architecture | `docs/legacy/04-recovered-source-architecture.md` |
-| type/method/field symbol map | `docs/legacy/05-recovered-symbol-map.md` |
-| runtime/filesystem/network/data contracts | `docs/legacy/06-runtime-data-contracts.md` |
-| reconstruction evidence/confidence | `docs/legacy/07-reconstruction-evidence.md` |
-
-## Implementation owners
+## Current implementation owners
 
 | Boundary | Owner |
 |---|---|
-| desktop package/build/frontend root | `EngineData/Frontend/RustApp/` |
-| top-level Svelte composition/navigation | `EngineData/Frontend/RustApp/src/App.svelte` |
-| product pages | `EngineData/Frontend/RustApp/src/pages/` |
-| reusable visual components | `EngineData/Frontend/RustApp/src/components/` |
-| product-readable runtime facade | `EngineData/Frontend/RustApp/src/app/bridge/runtimeProductFacade.ts` |
-| raw Tauri frontend command client | `EngineData/Frontend/RustApp/src/app/bridge/runtimeApi.ts` |
-| frontend shared DTO/view types | `EngineData/Frontend/RustApp/src/app/shared/` |
-| design tokens/base desktop CSS | `EngineData/Frontend/RustApp/src/styles/` |
-| Tauri process entry | `EngineData/Frontend/RustApp/src-tauri/src/main.rs` |
-| desktop bootstrap/window behavior | `EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs` |
-| Tauri command registration/wrappers | `EngineData/Frontend/RustApp/src-tauri/src/commands/` |
-| reusable runtime/domain truth | `EngineData/Frontend/RustApp/src-tauri/src/engine/` |
-| runtime-data ownership contract | `UserData/README.md` |
+| typed settings + persistence | `EngineData/Backend/RustCore/src/settings.rs` |
+| platform/AppData context | `EngineData/Backend/RustCore/src/platform.rs` |
+| Minecraft storage discovery | `EngineData/Backend/RustCore/src/minecraft.rs` |
+| local content indexing | `EngineData/Backend/RustCore/src/library.rs` |
+| backend orchestration snapshot | `EngineData/Backend/RustCore/src/lib.rs` |
+| backend error semantics | `EngineData/Backend/RustCore/src/error.rs` |
+| Tauri IPC registration | `EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs` |
+| Tauri settings adaptation | `.../commands/settings.rs` |
+| Tauri Minecraft adaptation | `.../commands/minecraft.rs` |
+| Tauri library adaptation | `.../commands/library.rs` |
+| frontend raw invoke boundary | `EngineData/Frontend/RustApp/src/app/bridge/runtimeApi.ts` |
 
-Future Minecraft/library/catalog/download/package/storage modules belong under the Rust engine unless a revised architecture decision assigns a different owner.
+Tauri commands must remain adapters. Fix filesystem/domain behavior in RustCore, not in IPC wrappers or Svelte pages.
+
+## Legacy evidence
+
+Legacy BlueCoin behavior remains under `docs/legacy/` and is evidence only. It does not own SearchNow implementation behavior.

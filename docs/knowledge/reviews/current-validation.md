@@ -1,28 +1,25 @@
 # Current Validation
 
-## Architecture scaffold
+## Backend local-core target
 
 Target claim:
 
-> SearchNow has a coherent, lightweight Tauri/Svelte/Rust source scaffold with an enforced frontend/native/runtime ownership boundary.
+> SearchNow has a bounded, local-first Rust backend core for settings, Minecraft storage discovery, and read-only local library indexing, separated from Tauri IPC.
 
-Repository/static evidence expected for the current `develop` HEAD:
+Repository/CI proof required:
 
-- repository contract verifier passes;
-- architecture validator passes;
-- source-size budget passes;
-- Svelte typecheck passes;
-- Vite frontend build passes;
-- Rust formatting check passes;
-- `get_runtime_status` follows product facade → runtime API → Tauri command → Rust engine ownership.
+- repository and architecture contracts pass;
+- RustCore format passes;
+- RustCore unit tests pass;
+- RustCore clippy passes with warnings denied;
+- frontend static/type/build gates remain green;
+- Tauri adapter format passes.
 
-## Not proven by hosted/static checks
+Runtime claims **not** established by hosted CI:
 
-- actual Tauri desktop launch on Windows;
-- WebView2/native IPC behavior on target Windows;
-- installer/bundle behavior;
-- Minecraft installation discovery;
-- catalog/network behavior;
-- download/package/export behavior.
+- real Windows AppData discovery;
+- real Minecraft account-scoped directory behavior;
+- Tauri IPC execution on installed Windows app;
+- scan performance against a large real library.
 
-These claims require their matching local/target runtime proof after implementation.
+These remain TARGET_WINDOWS evidence.

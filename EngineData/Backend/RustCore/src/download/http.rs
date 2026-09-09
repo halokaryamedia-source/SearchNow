@@ -156,7 +156,8 @@ impl HttpTransport {
 
             let limited =
                 ResponseLimitReader::new(response.into_reader(), self.policy.max_response_bytes);
-            let reader = OverallDeadlineReader::new(limited, started_at, self.policy.overall_timeout);
+            let reader =
+                OverallDeadlineReader::new(limited, started_at, self.policy.overall_timeout);
             return Ok(DownloadTransportStream {
                 reader: Box::new(reader),
                 total_bytes,

@@ -13,6 +13,7 @@ const required = [
   "src/pages/Downloads.svelte",
   "src/pages/Settings.svelte",
   "src-tauri/src/main.rs",
+  "src-tauri/src/app_bootstrap.rs",
   "src-tauri/src/commands/registry.rs",
   "src-tauri/src/commands/runtime.rs",
   "src-tauri/src/commands/settings.rs",
@@ -37,6 +38,8 @@ const backendRequired = [
   "src/download/manager.rs",
   "src/download/store.rs",
   "src/download/workspace.rs",
+  "src/download/transport.rs",
+  "src/download/executor.rs",
 ];
 const errors = [];
 
@@ -72,7 +75,9 @@ if (!runtimeCommand.includes("searchnow_core::runtime")) errors.push("runtime co
 const packageCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/package.rs"), "utf8");
 if (!packageCommand.includes("searchnow_core::package")) errors.push("package command must delegate to RustCore");
 const downloadCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/download.rs"), "utf8");
-if (!downloadCommand.includes("searchnow_core::download")) errors.push("download command must delegate to RustCore");
+if (!downloadCommand.includes("DownloadExecutionRuntime")) errors.push("download command must delegate to the RustCore execution runtime");
+const bootstrap = await readFile(resolve(appRoot, "src-tauri/src/app_bootstrap.rs"), "utf8");
+if (!bootstrap.includes("DownloadExecutionRuntime::new") || !bootstrap.includes("app.manage(runtime)")) errors.push("application bootstrap must create and manage the RustCore download execution runtime");
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

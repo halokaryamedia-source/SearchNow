@@ -10,8 +10,8 @@ rust-version = "1.77"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+searchnow-core = { path = "../../../Backend/RustCore" }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 tauri = { version = "2", features = [] }
 
 [features]

@@ -1,6 +1,5 @@
 mod app_bootstrap;
 mod commands;
-mod engine;
 
 fn main() {
     let builder = tauri::Builder::default().setup(|app| app_bootstrap::configure_main_window(app));

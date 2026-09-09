@@ -23,6 +23,7 @@ docs/
 - [`foundation/07-catalog-architecture.md`](foundation/07-catalog-architecture.md) — provider-neutral catalog/query/domain authority.
 - [`foundation/08-provider-session-architecture.md`](foundation/08-provider-session-architecture.md) — shared runtime-only provider session/credential authority.
 - [`foundation/09-provider-adapter-architecture.md`](foundation/09-provider-adapter-architecture.md) — integrated provider composition/capability authority.
+- [`foundation/10-application-runtime-architecture.md`](foundation/10-application-runtime-architecture.md) — consolidated application backend runtime/Tauri-state authority.
 
 ### Knowledge / continuity
 

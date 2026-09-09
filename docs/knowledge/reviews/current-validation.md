@@ -1,47 +1,45 @@
 # Current Validation
 
-## Backend local-core + package + transport + resolver + catalog + session + provider-composition target
+## Consolidated application backend runtime target
 
 Target claim:
 
-> SearchNow has a bounded local-first Rust backend plus a provider-neutral integrated-provider composition that shares runtime-only session state across catalog and resolved downloads, while keeping provider credentials out of public/persisted DTOs and Tauri IPC ownership.
+> SearchNow has one in-process application backend runtime that composes local settings/platform behavior, provider catalog/session/resolver composition, and persistent download execution while Tauri manages only that consolidated backend owner.
 
 Repository/CI evidence on `develop`:
 
 - repository contract: PASS;
 - RustCore format: PASS;
-- RustCore compile/tests: PASS — **56 tests, 0 failures**;
+- RustCore compile/tests: PASS — **59 tests, 0 failures**;
 - RustCore clippy with warnings denied: PASS;
 - Tauri adapter format: PASS;
 - frontend architecture/source-size/type/build gates: PASS;
-- package/download/HTTP/resolver/catalog/session regression fixtures remain passing;
-- provider composition rejects mismatched component keys;
-- integrated fake provider proves catalog → stable provider resource → shared session → resource resolver → authenticated runtime HTTP → completed atomic file publication;
-- catalog + resolver reuse one provider-session acquisition in the integrated flow;
-- integrated fixture verifies provider runtime secret material is absent from catalog JSON, provider status JSON, and persisted download state.
+- package/download/HTTP/resolver/catalog/session/provider-adapter regression fixtures remain passing;
+- `SearchNowBackendRuntime` startup succeeds with zero providers and emits a safe aggregate snapshot;
+- invalid provider composition prevents application runtime construction;
+- application-runtime fixture proves the resolver registry produced by provider composition is the registry used by actual provider-resolved download execution;
+- all active Tauri feature commands delegate through `State<SearchNowBackendRuntime>`;
+- Tauri bootstrap manages one consolidated backend state instead of separate download/provider/settings engines.
 
-Provider-adapter boundary established by CI:
+Application-runtime boundary established by CI:
 
-- `IntegratedProvider` is the single provider composition contract;
-- one canonical adapter key must match any contributed session source, catalog provider and resource resolver key;
-- duplicate/mismatched provider identities fail closed during composition;
-- one `ProviderSessionManager` is constructed before catalog/resolver components and injected into both;
-- provider capability metadata exposes only provider/session/catalog/resolved-download availability plus safe session status;
-- provider component construction failures are normalized by SearchNow rather than exposing provider details;
-- catalog items still map to the existing `provider-resolved` download model rather than creating a parallel provider download lifecycle;
-- ephemeral Authorization material is generated only during runtime resolution/HTTP and is absent from persisted/public provider DTOs;
-- final file publication remains owned by `DownloadExecutionRuntime`.
+- canonical paths for settings/download state/workspace/final files are assembled once for application construction;
+- `ProviderAdapterRuntime` is composed before provider-resolved transport registration;
+- `ProviderResolvedTransport` receives `providers.resolvers()` from that exact composed runtime;
+- `DownloadExecutionRuntime` remains the only download lifecycle/persistence/finalization owner;
+- `SettingsStore` and `DownloadStore` remain their existing persistence authorities; no second application database was introduced;
+- safe `BackendRuntimeSnapshot` contains runtime status, Minecraft discovery, safe provider status/capabilities, and download summary only;
+- filesystem-heavy local commands continue to use Tauri `spawn_blocking`; download transfer remains on the existing bounded worker threads;
+- architecture validator rejects old per-command/sub-runtime ownership assumptions.
 
 Claims **not** established by hosted CI:
 
+- installed Windows Tauri execution;
+- Tauri Rust compile/link on the actual Windows target;
 - real Windows AppData/Minecraft account-scoped behavior;
-- Tauri IPC execution in an installed Windows build;
-- performance against large real libraries/packages;
+- large-library/package performance on representative Windows machines;
 - production HTTPS/TLS reliability against representative servers/CDNs;
-- any real provider login/acquire/refresh endpoint;
-- provider-specific token expiry/invalidation semantics;
-- any real remote catalog provider/API compatibility;
-- provider-specific terms/permissions and production download behavior;
-- secure OS credential storage, if a future provider requires durable user credentials.
+- any real provider login/catalog/resource endpoint or provider-specific auth semantics;
+- secure OS credential storage if a future provider requires durable user credentials.
 
 These remain TARGET_WINDOWS / REAL_FIXTURE / NETWORK / PROVIDER evidence.

@@ -17,11 +17,13 @@ REQUIRED = [
     "docs/foundation/07-catalog-architecture.md",
     "docs/foundation/08-provider-session-architecture.md",
     "docs/foundation/09-provider-adapter-architecture.md",
+    "docs/foundation/10-application-runtime-architecture.md",
     "docs/knowledge/next-action.md", "docs/knowledge/ownership.md", "docs/knowledge/source-authority.md",
     "docs/knowledge/work-routing.md", "docs/knowledge/work-modes/development.md", "docs/knowledge/work-modes/maintenance.md",
     "docs/legacy/01-current-state.md", "docs/legacy/04-recovered-source-architecture.md",
     "docs/legacy/05-recovered-symbol-map.md", "docs/legacy/06-runtime-data-contracts.md", "docs/legacy/07-reconstruction-evidence.md",
     "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/src/lib.rs",
+    "EngineData/Backend/RustCore/src/app_runtime.rs",
     "EngineData/Backend/RustCore/src/settings.rs", "EngineData/Backend/RustCore/src/minecraft.rs",
     "EngineData/Backend/RustCore/src/library.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
     "EngineData/Backend/RustCore/src/catalog/mod.rs", "EngineData/Backend/RustCore/src/catalog/model.rs",
@@ -32,6 +34,7 @@ REQUIRED = [
     "EngineData/Backend/RustCore/src/provider_adapter/mod.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/model.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/runtime.rs",
+    "EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
     ".github/PULL_REQUEST_TEMPLATE.md", ".github/workflows/repository-verify.yml",
     ".github/workflows/local-promotion-verify.yml", ".github/workflows/release-verify.yml",
@@ -48,6 +51,7 @@ checks = {
     "docs/foundation/07-catalog-architecture.md": ["CatalogProvider", "CatalogService", "ProviderResourceRef"],
     "docs/foundation/08-provider-session-architecture.md": ["ProviderSessionSource", "ProviderSessionManager", "non-serializable", "refresh storm"],
     "docs/foundation/09-provider-adapter-architecture.md": ["IntegratedProvider", "ProviderAdapterRuntime", "CatalogProvider", "ResourceResolver"],
+    "docs/foundation/10-application-runtime-architecture.md": ["SearchNowBackendRuntime", "one managed state", "ProviderResolvedTransport", "BackendRuntimeSnapshot"],
 }
 
 for rel, needles in checks.items():
@@ -89,11 +93,38 @@ if session_runtime.exists():
 
 provider_boundary_names = ["IntegratedProvider", "ProviderSessionSource", "CatalogProvider", "ResourceResolver", "ProviderAdapterRuntime"]
 commands_root = ROOT / "EngineData" / "Frontend" / "RustApp" / "src-tauri" / "src" / "commands"
-for path in commands_root.glob("*.rs") if commands_root.exists() else []:
+active_command_files = ["runtime.rs", "settings.rs", "minecraft.rs", "library.rs", "package.rs", "download.rs"]
+for name in active_command_files:
+    path = commands_root / name
+    if not path.exists():
+        continue
     text = path.read_text(encoding="utf-8", errors="replace")
-    for forbidden in provider_boundary_names:
+    if "SearchNowBackendRuntime" not in text:
+        errors.append(f"{path.relative_to(ROOT)}: active Tauri feature command must delegate through SearchNowBackendRuntime")
+    for forbidden in ["SettingsStore", "PlatformContext", "DownloadExecutionRuntime", "DownloadTransportRegistry", "ResourceResolverRegistry", "HttpTransport", "ProviderAdapterRuntime", "IntegratedProvider"]:
         if forbidden in text:
-            errors.append(f"{path.relative_to(ROOT)}: provider implementation/composition belongs in RustCore, not Tauri commands: {forbidden!r}")
+            errors.append(f"{path.relative_to(ROOT)}: backend sub-runtime ownership belongs in SearchNowBackendRuntime, not Tauri command: {forbidden!r}")
+
+commands_mod = commands_root / "mod.rs"
+if commands_mod.exists() and "mod context" in commands_mod.read_text(encoding="utf-8", errors="replace"):
+    errors.append("Tauri commands must not reactivate the obsolete per-command backend context helper")
+
+bootstrap = ROOT / "EngineData" / "Frontend" / "RustApp" / "src-tauri" / "src" / "app_bootstrap.rs"
+if bootstrap.exists():
+    text = bootstrap.read_text(encoding="utf-8", errors="replace")
+    for needle in ["SearchNowBackendRuntime::new", "app.manage(runtime)"]:
+        if needle not in text:
+            errors.append(f"{bootstrap.relative_to(ROOT)}: missing consolidated backend bootstrap contract {needle!r}")
+    for forbidden in ["DownloadExecutionRuntime", "DownloadTransportRegistry", "ResourceResolverRegistry", "HttpTransport", "ProviderAdapterRuntime"]:
+        if forbidden in text:
+            errors.append(f"{bootstrap.relative_to(ROOT)}: Tauri bootstrap must not construct backend sub-runtime {forbidden!r}")
+
+app_runtime = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "app_runtime.rs"
+if app_runtime.exists():
+    text = app_runtime.read_text(encoding="utf-8", errors="replace")
+    for needle in ["SearchNowBackendRuntime", "ProviderAdapterRuntime::compose", "providers.resolvers()", "ProviderResolvedTransport::new", "DownloadExecutionRuntime::new", "SettingsStore::new", "BackendRuntimeSnapshot"]:
+        if needle not in text:
+            errors.append(f"{app_runtime.relative_to(ROOT)}: missing application composition contract {needle!r}")
 
 public_http = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "http.rs"
 if public_http.exists():

@@ -28,11 +28,13 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | provider-neutral catalog/query/domain contract | `docs/foundation/07-catalog-architecture.md` |
 | provider session/credential runtime contract | `docs/foundation/08-provider-session-architecture.md` |
 | integrated provider composition/capability contract | `docs/foundation/09-provider-adapter-architecture.md` |
+| consolidated application backend runtime / Tauri state contract | `docs/foundation/10-application-runtime-architecture.md` |
 
 ## Current implementation owners
 
 | Boundary | Owner |
 |---|---|
+| application backend composition + safe aggregate runtime snapshot | `EngineData/Backend/RustCore/src/app_runtime.rs` |
 | typed settings + persistence | `EngineData/Backend/RustCore/src/settings.rs` |
 | platform/AppData context | `EngineData/Backend/RustCore/src/platform.rs` |
 | Minecraft storage discovery | `EngineData/Backend/RustCore/src/minecraft.rs` |
@@ -52,20 +54,16 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | scheduler/executor/progress checkpointing | `EngineData/Backend/RustCore/src/download/executor.rs` |
 | public HTTPS + ephemeral HTTP request mechanics/redirect/timeout/stream bounds | `EngineData/Backend/RustCore/src/download/http.rs` |
 | stable provider reference + runtime resolver registry + expiry/re-resolution + secret isolation | `EngineData/Backend/RustCore/src/download/resolver.rs` |
-| backend orchestration snapshot | `EngineData/Backend/RustCore/src/lib.rs` |
+| local backend snapshot helper/module exports | `EngineData/Backend/RustCore/src/lib.rs` |
 | backend error semantics | `EngineData/Backend/RustCore/src/error.rs` |
+| one Tauri backend runtime construction/management | `EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs` |
 | Tauri IPC registration | `EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs` |
-| Tauri application/runtime transport registration | `EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs` |
-| Tauri settings adaptation | `.../commands/settings.rs` |
-| Tauri Minecraft adaptation | `.../commands/minecraft.rs` |
-| Tauri library adaptation | `.../commands/library.rs` |
-| Tauri package-inspection adaptation | `.../commands/package.rs` |
-| Tauri download adaptation | `.../commands/download.rs` |
+| thin Tauri runtime/settings/Minecraft/library/package/download adaptation | `EngineData/Frontend/RustApp/src-tauri/src/commands/` |
 | frontend raw invoke boundary | `EngineData/Frontend/RustApp/src/app/bridge/runtimeApi.ts` |
 
-Tauri commands must remain adapters. Queue lifecycle, network policy, catalog validation, provider composition/resolution/session state, persistence, filesystem, package, and Minecraft behavior belong in RustCore rather than IPC wrappers or Svelte pages.
+Tauri commands must remain adapters over `State<SearchNowBackendRuntime>`. Queue lifecycle, network policy, catalog validation, provider composition/resolution/session state, persistence, filesystem, package, and Minecraft behavior belong in RustCore rather than IPC wrappers or Svelte pages.
 
-`provider_adapter/runtime.rs` owns generic integrated-provider composition and capability registration, **not provider protocols**. `provider_session/runtime.rs` owns generic acquire/reuse/refresh coordination and secret-bearing runtime leases. `catalog/provider.rs` owns catalog coordination, `resolver.rs` owns resource resolution, and `http.rs` owns HTTP mechanics. A real provider implementation must use these existing boundaries instead of putting provider-specific protocol code into Tauri commands, persisted DTOs, or the public HTTP transport.
+`app_runtime.rs` owns application composition, **not the underlying domain logic**. `provider_adapter/runtime.rs` owns integrated-provider composition, `provider_session/runtime.rs` owns session coordination, `catalog/provider.rs` owns catalog coordination, `resolver.rs` owns runtime resource resolution, and `http.rs` owns HTTP mechanics. Tauri must not reconstruct those owners independently.
 
 ## Legacy evidence
 

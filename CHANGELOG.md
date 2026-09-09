@@ -22,7 +22,6 @@ All notable SearchNow repository/product changes will be recorded here.
 - Deterministic `local-file` transport for end-to-end queue → transfer → progress → final publication testing.
 - Native bounded worker scheduling with cooperative cancellation and queued-job pumping.
 - Progress persistence checkpointing at 1 MiB plus lifecycle boundaries to reduce state-write overhead.
-- Tauri-managed `DownloadExecutionRuntime` created during application bootstrap; download IPC commands delegate to RustCore runtime ownership.
 - Provider-neutral `https-public` transport using pinned `ureq`/rustls with explicit timeout, redirect, HTTPS-only, response-size, and content-length safeguards.
 - Manual redirect handling revalidates every destination and prevents production HTTPS downloads from downgrading to plain HTTP.
 - Public HTTPS queue entries reject persisted query strings and embedded credentials.
@@ -43,4 +42,7 @@ All notable SearchNow repository/product changes will be recorded here.
 - Provider-neutral `IntegratedProvider` / `ProviderAdapterRuntime` composition with canonical component-key validation and safe capability metadata.
 - Deterministic integrated-provider fixture proving catalog → stable provider download identity → shared session → resolver → authenticated runtime HTTP → completed atomic file publication.
 - Provider adapter fixture verifies catalog and resolver reuse one session acquisition and no runtime secret enters catalog JSON, provider status JSON, or persisted download state.
+- Consolidated `SearchNowBackendRuntime` composing local settings/platform context, provider adapters/resolvers, and persistent download execution as one application backend state.
+- Safe aggregate `BackendRuntimeSnapshot` plus deterministic startup/fail-closed/provider-resolver-to-download application-runtime fixtures.
+- Tauri state consolidation: one managed `SearchNowBackendRuntime`; feature commands delegate to it instead of constructing separate backend engines.
 - Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.

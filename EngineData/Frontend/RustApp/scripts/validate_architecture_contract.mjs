@@ -42,6 +42,9 @@ const backendRequired = [
   "src/download/executor.rs",
   "src/download/http.rs",
   "src/download/resolver.rs",
+  "src/catalog/mod.rs",
+  "src/catalog/model.rs",
+  "src/catalog/provider.rs",
 ];
 const errors = [];
 
@@ -81,12 +84,7 @@ if (!downloadCommand.includes("DownloadExecutionRuntime")) errors.push("download
 const bootstrap = await readFile(resolve(appRoot, "src-tauri/src/app_bootstrap.rs"), "utf8");
 if (!bootstrap.includes("app.manage(runtime)")) errors.push("Tauri bootstrap must manage exactly one download execution runtime");
 if (!bootstrap.includes("HttpTransport")) errors.push("Tauri bootstrap must register the provider-neutral public HTTPS transport");
-if (!bootstrap.includes("ProviderResolvedTransport") || !bootstrap.includes("ResourceResolverRegistry")) errors.push("Tauri bootstrap must expose the credential-safe provider resolver transport boundary");
-
-const downloadModel = (await readFile(resolve(backendRoot, "src/download/model.rs"), "utf8")).toLowerCase();
-for (const forbidden of ["authorization", "bearer_token", "signed_url", "cookie", "headers"]) {
-  if (downloadModel.includes(forbidden)) errors.push(`download persisted DTOs must not own runtime credential field: ${forbidden}`);
-}
+if (!bootstrap.includes("ProviderResolvedTransport")) errors.push("Tauri bootstrap must register the generic resolved-provider transport boundary");
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

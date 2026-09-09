@@ -21,6 +21,8 @@ REQUIRED = [
     "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/src/lib.rs",
     "EngineData/Backend/RustCore/src/settings.rs", "EngineData/Backend/RustCore/src/minecraft.rs",
     "EngineData/Backend/RustCore/src/library.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
+    "EngineData/Backend/RustCore/src/catalog/mod.rs", "EngineData/Backend/RustCore/src/catalog/model.rs",
+    "EngineData/Backend/RustCore/src/catalog/provider.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
     ".github/PULL_REQUEST_TEMPLATE.md", ".github/workflows/repository-verify.yml",
     ".github/workflows/local-promotion-verify.yml", ".github/workflows/release-verify.yml",
@@ -55,14 +57,15 @@ for path in active_backend.rglob("*.rs") if active_backend.exists() else []:
 for rel in [
     "EngineData/Backend/RustCore/src/download/model.rs",
     "EngineData/Backend/RustCore/src/download/store.rs",
+    "EngineData/Backend/RustCore/src/catalog/model.rs",
 ]:
     path = ROOT / rel
     if not path.exists():
         continue
     lowered = path.read_text(encoding="utf-8", errors="replace").lower()
-    for forbidden in ["authorization", "bearer_token", "signed_url", "cookie", "headers"]:
+    for forbidden in ["authorization", "bearer_token", "signed_url", "cookie", "headers", "access_token"]:
         if forbidden in lowered:
-            errors.append(f"{rel}: runtime credential field must not enter persisted download state: {forbidden!r}")
+            errors.append(f"{rel}: runtime credential field must not enter persisted/domain DTO state: {forbidden!r}")
 
 for legacy_old in [
     "docs/01-current-state.md", "docs/04-recovered-source-architecture.md", "docs/05-recovered-symbol-map.md",

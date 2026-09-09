@@ -8,7 +8,9 @@ mod transport;
 mod workspace;
 
 pub use executor::{default_download_paths, DownloadExecutionRuntime};
-pub use http::{HttpTransport, HttpTransportPolicy, PUBLIC_HTTPS_TRANSPORT_KEY};
+pub use http::{
+    public_https_download_source, HttpTransport, HttpTransportPolicy, PUBLIC_HTTPS_TRANSPORT_KEY,
+};
 pub use manager::DownloadManager;
 pub use model::*;
 pub use resolver::{

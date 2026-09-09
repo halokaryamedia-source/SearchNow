@@ -56,6 +56,20 @@ impl HttpTransportPolicy {
     }
 }
 
+pub fn public_https_download_source(resource_url: impl Into<String>) -> BackendResult<DownloadSourceRef> {
+    let resource_id = resource_url.into();
+    parse_source_url(&resource_id, false).map_err(|_| {
+        BackendError::new(
+            "download_http_public_source_invalid",
+            "Public HTTPS resource identity is invalid or contains runtime credential material.",
+        )
+    })?;
+    Ok(DownloadSourceRef {
+        transport: PUBLIC_HTTPS_TRANSPORT_KEY.to_string(),
+        resource_id,
+    })
+}
+
 pub(crate) struct RuntimeHttpHeader {
     name: String,
     value: String,

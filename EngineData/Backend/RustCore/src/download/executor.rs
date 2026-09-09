@@ -240,7 +240,9 @@ impl DownloadExecutionRuntime {
         total_bytes: Option<u64>,
     ) -> BackendResult<DownloadJob> {
         let mut manager = self.lock_manager()?;
-        let previous = find_job(&manager.snapshot(), job_id)?.progress.downloaded_bytes;
+        let previous = find_job(&manager.snapshot(), job_id)?
+            .progress
+            .downloaded_bytes;
         let mut candidate = manager.clone();
         let output = candidate.report_progress(job_id, downloaded_bytes, total_bytes)?;
 

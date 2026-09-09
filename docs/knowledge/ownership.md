@@ -24,7 +24,7 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | implementation direction | `docs/foundation/03-implementation-roadmap.md` |
 | verification/promotion | `docs/foundation/04-verification-promotion.md` |
 | desktop application topology | `docs/foundation/05-application-architecture.md` |
-| backend topology/data/performance contract | `docs/foundation/06-backend-architecture.md` |
+| backend topology/data/performance/package-inspection contract | `docs/foundation/06-backend-architecture.md` |
 
 ## Current implementation owners
 
@@ -34,15 +34,17 @@ Use only to answer **who owns what**. Exact procedures remain in the named owner
 | platform/AppData context | `EngineData/Backend/RustCore/src/platform.rs` |
 | Minecraft storage discovery | `EngineData/Backend/RustCore/src/minecraft.rs` |
 | local content indexing | `EngineData/Backend/RustCore/src/library.rs` |
+| read-only package inspection + archive safety + BP/RP relationships | `EngineData/Backend/RustCore/src/package/` |
 | backend orchestration snapshot | `EngineData/Backend/RustCore/src/lib.rs` |
 | backend error semantics | `EngineData/Backend/RustCore/src/error.rs` |
 | Tauri IPC registration | `EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs` |
 | Tauri settings adaptation | `.../commands/settings.rs` |
 | Tauri Minecraft adaptation | `.../commands/minecraft.rs` |
 | Tauri library adaptation | `.../commands/library.rs` |
+| Tauri package-inspection adaptation | `.../commands/package.rs` |
 | frontend raw invoke boundary | `EngineData/Frontend/RustApp/src/app/bridge/runtimeApi.ts` |
 
-Tauri commands must remain adapters. Fix filesystem/domain behavior in RustCore, not in IPC wrappers or Svelte pages.
+Tauri commands must remain adapters. Fix filesystem/domain/archive behavior in RustCore, not in IPC wrappers or Svelte pages.
 
 ## Legacy evidence
 

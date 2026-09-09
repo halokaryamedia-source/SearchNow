@@ -287,8 +287,8 @@ fn spawn_authorized_server(payload: Vec<u8>, expected_authorization: String) -> 
         let Ok((mut stream, _)) = listener.accept() else {
             return;
         };
-        let authorized = read_authorization(&mut stream)
-            .is_some_and(|value| value == expected_authorization);
+        let authorized =
+            read_authorization(&mut stream).is_some_and(|value| value == expected_authorization);
         let (status, body) = if authorized {
             ("200 OK", payload)
         } else {
@@ -306,9 +306,7 @@ fn spawn_authorized_server(payload: Vec<u8>, expected_authorization: String) -> 
 }
 
 fn read_authorization(stream: &mut TcpStream) -> Option<String> {
-    stream
-        .set_read_timeout(Some(Duration::from_secs(1)))
-        .ok()?;
+    stream.set_read_timeout(Some(Duration::from_secs(1))).ok()?;
     let mut buffer = [0_u8; 8192];
     let read = stream.read(&mut buffer).ok()?;
     let request = String::from_utf8_lossy(&buffer[..read]);
@@ -329,7 +327,9 @@ fn test_policy() -> HttpTransportPolicy {
     }
 }
 
-fn wait_for_completed(runtime: &DownloadExecutionRuntime) -> crate::download::DownloadManagerSnapshot {
+fn wait_for_completed(
+    runtime: &DownloadExecutionRuntime,
+) -> crate::download::DownloadManagerSnapshot {
     let started = Instant::now();
     loop {
         let snapshot = runtime.snapshot().expect("download snapshot");

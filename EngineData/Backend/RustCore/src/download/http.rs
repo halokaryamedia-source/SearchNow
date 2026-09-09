@@ -4,7 +4,7 @@ use super::{
 use crate::error::{BackendError, BackendResult};
 use std::{
     io::{self, Read},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use url::Url;
 
@@ -72,7 +72,6 @@ impl HttpTransport {
             .timeout_connect(policy.connect_timeout)
             .timeout_read(policy.read_timeout)
             .timeout_write(policy.connect_timeout)
-            .timeout(policy.overall_timeout)
             .build();
         Ok(Self {
             agent,
@@ -98,14 +97,17 @@ impl HttpTransport {
             ));
         }
 
+        let started_at = Instant::now();
         let mut current = parse_source_url(&source.resource_id, self.allow_plain_http)?;
         let mut redirects = 0_u32;
 
         loop {
+            ensure_overall_deadline(started_at, self.policy.overall_timeout)?;
             let response = match self.agent.get(current.as_str()).call() {
                 Ok(response) => response,
                 Err(error) => return Err(map_request_error(error)),
             };
+            ensure_overall_deadline(started_at, self.policy.overall_timeout)?;
             let status = response.status();
 
             if matches!(status, 301 | 302 | 303 | 307 | 308) {
@@ -152,8 +154,9 @@ impl HttpTransport {
                 ));
             }
 
-            let reader =
+            let limited =
                 ResponseLimitReader::new(response.into_reader(), self.policy.max_response_bytes);
+            let reader = OverallDeadlineReader::new(limited, started_at, self.policy.overall_timeout);
             return Ok(DownloadTransportStream {
                 reader: Box::new(reader),
                 total_bytes,
@@ -242,6 +245,21 @@ fn parse_content_length(
     })
 }
 
+fn ensure_overall_deadline(
+    started_at: Instant,
+    timeout: Duration,
+) -> Result<(), DownloadTransportFailure> {
+    if started_at.elapsed() >= timeout {
+        Err(DownloadTransportFailure::new(
+            "download_http_overall_timeout",
+            "HTTP download exceeded SearchNow's overall transfer deadline.",
+            true,
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 fn map_request_error(error: ureq::Error) -> DownloadTransportFailure {
     match error {
         ureq::Error::Status(status, _) => status_failure(status),
@@ -260,6 +278,34 @@ fn status_failure(status: u16) -> DownloadTransportFailure {
         format!("HTTP server returned status {status}."),
         retryable,
     )
+}
+
+struct OverallDeadlineReader<R> {
+    inner: R,
+    started_at: Instant,
+    timeout: Duration,
+}
+
+impl<R> OverallDeadlineReader<R> {
+    fn new(inner: R, started_at: Instant, timeout: Duration) -> Self {
+        Self {
+            inner,
+            started_at,
+            timeout,
+        }
+    }
+}
+
+impl<R: Read> Read for OverallDeadlineReader<R> {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        if self.started_at.elapsed() >= self.timeout {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "HTTP download exceeded SearchNow's overall transfer deadline.",
+            ));
+        }
+        self.inner.read(buffer)
+    }
 }
 
 struct ResponseLimitReader<R> {

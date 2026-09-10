@@ -1,44 +1,55 @@
 # Next Action
 
-## Current Status
+Status: `REMOTE_GITHUB_FOUNDATION_COMPLETE`
 
-`FOUNDATION_CLOSURE_IN_PROGRESS`
+## Verified checkpoint
 
-Completed before this closure slice:
+The `develop` repository foundation is closed for the current backend-first scope.
 
-1. Tauri/Svelte/Rust desktop scaffold and PRD-Creator-style development workflow;
-2. local settings, Minecraft discovery, bounded library indexing, and read-only package inspection in RustCore;
-3. persistent bounded download lifecycle with local fixture, public HTTPS, and provider-resolved execution boundaries;
-4. provider-neutral catalog, shared provider-session manager, resource resolver, and integrated-provider composition;
-5. one `SearchNowBackendRuntime` owning settings/platform/provider/download/diagnostics composition;
-6. thin Tauri commands delegating through that one runtime;
-7. bounded secret-safe diagnostics and hosted Linux/Windows verification structure.
+Completed remotely:
 
-## Foundation closure being applied
+- one `SearchNowBackendRuntime` application owner;
+- settings/Minecraft/library/package/catalog/provider/download runtime foundations;
+- shared crash-recoverable persistence;
+- fail-closed persisted download recovery and crash reconciliation;
+- Windows-safe destination naming;
+- production transport isolation and provider-neutral download intent at Tauri IPC;
+- canonical provider/resource identity validation;
+- secret-safe diagnostics with current component health separated from event history;
+- observable scheduler continuation failure state;
+- standard committed Tauri PNG/ICO resources;
+- committed npm + Rust dependency locks;
+- read-only deterministic CI using `npm ci` and Cargo `--locked`;
+- hosted Linux repository/backend/frontend verification;
+- hosted Windows RustCore tests and Tauri compile verification.
 
-- replace the Windows build-only icon workaround with the standard committed Tauri icon path;
-- consolidate SettingsStore and DownloadStore replacement/recovery mechanics into shared `AtomicFileStore`;
-- preserve backup recovery when an interrupted replacement leaves the primary state file missing;
-- update repository verification so workaround-specific implementation details are not frozen as architecture;
-- synchronize README, validation, roadmap/continuity documentation with the actual implemented backend.
+The current RustCore suite contains **71 passing tests** in the remote verification baseline.
 
-## Active Boundary
+## Next boundary
 
-Keep work on `develop`. `Local` and `main` remain untouched until explicit promotion.
+```text
+REMOTE_GITHUB_FOUNDATION_COMPLETE
+→ TARGET_WINDOWS_RUNTIME_SMOKE
+```
 
-No real provider login, PlayFab/Marketplace endpoint, durable provider credential storage, protected-content bypass, package mutation/export, or production Discover/provider frontend wiring belongs in this closure slice.
+The next canonical action is **local Windows runtime validation**, not another repository-foundation rewrite.
 
-## Required proof before moving to the next feature
+Use the existing non-destructive readiness tooling and actual Tauri app runtime to validate:
 
-1. repository contract PASS;
-2. RustCore format/tests/clippy PASS;
-3. frontend architecture/type/build PASS;
-4. Windows RustCore PASS;
-5. Windows Tauri `cargo check` PASS using the normal committed icon path;
-6. no regression to duplicate backend ownership or secret-bearing public/persisted DTOs.
+1. application/AppData path resolution;
+2. current Minecraft Bedrock GDK/account-scoped discovery and legacy UWP fallback;
+3. settings save/reload recovery behavior;
+4. local library/package inspection against representative content;
+5. download finalization/recovery behavior with representative fixtures;
+6. safe diagnostics/health snapshots;
+7. actual Tauri window startup and command invocation on the target Windows machine.
 
-If any closure gate fails, fix the first wrong owner/root cause before adding feature work.
+## Boundary after local smoke
 
-## Next feature boundary after closure
+Only after the target-Windows foundation smoke is accepted should active development move to the next product slice, expected to be real provider integration and then Discover/Downloads/Settings product wiring.
 
-Once the closure commit is green, continue backend-first with a **real-provider preparation boundary**, not direct provider endpoint implementation. That next slice should first define canonical provider identity/resource types, provider retry/timeout semantics, production credential-storage requirements, and product-intent APIs that keep transport details out of the frontend.
+Real-provider work must preserve the existing runtime, credential, provider-resource, and product-intent boundaries; it is an extension of this foundation, not a second system.
+
+## Proof rule
+
+Hosted Linux/Windows CI proves repository correctness and native Windows compilation. It does **not** prove installed-app behavior, user-machine Minecraft discovery, production provider compatibility, or clean-machine release readiness.

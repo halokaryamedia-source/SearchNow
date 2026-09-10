@@ -1,49 +1,62 @@
 # Current Validation
 
-## Foundation-closure target
+Reviewed: **2026-09-10**  
+Scope: `develop` remote repository/backend foundation  
+Status: **remote foundation verified; target-Windows installed/runtime smoke pending**
 
-Target claim:
+## Latest full code/workflow proof
 
-> SearchNow has one in-process application backend runtime, shared crash-recoverable file persistence, provider-neutral catalog/session/resolver/download composition, secret-safe diagnostics, and a native Windows Tauri compile gate.
+Locked verification baseline before documentation-only closure:
 
-## Last verified baseline before foundation-closure commit
+- commit: `52ec72dfb3386d756aed532f41fafd0896a11359`;
+- GitHub Actions: `Repository Verify` run **#162**;
+- Linux verification: **PASS**;
+- hosted Windows RustCore/Tauri compile gate: **PASS**.
 
-The last `develop` workflow before this closure work established:
+## Verified remotely
 
-- Linux repository contract: PASS;
-- RustCore format/tests/clippy: PASS — 62 tests, 0 failures on that commit;
-- frontend architecture/source-size/type/build gates: PASS;
-- Windows RustCore tests: PASS;
-- Windows frontend build: PASS;
-- Windows Tauri compile: **FAIL**, because `tauri::generate_context!()` still attempted to resolve the missing default `src-tauri/icons/icon.png`.
+The current baseline proves:
 
-Therefore that commit is **not** a promotable clean baseline.
+- repository contracts pass;
+- Rust formatting passes;
+- **71 RustCore tests pass**;
+- strict Clippy passes with warnings denied;
+- Tauri adapter formatting passes;
+- frontend dependency installation uses committed `package-lock.json` via `npm ci`;
+- frontend architecture, source-size, typecheck, and production build checks pass;
+- Rust dependency resolution is locked for standalone RustCore and the Tauri application;
+- hosted Windows runs the locked RustCore suite successfully;
+- hosted Windows frontend build succeeds from the committed npm graph;
+- native Windows Tauri `cargo check --locked` succeeds;
+- verification workflows use read-only repository permission and current v7 GitHub Actions runtime releases.
 
-## Closure changes now expected to verify
+## Foundation hardening covered by the test/contract baseline
 
-- standard Tauri icon path exists at `src-tauri/icons/icon.png`;
-- `src-tauri/build.rs` no longer generates an `OUT_DIR` placeholder icon;
-- settings and download state use one `AtomicFileStore` replacement/recovery mechanism;
-- settings backup recovery has deterministic regression coverage;
-- repository contracts require the normal Tauri icon/build path rather than the obsolete workaround;
-- documentation reflects the implemented backend instead of the old scaffold-only state.
+- shared crash-recoverable Settings/Download persistence;
+- persisted download-state validation and duplicate-id rejection;
+- sequence recovery without id reuse;
+- startup reconciliation after interrupted finalization;
+- stale destination-stage cleanup;
+- Windows reserved/invalid destination filename rejection;
+- production isolation of the local-file fixture transport;
+- provider-neutral catalog download intent at the Tauri boundary;
+- canonical provider/resource identity validation;
+- current component health independent from retained historical error events;
+- sanitized scheduler continuation error visibility.
 
-Do not upgrade these expected results to PASS until the workflow for the closure commit is green.
+## Not yet proven
 
-## Existing backend evidence
+Remote verification does **not** prove:
 
-The existing test suite already covers safe runtime startup, provider-resolver → download integration, fail-closed provider construction, bounded diagnostics, catalog validation, session refresh deduplication, HTTPS limits/redirect rules, download cancellation/recovery, package/archive safety, Minecraft discovery, library indexing, and settings persistence.
+- installed SearchNow launch/behavior on the user's target Windows machine;
+- target-machine AppData/Minecraft path behavior;
+- representative real local libraries at user scale;
+- production network/provider authentication or TLS behavior;
+- Marketplace/PlayFab endpoint compatibility;
+- installer/branding/clean-machine release acceptance.
 
-All active Tauri feature commands delegate through `State<SearchNowBackendRuntime>`; feature commands do not construct separate settings/download/provider engines.
+Those claims remain blocked until the appropriate local/provider/release validation phase.
 
-## Claims not established by hosted CI
+## Next proof
 
-- installed Windows Tauri execution;
-- real Windows AppData/Minecraft account-scoped behavior on a user machine;
-- large-library/package performance on representative Windows machines;
-- production HTTPS/TLS reliability against representative servers/CDNs;
-- any real provider login/catalog/resource endpoint or provider-specific auth semantics;
-- secure OS credential storage if a future provider requires durable user credentials;
-- installer/clean-machine release behavior.
-
-These remain TARGET_WINDOWS / REAL_FIXTURE / NETWORK / PROVIDER evidence.
+Run `TARGET_WINDOWS_RUNTIME_SMOKE` using the existing readiness script plus actual Tauri application execution. See `../next-action.md`.

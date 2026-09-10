@@ -30,7 +30,7 @@ index.html
    └─ styles/
 ```
 
-The frontend owns presentation and transient application state only. Persistent/runtime truth belongs to Rust.
+The frontend owns presentation and transient application state only. Persistent/runtime truth belongs to RustCore.
 
 ## Runtime boundary
 
@@ -40,31 +40,40 @@ Svelte page/component
 → runtimeApi.ts
 → Tauri command
 → src-tauri/src/commands/
-→ src-tauri/src/engine/
+→ SearchNowBackendRuntime
+→ ../../Backend/RustCore/
 ```
 
-`runtimeApi.ts` is the only normal frontend file allowed to import Tauri `invoke` directly.
+`runtimeApi.ts` is the only normal frontend file allowed to import Tauri `invoke` directly. Tauri commands remain adapters; they do not own backend sub-runtimes or business logic.
 
-## Current vertical slice
+Download IPC accepts provider-neutral catalog download intent. The frontend does not select internal transport keys.
 
-The first executable slice is intentionally small:
+## Current backend-connected surfaces
+
+The repository foundation exposes typed boundaries for:
 
 ```text
-App startup
-→ loadProductRuntimeSnapshot()
-→ get_runtime_status
-→ Rust engine runtime status
-→ UI status badge/settings diagnostics
+runtime/diagnostics
+settings
+Minecraft discovery
+local library
+package inspection
+download lifecycle
+provider-neutral catalog/download intent
 ```
 
-This proves the architecture without prematurely implementing Minecraft/catalog/download behavior.
+Real provider login/endpoints and production Discover wiring remain future product work.
 
 ## Development
 
+Committed `package-lock.json` is the dependency baseline:
+
 ```bash
-npm install
+npm ci
 npm run validate:quick
 npm run dev:app
 ```
 
-A dependency lockfile should be generated and reviewed from the first local dependency resolution before release-grade dependency reproducibility is claimed.
+Do not replace `npm ci` with unconstrained dependency resolution during normal verification. Dependency graph changes should be explicit and reviewed together with the updated lockfile.
+
+Hosted CI also verifies the native Tauri crate on Windows with its committed Cargo lock. Installed-app behavior still requires target-Windows runtime smoke evidence.

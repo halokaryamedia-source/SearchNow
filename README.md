@@ -36,12 +36,12 @@ Tauri 2 desktop shell
 │  └─ thin Tauri API bridge
 └─ EngineData/Backend/RustCore
    ├─ SearchNowBackendRuntime = single application backend owner
-   ├─ settings + atomic persistence
+   ├─ settings + shared atomic persistence
    ├─ Minecraft discovery + local library
    ├─ read-only package inspection
    ├─ provider-neutral catalog/session/resolver composition
-   ├─ persistent bounded download execution
-   └─ bounded safe diagnostics
+   ├─ persistent recoverable download execution
+   └─ bounded safe diagnostics + current component health
 ```
 
 No Python worker, local HTTP backend, or second backend process exists in the current architecture.
@@ -64,9 +64,13 @@ Implemented at repository/runtime-core level:
 - bounded local content indexing;
 - read-only folder / `.mcpack` / `.mcaddon` inspection with archive safety limits;
 - provider-neutral catalog, provider-session, adapter, and runtime resource-resolution boundaries;
-- bounded persistent download queue with HTTPS/provider-resolved transports and atomic no-overwrite finalization;
+- canonical provider/resource identity validation;
+- bounded persistent download queue with startup reconciliation, Windows-safe destination naming, HTTPS/provider-resolved production transports, and atomic no-overwrite finalization;
+- provider-neutral catalog download intent at the Tauri IPC boundary; raw transport selection is internal-only;
 - one consolidated `SearchNowBackendRuntime` managed by Tauri;
-- bounded secret-safe diagnostics and hosted Windows readiness gates.
+- bounded secret-safe diagnostics with current component health;
+- committed npm/Rust lockfiles and deterministic `npm ci` / Cargo `--locked` verification;
+- hosted Linux verification and native Windows RustCore/Tauri compile gates.
 
 Not implemented yet:
 
@@ -97,7 +101,7 @@ Prerequisites: Node.js 22+, Rust toolchain, and Tauri Windows prerequisites for 
 
 ```bash
 cd EngineData/Frontend/RustApp
-npm install
+npm ci
 npm run validate:quick
 npm run dev:app
 ```

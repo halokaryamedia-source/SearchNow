@@ -13,6 +13,7 @@ EngineData/
 ├── Backend/RustCore/
 │   └── src/
 │       ├── app_runtime.rs
+│       ├── identity.rs
 │       ├── settings.rs + storage.rs
 │       ├── minecraft.rs + library.rs
 │       ├── package/
@@ -59,31 +60,41 @@ Do not add Python, a local HTTP server, or another backend process unless a conc
 
 ### Phase 4 — Download Runtime
 
-**Backend complete for generic execution boundary.** Persistent bounded queue, cancellation/retry, restart recovery, local deterministic fixture transport, public HTTPS transport, provider-resolved transport, and staged no-overwrite finalization are implemented.
+**Backend foundation complete.** Persistent bounded queue, cancellation/retry, fail-closed persisted-state validation, startup crash reconciliation, Windows-safe destination naming, staged no-overwrite finalization, public HTTPS transport, and provider-resolved transport are implemented.
 
-Further hardening remains part of foundation closure where crash recovery or platform behavior requires it.
+The deterministic `local-file` transport remains test/development-only and is not registered by the production application runtime.
 
 ### Phase 5 — Provider-Neutral Runtime
 
-**Backend foundation complete.** Catalog domain, provider-session manager, resolver registry, integrated-provider composition, and shared application ownership exist with secret-safe public state.
+**Backend foundation complete.** Catalog domain, provider-session manager, resolver registry, integrated-provider composition, shared canonical provider/resource identity validation, and secret-safe public state are implemented.
 
 No real provider endpoint/login is implemented yet.
 
 ### Phase 6 — Application Runtime + Observability
 
-**Implemented; foundation closure in progress.** Tauri manages one `SearchNowBackendRuntime`; bounded diagnostics/health and hosted Windows compile gates exist. Current closure work removes the old Tauri icon workaround and consolidates file persistence/recovery.
+**Remote foundation complete.** Tauri manages one `SearchNowBackendRuntime`; Settings/Downloads share one atomic persistence owner; current health is separated from historical diagnostics; scheduler continuation failures are surfaced; raw transport selection is kept behind the backend boundary; hosted Linux and Windows verification are green.
 
-### Phase 7 — Real Provider Preparation
+### Phase 7 — Deterministic Build / Verification
 
-**Next after closure is green.** Before integrating a real provider, define canonical provider/resource identity types, retry/timeout policy, credential-storage requirements, and product-intent APIs that prevent frontend transport leakage.
+**Complete for repository verification.** npm and both Rust application scopes have committed lockfiles. Repository, Local-promotion, and stable-release workflows use `npm ci` and Cargo `--locked`, with current GitHub Actions runtime versions.
 
-### Phase 8 — Discover / Downloads / Settings Product Wiring
+### Phase 8 — Target-Windows Runtime Smoke
 
-Wire implemented backend behavior into the product facade/UI without moving runtime truth into Svelte.
+**Next validation boundary.** Run non-destructive local Windows evidence for AppData resolution, current GDK/UWP discovery, settings save/reload, package inspection, download finalization, diagnostics, and actual Tauri application launch.
 
-### Phase 9 — Target-Windows Acceptance / Release
+Hosted Windows compilation is prerequisite evidence, not a substitute for this phase.
 
-Installed Windows smoke testing, representative large-library/network fixtures, installer/bundle/branding, clean-machine verification, and Local → main promotion.
+### Phase 9 — Real Provider Integration
+
+After local foundation smoke is accepted, define and implement the concrete provider credential/session acquisition, endpoint contracts, timeout/retry/backoff behavior, and Marketplace/PlayFab-specific adapters without changing the established product/transport boundary.
+
+### Phase 10 — Discover / Downloads / Settings Product Wiring
+
+Wire implemented backend/provider behavior into the product facade/UI without moving runtime truth into Svelte.
+
+### Phase 11 — Release Acceptance
+
+Representative large-library/network fixtures, installer/bundle/branding, clean-machine verification, and Local → main promotion.
 
 ## Quality rules
 
@@ -95,3 +106,4 @@ Installed Windows smoke testing, representative large-library/network fixtures, 
 6. Network operations must map to identifiable product behavior.
 7. Repository/static/hosted compile proof never upgrades itself to installed Windows runtime proof.
 8. Do not freeze temporary workarounds into repository contracts.
+9. Verification must use committed dependency graphs; update lockfiles only as an explicit dependency change.

@@ -19,17 +19,34 @@ All notable SearchNow repository/product changes will be recorded here.
 - Consolidated `SearchNowBackendRuntime` as the single application backend owner managed by Tauri.
 - Bounded secret-safe diagnostics and hosted Windows RustCore/Tauri compile gates.
 - Shared `AtomicFileStore` for staged persistence, backup recovery, and stale temporary-file cleanup.
-- Normal committed Tauri application icon path used by standard `tauri_build::build()`.
+- Normal committed Tauri PNG/ICO application resources used by standard `tauri_build::build()`.
+- Canonical provider/resource identity validation shared by catalog, session, adapter, and resolved-download layers.
+- Persisted download-state validation, duplicate-id rejection, stale-sequence reconciliation, destination-stage cleanup, and interrupted-finalization recovery.
+- Windows-safe destination filename validation, including reserved DOS device names and trailing dot/space rules.
+- Provider-neutral `QueueCatalogDownloadRequest` product intent at the Tauri IPC boundary.
+- Sanitized download scheduler continuation-error state exposed through download snapshots.
+- Committed `package-lock.json` plus standalone RustCore and Tauri `Cargo.lock` dependency graphs.
 
 ### Changed
 
 - SettingsStore and DownloadStore no longer maintain separate file-replacement/recovery implementations; both delegate to the shared atomic persistence primitive.
+- Production application runtime no longer registers the deterministic `local-file` fixture transport.
+- Tauri download commands no longer accept raw `DownloadRequest`/transport selection from the frontend.
+- Provider/resource validation no longer carries independent size/key rules across runtime layers.
+- Diagnostics current component health is independent from retained historical failure events.
+- Download scheduler continuation errors are retained instead of silently discarded.
 - Windows build readiness no longer depends on generated `OUT_DIR` placeholder icons or `window_icon_path` build-script injection.
-- Repository validation now guards the standard icon/build contract and shared persistence ownership instead of freezing temporary workaround details.
-- README, implementation roadmap, next-action, validation, and observability documentation now describe the implemented backend rather than the initial scaffold state.
+- Repository, Local-promotion, and stable-release verification now use current GitHub Actions v7 releases, `npm ci`, Cargo `--locked`, and read-only repository permissions.
+- Repository validation now requires committed dependency locks and guards the product-intent/production-transport boundary.
+- README, context, implementation roadmap, next-action, validation, backlog, and observability documentation describe the closed remote foundation rather than the initial scaffold state.
+
+### Verified
+
+- Remote foundation verification passes 71 RustCore tests with strict Clippy, frontend architecture/size/typecheck/build checks, and native hosted-Windows RustCore/Tauri locked compilation.
 
 ### Safety / Architecture
 
 - Runtime credential material remains excluded from persisted download/catalog DTOs and public provider status.
 - Provider-session material remains opaque, runtime-only, non-serializable, and non-Debug.
+- Product UI/IPC cannot select arbitrary internal download transports.
 - Protected-content bypass, key distribution, and hidden entitlement-data transmission remain outside the product boundary.

@@ -1,10 +1,10 @@
 # 11 — Backend Observability & Windows Readiness
 
-Status: **remote foundation closure in progress**
+Status: **remote foundation closure complete; target-Windows runtime smoke pending**
 
 ## Goal
 
-SearchNow must remain diagnosable, recoverable, and Windows-buildable without introducing a second logging/runtime system, raw transport control at the UI boundary, or build-only workaround paths.
+SearchNow must remain diagnosable, recoverable, reproducible, and Windows-buildable without introducing a second logging/runtime system, raw transport control at the UI boundary, or build-only workaround paths.
 
 ```text
 SearchNowBackendRuntime
@@ -16,8 +16,9 @@ SearchNowBackendRuntime
 └── recoverable persisted download state
 
 GitHub Actions
-├── Linux repository/backend/frontend gates
-└── Windows RustCore + Tauri compile gate
+├── committed npm/Rust dependency locks
+├── Linux repository/backend/frontend locked gates
+└── Windows RustCore + Tauri locked compile gate
 ```
 
 ## Diagnostic ownership
@@ -28,15 +29,9 @@ Events contain only stable SearchNow-owned fields: timestamp, component, severit
 
 Historical event retention and current health are intentionally separate. A recovered component may report healthy while an older failure event remains available for diagnosis.
 
-## Instrumentation level
-
-Instrument operation boundaries only. Current events cover backend startup/readiness, provider/runtime composition, settings load/save, Minecraft discovery, library scan, package inspection, catalog query, download lifecycle commands, and aggregate runtime snapshots.
-
-Do not emit per-file scan events, per-download-chunk events, headers, or provider payload dumps.
-
 ## Windows build contract
 
-Repository verification runs RustCore tests and a native Tauri compile gate on `windows-latest` after the normal Linux verification gate.
+Repository verification runs RustCore tests and a native Tauri compile gate on `windows-latest` after the Linux verification gate.
 
 Tauri uses normal committed application icon resources at:
 
@@ -45,7 +40,17 @@ EngineData/Frontend/RustApp/src-tauri/icons/icon.png
 EngineData/Frontend/RustApp/src-tauri/icons/icon.ico
 ```
 
-`src-tauri/build.rs` uses the standard `tauri_build::build()` path. Build-time generated ICOs, `OUT_DIR` icon injection, and other implicit fallback workarounds are not part of the architecture. Final branding may replace the temporary icons later without changing build mechanics.
+`src-tauri/build.rs` uses the standard `tauri_build::build()` path. Build-time generated ICOs, `OUT_DIR` icon injection, and implicit fallback workarounds are not part of the architecture.
+
+The final remote-foundation gate runs with committed dependency graphs:
+
+```text
+EngineData/Backend/RustCore/Cargo.lock
+EngineData/Frontend/RustApp/src-tauri/Cargo.lock
+EngineData/Frontend/RustApp/package-lock.json
+```
+
+Frontend verification uses `npm ci`; Rust tests/clippy/Tauri compile use Cargo `--locked`. Verification workflows retain read-only repository permissions.
 
 A green hosted Windows compile gate proves Windows compilation only. It does not prove installed-app runtime behavior, production provider compatibility, production TLS behavior, or user-machine performance.
 
@@ -55,7 +60,7 @@ Settings and download state use the shared `AtomicFileStore` persistence primiti
 
 Download startup validates persisted job identities and state invariants before use. Duplicate or malformed job identities fail closed. The retained sequence is reconciled against existing job ids so a stale `next_sequence` value cannot reuse a prior identity.
 
-Finalization uses a destination-local stage file. Startup removes stale stage files and reconciles a job left in `Finalizing` when the final file was already published with the expected size before the state commit completed. This prevents a successful publish from becoming a false retry conflict after a crash.
+Finalization uses a destination-local stage file. Startup removes stale stage files and reconciles a job left in `Finalizing` when the final file was already published with the expected size before the state commit completed.
 
 Download destination names are validated against Windows file-name restrictions, including reserved DOS device names, forbidden characters, path separators, and trailing dot/space rules.
 
@@ -69,11 +74,25 @@ Provider keys and stable provider resource ids use one canonical validation owne
 
 Scheduler continuation failures are retained as sanitized `scheduler_error` state in download snapshots rather than being silently discarded.
 
-## Future local smoke evidence
+## Remote verification evidence
 
-`tools/windows_smoke_readiness.ps1` remains a later non-destructive TARGET_WINDOWS step. Local runtime claims must not be made until that smoke phase is actually performed.
+The remote closure baseline has passed:
 
-The smoke phase should cover AppData resolution, current GDK/UWP Minecraft discovery, settings save/reload, package inspection, local/provider download finalization, safe diagnostics, and application launch.
+- repository contract verification;
+- Rust formatting;
+- 71 RustCore unit/integration tests;
+- strict Clippy with warnings denied;
+- Tauri adapter formatting;
+- frontend architecture, size, typecheck, and production build;
+- the same RustCore test suite on hosted Windows;
+- frontend install/build via committed `package-lock.json` on hosted Windows;
+- native Windows Tauri `cargo check --locked`.
+
+## Next evidence boundary
+
+`tools/windows_smoke_readiness.ps1` remains a non-destructive TARGET_WINDOWS step. Local runtime claims must not be made until that smoke phase is actually performed.
+
+The smoke phase should cover AppData resolution, current GDK/UWP Minecraft discovery, settings save/reload, package inspection, representative download finalization, safe diagnostics, and application launch.
 
 ## Security boundary
 

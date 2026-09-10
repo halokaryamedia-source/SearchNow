@@ -6,27 +6,35 @@
 
 ```text
 Frontend/RustApp
-→ Tauri 2 desktop application
-→ Svelte 5 + Vite + TypeScript presentation/application layer
-→ Rust Tauri commands + reusable Rust engine
+├─ Svelte 5 + Vite + TypeScript presentation/application layer
+└─ Tauri 2 shell + thin native command adapters
+        ↓
+Backend/RustCore
+└─ SearchNowBackendRuntime + reusable Rust domain/runtime truth
 ```
 
-SearchNow intentionally starts without a Python/local-worker backend. Filesystem, Minecraft discovery, catalog communication, download management, package inspection, validation, settings, and local persistence should stay in Rust unless a future requirement proves that a separate runtime is necessary.
+SearchNow has no Python/local-worker backend. Filesystem access, Minecraft discovery, catalog/provider runtime, download management, package inspection, validation, settings, persistence, and diagnostics remain inside Rust unless a future requirement proves that a separate runtime is necessary and the architecture decision is explicitly revised.
 
 ## Ownership rule
 
 ```text
-Svelte pages/components
+Frontend/RustApp/src/pages + components
 → presentation and transient UI state
 
-src/app/bridge
+Frontend/RustApp/src/app/bridge
 → product-facing facade + thin Tauri command API
 
-src-tauri/src/commands
-→ native IPC boundary only
+Frontend/RustApp/src-tauri/src/commands
+→ native IPC adaptation only
 
-src-tauri/src/engine
-→ reusable application/runtime truth
+Backend/RustCore
+→ reusable application/domain/runtime truth
 ```
 
-Do not create parallel APIs, duplicate runtime state, or a second backend process merely for convenience.
+`SearchNowBackendRuntime` is the single application backend owner. Do not create parallel APIs, duplicate runtime state in Svelte/Tauri commands, or a second backend process merely for convenience.
+
+## Dependency rule
+
+The frontend, standalone RustCore, and Tauri application each have committed dependency locks. Normal verification uses `npm ci` and Cargo `--locked`; dependency resolution changes must be explicit rather than incidental.
+
+Hosted Windows compilation is repository evidence only. Actual target-machine behavior remains a separate local smoke phase.

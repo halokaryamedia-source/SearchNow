@@ -1,6 +1,6 @@
 # SearchNow Context
 
-Status: architecture scaffold / implementation foundation  
+Status: remote repository/backend foundation complete; target-Windows runtime smoke pending  
 Development branch: `develop`  
 Verified integration baseline: `Local`  
 Stable branch: `main`
@@ -45,22 +45,26 @@ Tauri 2
 │  ├─ product-facing facade
 │  └─ thin Tauri command API
 └─ Rust desktop/runtime backend
-   ├─ commands/ = IPC boundary
-   └─ engine/   = reusable runtime/domain truth
+   ├─ EngineData/Backend/RustCore/ = reusable domain/runtime truth
+   ├─ SearchNowBackendRuntime = single application backend owner
+   └─ src-tauri/src/commands/ = thin IPC boundary
 ```
 
-There is no Python worker/current `EngineData/Backend` process. A separate runtime may be added only when a concrete requirement cannot be served cleanly by Rust and the architecture decision is explicitly revised.
+There is no Python worker, local HTTP backend, or second backend process. A separate runtime may be added only when a concrete requirement cannot be served cleanly by Rust and the architecture decision is explicitly revised.
 
 ## Current source roots
 
 ```text
+EngineData/Backend/RustCore/
 EngineData/Frontend/RustApp/
 UserData/
 ```
 
 ## Runtime ownership
 
-Svelte owns UI/transient state only. Rust owns persistent/runtime truth such as Minecraft discovery, library state, catalog sessions, download jobs, package validation, filesystem I/O, settings persistence, and diagnostics as those capabilities are implemented.
+Svelte owns UI/transient state only. Rust owns persistent/runtime truth: Minecraft discovery, library state, catalog sessions, provider resolution, download jobs, package validation, filesystem I/O, settings persistence, and diagnostics.
+
+Settings/download persistence share one crash-recoverable atomic storage primitive. Production downloads expose product intent rather than caller-selected transports. Provider/resource identity validation has one canonical owner. Dependency graphs are committed and verified with npm/Cargo lockfiles.
 
 ## Evidence boundary
 
@@ -70,8 +74,8 @@ legacy binary evidence
 → approved SearchNow requirements
 → docs/foundation/ architecture
 → implementation source
-→ repository/static proof
-→ target-Windows runtime proof
+→ repository/static + hosted Windows compile proof
+→ target-Windows installed runtime proof
 ```
 
 Source/build success is not proof of installed Windows behavior.

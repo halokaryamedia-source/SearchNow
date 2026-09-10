@@ -19,6 +19,11 @@ export function formatBytes(value: number | null | undefined): string {
   return `${amount >= 10 ? amount.toFixed(0) : amount.toFixed(1)} ${units[unit]}`;
 }
 
+export function formatDate(timestampMs: number): string {
+  if (!timestampMs) return "Unknown date";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(timestampMs));
+}
+
 export function formatDateTime(timestampMs: number): string {
   if (!timestampMs) return "Unknown time";
   return new Intl.DateTimeFormat(undefined, {

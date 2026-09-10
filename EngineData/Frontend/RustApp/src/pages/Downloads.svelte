@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { RefreshCw, RotateCcw, Search, Trash2, X } from "@lucide/svelte";
+  import { FolderOpen, RefreshCw, RotateCcw, Search, Trash2, X } from "@lucide/svelte";
+  import { desktopInteractionApi } from "../app/bridge/desktopInteractionApi";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { downloadStateLabel, formatBytes, formatDateTime, progressPercent } from "../app/shared/format";
   import type { DownloadJob, DownloadManagerSnapshot } from "../app/shared/types";
@@ -92,6 +93,19 @@
       error = result.error.message;
     }
     actionJobId = null;
+  }
+
+  async function openFolder(job: DownloadJob): Promise<void> {
+    if (job.state !== "completed" || !job.destinationDirectory) return;
+    actionJobId = job.id;
+    try {
+      await desktopInteractionApi.openDownloadDirectory(job.destinationDirectory);
+      error = "";
+    } catch {
+      error = "The download folder could not be opened.";
+    } finally {
+      actionJobId = null;
+    }
   }
 
   $effect(() => {
@@ -234,6 +248,12 @@
           </div>
 
           <div class="download-card__actions">
+            {#if job.state === "completed" && job.destinationDirectory}
+              <button class="button button--secondary button--compact" type="button" onclick={() => openFolder(job)} disabled={actionJobId === job.id}>
+                <FolderOpen size={15} aria-hidden="true" />
+                Open folder
+              </button>
+            {/if}
             {#if canCancel(job)}
               <button class="icon-button" type="button" title="Cancel" aria-label={`Cancel ${job.displayName}`} onclick={() => cancel(job)} disabled={actionJobId === job.id}>
                 <X size={16} aria-hidden="true" />

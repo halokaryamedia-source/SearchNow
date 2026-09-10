@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { RefreshCw } from "@lucide/svelte";
   import { runtimeProductFacade } from "./app/bridge/runtimeProductFacade";
+  import { isAppRoute, routeMeta } from "./app/shared/navigation";
   import type { AppRoute, ProductRuntimeSnapshot } from "./app/shared/types";
   import Sidebar from "./components/layout/Sidebar.svelte";
   import PageState from "./components/ui/PageState.svelte";
@@ -12,7 +13,6 @@
   import Settings from "./pages/Settings.svelte";
 
   const ROUTE_STORAGE_KEY = "searchnow:last-route";
-  const routes: AppRoute[] = ["library", "discover", "downloads", "settings"];
 
   let route = $state<AppRoute>("library");
   let booting = $state(true);
@@ -20,6 +20,7 @@
   let snapshot = $state<ProductRuntimeSnapshot | null>(null);
 
   let health = $derived(snapshot?.backend?.diagnostics.health.state ?? "unknown");
+  let currentRoute = $derived(routeMeta(route));
   let runtimeLabel = $derived(
     booting
       ? "Checking runtime"
@@ -32,10 +33,6 @@
   let runtimeTone = $derived<"ready" | "warning" | "muted">(
     booting ? "muted" : snapshot?.ready && health !== "degraded" ? "ready" : "warning",
   );
-
-  function isAppRoute(value: string | null): value is AppRoute {
-    return value !== null && routes.includes(value as AppRoute);
-  }
 
   async function refreshRuntime(): Promise<void> {
     if (refreshing) return;
@@ -63,8 +60,9 @@
   <main class="app-main">
     <header class="topbar">
       <div>
-        <span class="topbar__kicker">SearchNow</span>
-        <strong>Bedrock content workspace</strong>
+        <span class="topbar__kicker">{currentRoute.kicker}</span>
+        <strong>{currentRoute.label}</strong>
+        <small class="topbar__description">{currentRoute.description}</small>
       </div>
       <div class="topbar__actions">
         <button class="icon-button icon-button--quiet" type="button" title="Refresh runtime" aria-label="Refresh runtime" onclick={refreshRuntime} disabled={booting || refreshing}>

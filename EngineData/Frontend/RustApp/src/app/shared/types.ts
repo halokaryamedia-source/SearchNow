@@ -246,6 +246,8 @@ export type CatalogItem = {
   provider: string;
   itemId: string;
   title: string;
+  creatorName: string | null;
+  thumbnailUrl: string | null;
   description: string | null;
   contentType: CatalogContentType;
   tags: string[];

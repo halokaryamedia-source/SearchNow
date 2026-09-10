@@ -138,6 +138,21 @@ impl CatalogError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogDownloadMetadata {
+    pub file_name: String,
+    pub expected_bytes: Option<u64>,
+}
+
+impl CatalogDownloadMetadata {
+    pub fn new(file_name: impl Into<String>, expected_bytes: Option<u64>) -> Self {
+        Self {
+            file_name: file_name.into(),
+            expected_bytes,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogProviderItem {
     pub item_id: String,
     pub title: String,
@@ -148,8 +163,6 @@ pub struct CatalogProviderItem {
     pub tags: Vec<String>,
     pub published_at_ms: Option<u64>,
     pub updated_at_ms: Option<u64>,
-    pub file_name: Option<String>,
-    pub expected_bytes: Option<u64>,
     pub download: Option<CatalogDownloadRef>,
 }
 

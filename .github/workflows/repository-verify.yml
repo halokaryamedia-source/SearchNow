@@ -20,8 +20,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Verify repository contracts
@@ -33,7 +33,7 @@ jobs:
           cargo clippy --manifest-path EngineData/Backend/RustCore/Cargo.toml --all-targets -- -D warnings
       - name: Verify Tauri adapter formatting
         run: cargo fmt --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml -- --check
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Install frontend dependencies
@@ -42,6 +42,18 @@ jobs:
       - name: Verify frontend architecture and build
         working-directory: EngineData/Frontend/RustApp
         run: npm run validate:quick
+      - name: Generate Tauri dependency lock
+        run: cargo generate-lockfile --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml
+      - name: Export resolved dependency locks
+        uses: actions/upload-artifact@v7
+        with:
+          name: dependency-locks-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            EngineData/Backend/RustCore/Cargo.lock
+            EngineData/Frontend/RustApp/src-tauri/Cargo.lock
+            EngineData/Frontend/RustApp/package-lock.json
 
   windows-readiness:
     name: Windows Rust/Tauri compile gate
@@ -49,10 +61,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify RustCore on Windows
         run: cargo test --manifest-path EngineData/Backend/RustCore/Cargo.toml
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Install frontend dependencies on Windows

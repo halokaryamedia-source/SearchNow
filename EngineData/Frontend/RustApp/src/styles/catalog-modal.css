@@ -50,6 +50,11 @@
   background: var(--sn-surface-soft);
 }
 
+.catalog-modal__media--local {
+  min-height: 210px;
+  background: radial-gradient(circle at 35% 24%, #2b3a4f 0, #18222e 52%, #121922 100%);
+}
+
 .catalog-modal__media img {
   width: 100%;
   height: 100%;
@@ -119,6 +124,25 @@
   margin: 0;
   color: var(--sn-text-muted);
   line-height: 1.65;
+}
+
+.catalog-modal__issue {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgb(239 189 110 / 0.28);
+  border-radius: var(--sn-radius-md);
+  background: var(--sn-warning-surface);
+}
+
+.catalog-modal__issue strong {
+  font-size: 13px;
+}
+
+.catalog-modal__issue span {
+  color: var(--sn-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .catalog-modal__tags {

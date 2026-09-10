@@ -4,6 +4,7 @@ import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/diagnostics.css";
 import "./styles/results.css";
+import "./styles/content-details.css";
 import "./styles/responsive.css";
 
 const target = document.getElementById("app");

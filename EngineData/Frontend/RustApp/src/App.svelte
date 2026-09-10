@@ -69,14 +69,11 @@
         <section class="page">
           <PageState kind="loading" title="Starting SearchNow" message="Loading your local Minecraft Bedrock workspace." />
         </section>
-      {:else if route === "library"}
-        <Library runtimeReady={snapshot?.ready ?? false} />
-      {:else if route === "discover"}
-        <Discover runtimeReady={snapshot?.ready ?? false} providers={snapshot?.backend?.providers ?? []} />
-      {:else if route === "downloads"}
-        <Downloads runtimeReady={snapshot?.ready ?? false} />
       {:else}
-        <Settings {snapshot} />
+        <Library runtimeReady={snapshot?.ready ?? false} active={route === "library"} />
+        <Discover runtimeReady={snapshot?.ready ?? false} providers={snapshot?.backend?.providers ?? []} active={route === "discover"} />
+        <Downloads runtimeReady={snapshot?.ready ?? false} active={route === "downloads"} />
+        <Settings {snapshot} active={route === "settings"} />
       {/if}
     </div>
   </main>

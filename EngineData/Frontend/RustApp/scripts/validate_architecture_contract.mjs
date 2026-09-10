@@ -111,7 +111,7 @@ for (const file of commandPaths) {
 }
 
 const downloadCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/download.rs"), "utf8");
-if (downloadCommand.includes("DownloadRequest")) errors.push("download.rs: raw DownloadRequest/transport selection must not cross the Tauri IPC boundary");
+if (/\bDownloadRequest\b/.test(downloadCommand)) errors.push("download.rs: raw DownloadRequest/transport selection must not cross the Tauri IPC boundary");
 if (!downloadCommand.includes("QueueCatalogDownloadRequest")) errors.push("download.rs: download IPC must accept provider-neutral catalog download intent");
 
 const registry = await readFile(resolve(appRoot, "src-tauri/src/commands/registry.rs"), "utf8");

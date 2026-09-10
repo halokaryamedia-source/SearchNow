@@ -1,0 +1,33 @@
+name: Format Foundation Slice
+
+on:
+  push:
+    branches:
+      - foundation-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: foundation-hardening
+          fetch-depth: 0
+      - name: Format Rust workspace
+        run: cargo fmt --all
+      - name: Commit formatting
+        run: |
+          git add EngineData/Backend/RustCore EngineData/Frontend/RustApp/src-tauri
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "style(rust): apply canonical workspace formatting"
+          git fetch origin foundation-hardening
+          git rebase origin/foundation-hardening
+          git push origin HEAD:foundation-hardening

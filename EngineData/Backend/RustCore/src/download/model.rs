@@ -16,8 +16,6 @@ pub struct DownloadRequest {
     pub source: DownloadSourceRef,
     pub display_name: String,
     pub destination_file_name: String,
-    #[serde(default)]
-    pub destination_directory: Option<PathBuf>,
     pub expected_bytes: Option<u64>,
 }
 

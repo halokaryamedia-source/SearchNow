@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
+  import { desktopInteractionApi } from "../app/bridge/desktopInteractionApi";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { catalogContentTypeLabel, formatDate } from "../app/shared/format";
   import type {
@@ -36,7 +37,9 @@
   let page = $state<CatalogPage | null>(null);
   let loading = $state(false);
   let loadingMore = $state(false);
+  let downloadBusy = $state(false);
   let error = $state("");
+  let downloadMessage = $state("");
   let requestSequence = 0;
 
   let catalogProviders = $derived(providers.filter((provider) => provider.capabilities.catalog));
@@ -91,10 +94,41 @@
 
   function openDetails(item: CatalogItem): void {
     selectedItem = item;
+    downloadMessage = "";
   }
 
   function closeDetails(): void {
-    selectedItem = null;
+    if (!downloadBusy) selectedItem = null;
+  }
+
+  async function startDownload(): Promise<void> {
+    const item = selectedItem;
+    if (!item?.download || !item.fileName || downloadBusy) return;
+
+    downloadBusy = true;
+    downloadMessage = "";
+    try {
+      const destinationDirectory = await desktopInteractionApi.chooseDownloadDirectory();
+      if (!destinationDirectory) return;
+
+      const result = await runtimeProductFacade.queueCatalogDownload({
+        download: item.download,
+        displayName: item.title,
+        destinationFileName: item.fileName,
+        destinationDirectory,
+        expectedBytes: item.expectedBytes,
+      });
+      if (result.ok) {
+        selectedItem = null;
+        downloadMessage = `${item.title} was added to Downloads.`;
+      } else {
+        downloadMessage = result.error.message;
+      }
+    } catch {
+      downloadMessage = "SearchNow could not open the folder picker.";
+    } finally {
+      downloadBusy = false;
+    }
   }
 
   async function queryCatalog(
@@ -209,6 +243,10 @@
     </div>
   {/if}
 
+  {#if downloadMessage}
+    <Notice tone={selectedItem ? "warning" : "success"} title={selectedItem ? "Download could not start" : "Download started"} message={downloadMessage} />
+  {/if}
+
   {#if error}
     <Notice
       tone="warning"
@@ -269,4 +307,10 @@
   {/if}
 </section>
 
-<CatalogDetailModal item={selectedItem} open={selectedItem !== null} onClose={closeDetails} />
+<CatalogDetailModal
+  item={selectedItem}
+  open={selectedItem !== null}
+  onClose={closeDetails}
+  onDownload={selectedItem?.download && selectedItem.fileName ? startDownload : null}
+  {downloadBusy}
+/>

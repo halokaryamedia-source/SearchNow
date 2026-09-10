@@ -29,6 +29,10 @@ All notable SearchNow repository/product changes will be recorded here.
 - Runtime-connected frontend workspace for Library, Downloads, Settings, runtime health, and safe diagnostics.
 - Provider-neutral Discover search/filter/sort/pagination UI plus a thin Tauri `query_catalog` adapter over the existing Rust application runtime.
 - Shared frontend DTO/format helpers and a single normalized `runtimeProductFacade` over the raw Tauri bridge.
+- Shared `PageState` and `Notice` frontend primitives for consistent loading, empty, warning, error, and success states.
+- Responsive narrow-window layout behavior, keyboard focus visibility, and reduced-motion support.
+- Local Library sorting and Download-history search/filter controls.
+- Typed frontend `queue_catalog_download` bridge/facade support without exposing raw transport selection.
 
 ### Changed
 
@@ -46,6 +50,8 @@ All notable SearchNow repository/product changes will be recorded here.
 - Downloads refreshes adaptively while mounted and stops polling when the page/runtime is unavailable.
 - Settings tracks unsaved changes, disables redundant saves, clears stale `Saved` feedback after edits, and requires saved discovery preferences before rescan.
 - Product-facing loading/empty/unavailable copy no longer exposes implementation details that belong in technical/diagnostic surfaces.
+- Product pages remain mounted across sidebar navigation so search/filter/sort state is preserved; filesystem scans, catalog queries, download polling, and diagnostics reads run only for the active page.
+- Sidebar navigation now exposes current-page semantics while the existing desktop visual language remains intact.
 
 ### Verified
 

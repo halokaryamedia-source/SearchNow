@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { AlertTriangle, RefreshCw, RotateCcw, Trash2, X } from "@lucide/svelte";
+  import { RefreshCw, RotateCcw, Trash2, X } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { downloadStateLabel, formatBytes, formatDateTime, progressPercent } from "../app/shared/format";
   import type { DownloadJob, DownloadManagerSnapshot } from "../app/shared/types";
+  import Notice from "../components/ui/Notice.svelte";
+  import PageState from "../components/ui/PageState.svelte";
 
   let { runtimeReady }: { runtimeReady: boolean } = $props();
   let snapshot = $state<DownloadManagerSnapshot | null>(null);
@@ -105,36 +107,21 @@
   </div>
 
   {#if snapshot?.schedulerError}
-    <article class="notice notice--warning">
-      <AlertTriangle size={16} />
-      <div><strong>Download queue needs attention.</strong><span>{snapshot.schedulerError.message}</span></div>
-    </article>
+    <Notice tone="warning" title="Download queue needs attention." message={snapshot.schedulerError.message} />
   {/if}
 
   {#if error}
-    <article class="notice notice--error">
-      <AlertTriangle size={16} />
-      <div><strong>Download action failed.</strong><span>{error}</span></div>
-    </article>
+    <Notice tone="error" title="Download action failed." message={error} />
   {/if}
 
   {#if !runtimeReady}
-    <article class="empty-panel">
-      <div class="empty-panel__icon">03</div>
-      <div><h2>Downloads unavailable</h2><p>SearchNow could not connect to the desktop runtime needed to manage transfers.</p></div>
-    </article>
+    <PageState marker="03" title="Downloads unavailable" message="SearchNow could not connect to the desktop runtime needed to manage transfers." />
   {:else if !snapshot && !error}
-    <article class="empty-panel">
-      <div class="empty-panel__icon"><RefreshCw size={18} class="spin" /></div>
-      <div><h2>Loading downloads</h2><p>Reading your current queue and recent download history.</p></div>
-    </article>
+    <PageState kind="loading" title="Loading downloads" message="Reading your current queue and recent download history." />
   {:else if snapshot && jobs.length === 0}
-    <article class="empty-panel">
-      <div class="empty-panel__icon">03</div>
-      <div><h2>No downloads yet</h2><p>Downloads started from Discover will appear here with their current state and progress.</p></div>
-    </article>
+    <PageState marker="03" title="No downloads yet" message="Downloads started from Discover will appear here with their current state and progress." />
   {:else if snapshot}
-    <div class="download-list">
+    <div class="download-list" aria-live="polite">
       {#each jobs as job (job.id)}
         {@const percent = progressPercent(job.progress.downloadedBytes, job.progress.totalBytes)}
         <article class="download-card">
@@ -147,7 +134,7 @@
               <span class="download-card__time">{formatDateTime(job.updatedAtMs)}</span>
             </div>
 
-            <div class:progress-track--indeterminate={percent === null && ["preparing", "transferring", "finalizing"].includes(job.state)} class="progress-track">
+            <div class:progress-track--indeterminate={percent === null && ["preparing", "transferring", "finalizing"].includes(job.state)} class="progress-track" aria-label={`${job.displayName} progress`}>
               {#if percent !== null}<span style={`width:${percent}%`}></span>{:else}<span></span>{/if}
             </div>
 
@@ -157,7 +144,7 @@
             </div>
 
             {#if job.lastError}
-              <div class="download-card__error"><AlertTriangle size={14} /><span>{job.lastError.message}</span></div>
+              <Notice tone="warning" title={job.lastError.code} message={job.lastError.message} />
             {/if}
 
             <details class="technical-details">

@@ -19,23 +19,33 @@ pub struct DownloadWorkspacePlan {
 }
 
 pub fn validate_destination_file_name(value: &str) -> BackendResult<()> {
+    let reserved = windows_reserved_name(value);
+    let unsupported_character = value.chars().any(|character| {
+        character.is_control()
+            || matches!(
+                character,
+                '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+            )
+    });
+
     if value.is_empty()
         || value == "."
         || value == ".."
         || value.len() > MAX_DESTINATION_FILE_NAME_BYTES
-        || value.contains('/')
-        || value.contains('\\')
-        || value.chars().any(char::is_control)
+        || value.ends_with('.')
+        || value.ends_with(' ')
+        || unsupported_character
+        || reserved
     {
         return Err(BackendError::new(
             "download_destination_name_invalid",
-            "Download destination must be one safe file name without path separators.",
+            "Download destination must be one Windows-safe file name.",
         ));
     }
     Ok(())
 }
 
-fn validate_job_id(value: &str) -> BackendResult<()> {
+pub(crate) fn validate_job_id(value: &str) -> BackendResult<()> {
     if value.is_empty()
         || value.len() > MAX_JOB_ID_BYTES
         || !value
@@ -161,6 +171,53 @@ pub fn cleanup_workspace(plan: &DownloadWorkspacePlan) -> BackendResult<()> {
     })
 }
 
+pub fn finalization_stage_path(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> {
+    validate_job_id(&plan.job_id)?;
+    let destination_dir = plan.final_path.parent().ok_or_else(|| {
+        BackendError::new(
+            "download_destination_path_invalid",
+            "Download destination has no parent directory.",
+        )
+    })?;
+    Ok(destination_dir.join(format!(".searchnow-{}.part", plan.job_id)))
+}
+
+pub fn cleanup_finalization_stage(plan: &DownloadWorkspacePlan) -> BackendResult<()> {
+    let stage_path = finalization_stage_path(plan)?;
+    if !stage_path.exists() {
+        return Ok(());
+    }
+    let metadata = fs::symlink_metadata(&stage_path).map_err(|error| {
+        BackendError::from_io(
+            "download_finalize_stage_metadata_failed",
+            "SearchNow could not inspect its destination staging file.",
+            error,
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.file_type().is_file() {
+        return Err(BackendError::new(
+            "download_finalize_stage_invalid",
+            "Download destination staging path is not a regular non-symlink file.",
+        ));
+    }
+    fs::remove_file(&stage_path).map_err(|error| {
+        BackendError::from_io(
+            "download_finalize_stage_cleanup_failed",
+            "SearchNow could not clean an interrupted destination staging file.",
+            error,
+        )
+    })
+}
+
+pub fn finalized_file_matches(plan: &DownloadWorkspacePlan, expected_bytes: u64) -> bool {
+    let Ok(metadata) = fs::symlink_metadata(&plan.final_path) else {
+        return false;
+    };
+    metadata.file_type().is_file()
+        && !metadata.file_type().is_symlink()
+        && metadata.len() == expected_bytes
+}
+
 pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> {
     validate_destination_file_name(
         plan.final_path
@@ -202,7 +259,8 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
         ));
     }
 
-    let stage_path = destination_dir.join(format!(".searchnow-{}.part", plan.job_id));
+    cleanup_finalization_stage(plan)?;
+    let stage_path = finalization_stage_path(plan)?;
     let mut source = File::open(&plan.payload_path).map_err(|error| {
         BackendError::from_io(
             "download_payload_open_failed",
@@ -242,4 +300,30 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
     }
     let _ = fs::remove_file(&stage_path);
     Ok(plan.final_path.clone())
+}
+
+fn windows_reserved_name(value: &str) -> bool {
+    let base = value.split('.').next().unwrap_or(value).to_ascii_uppercase();
+    matches!(base.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || matches!(
+            base.as_str(),
+            "COM1"
+                | "COM2"
+                | "COM3"
+                | "COM4"
+                | "COM5"
+                | "COM6"
+                | "COM7"
+                | "COM8"
+                | "COM9"
+                | "LPT1"
+                | "LPT2"
+                | "LPT3"
+                | "LPT4"
+                | "LPT5"
+                | "LPT6"
+                | "LPT7"
+                | "LPT8"
+                | "LPT9"
+        )
 }

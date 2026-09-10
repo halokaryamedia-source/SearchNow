@@ -1,10 +1,12 @@
 use crate::{
-    app_runtime::{SearchNowBackendPaths, SearchNowBackendRuntime},
+    app_runtime::{
+        QueueCatalogDownloadRequest, SearchNowBackendPaths, SearchNowBackendRuntime,
+    },
+    catalog::CatalogDownloadRef,
     diagnostics::{BackendStartupPhase, DiagnosticSeverity},
     download::{
-        provider_download_source, DownloadJobState, DownloadManagerSnapshot, DownloadRequest,
-        HttpTransport, HttpTransportPolicy, ProviderResolveFailure, ResolvedResource,
-        ResourceResolver,
+        DownloadJobState, DownloadManagerSnapshot, HttpTransport, HttpTransportPolicy,
+        ProviderResolveFailure, ResolvedResource, ResourceResolver,
     },
     error::BackendResult,
     platform::PlatformContext,
@@ -83,6 +85,7 @@ fn runtime_snapshot_is_safe_and_consistent_without_providers() {
     assert!(snapshot.providers.is_empty());
     assert_eq!(snapshot.downloads.active_jobs, 0);
     assert_eq!(snapshot.downloads.queued_jobs, 0);
+    assert!(snapshot.downloads.scheduler_error.is_none());
     assert_eq!(
         snapshot.diagnostics.health.startup_phase,
         BackendStartupPhase::Ready
@@ -110,8 +113,11 @@ fn composed_provider_resolver_is_used_by_application_download_runtime() {
     assert!(status[0].capabilities.resolved_download);
 
     runtime
-        .queue_download(DownloadRequest {
-            source: provider_download_source("runtime-fixture", "asset").expect("provider source"),
+        .queue_catalog_download(QueueCatalogDownloadRequest {
+            download: CatalogDownloadRef::ProviderResolved {
+                provider: "runtime-fixture".into(),
+                resource_id: "asset".into(),
+            },
             display_name: "Runtime Fixture".into(),
             destination_file_name: "runtime.mcpack".into(),
             expected_bytes: Some(payload.len() as u64),

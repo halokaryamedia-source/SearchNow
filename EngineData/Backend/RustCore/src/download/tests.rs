@@ -118,6 +118,30 @@ fn recovery_marks_active_jobs_interrupted() {
 }
 
 #[test]
+fn recovery_rejects_duplicate_job_ids() {
+    let mut manager = DownloadManager::new(DownloadPolicy::default()).expect("manager");
+    manager.enqueue(request("pack")).expect("queue");
+    let mut persisted = manager.persisted_state();
+    persisted.jobs.push(persisted.jobs[0].clone());
+    let error = DownloadManager::recover(DownloadPolicy::default(), persisted)
+        .expect_err("duplicate ids must fail closed");
+    assert_eq!(error.code(), "download_state_duplicate_job");
+}
+
+#[test]
+fn recovery_advances_sequence_past_existing_job_ids() {
+    let mut manager = DownloadManager::new(DownloadPolicy::default()).expect("manager");
+    manager.enqueue(request("old")).expect("queue");
+    let mut persisted = manager.persisted_state();
+    persisted.jobs[0].id = "download-000010".into();
+    persisted.next_sequence = 1;
+    let mut recovered =
+        DownloadManager::recover(DownloadPolicy::default(), persisted).expect("recover");
+    let next = recovered.enqueue(request("next")).expect("next queue");
+    assert_eq!(next.id, "download-000011");
+}
+
+#[test]
 fn store_round_trip_preserves_queue() {
     let directory = tempfile::tempdir().expect("tempdir");
     let store = DownloadStore::new(directory.path().join("downloads.json"));
@@ -140,6 +164,24 @@ fn destination_file_name_cannot_escape_root() {
     )
     .expect_err("unsafe destination must fail");
     assert_eq!(error.code(), "download_destination_name_invalid");
+}
+
+#[test]
+fn windows_reserved_destination_names_are_rejected() {
+    for name in [
+        "CON.mcpack",
+        "nul.mcpack",
+        "COM1.mcpack",
+        "LPT9.mcpack",
+        "pack.mcpack.",
+        "pack.mcpack ",
+        "bad:name.mcpack",
+        "bad?.mcpack",
+    ] {
+        let error = validate_destination_file_name(name).expect_err("Windows-unsafe name");
+        assert_eq!(error.code(), "download_destination_name_invalid");
+    }
+    validate_destination_file_name("valid-pack.mcpack").expect("valid name");
 }
 
 #[test]

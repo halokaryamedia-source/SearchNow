@@ -1,6 +1,6 @@
 use crate::{
     build_local_backend_snapshot,
-    catalog::{CatalogError, CatalogPage, CatalogRequest},
+    catalog::{CatalogDownloadRef, CatalogError, CatalogPage, CatalogRequest},
     diagnostics::{
         BackendDiagnosticsSnapshot, DiagnosticComponent, DiagnosticSeverity, DiagnosticsBuffer,
     },
@@ -18,7 +18,7 @@ use crate::{
     settings::{AppSettings, SettingsStore},
     LocalBackendSnapshot,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -54,6 +54,15 @@ pub struct BackendRuntimeSnapshot {
     pub providers: Vec<ProviderRuntimeStatus>,
     pub downloads: DownloadManagerSnapshot,
     pub diagnostics: BackendDiagnosticsSnapshot,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueueCatalogDownloadRequest {
+    pub download: CatalogDownloadRef,
+    pub display_name: String,
+    pub destination_file_name: String,
+    pub expected_bytes: Option<u64>,
 }
 
 #[derive(Clone)]
@@ -101,8 +110,6 @@ impl SearchNowBackendRuntime {
             Some(provider_started.elapsed()),
         );
 
-        // Production exposes network/provider transports only. The deterministic
-        // local-file transport remains available to tests and explicit dev fixtures.
         let mut transports = DownloadTransportRegistry::new();
         transports.register(Arc::new(http.clone()))?;
         transports.register(Arc::new(ProviderResolvedTransport::new(
@@ -280,17 +287,28 @@ impl SearchNowBackendRuntime {
         self.downloads.snapshot()
     }
 
-    pub fn queue_download(&self, request: DownloadRequest) -> BackendResult<DownloadJob> {
+    pub fn queue_catalog_download(
+        &self,
+        request: QueueCatalogDownloadRequest,
+    ) -> BackendResult<DownloadJob> {
         let started = Instant::now();
-        let result = self.downloads.queue(request);
+        let result = (|| {
+            let source = request.download.to_download_source()?;
+            self.downloads.queue(DownloadRequest {
+                source,
+                display_name: request.display_name,
+                destination_file_name: request.destination_file_name,
+                expected_bytes: request.expected_bytes,
+            })
+        })();
         self.diagnostics.record_outcome(
             DiagnosticComponent::Download,
             started,
             result.is_ok(),
             "download_queue_ok",
-            "Download job queued.",
+            "Catalog download job queued.",
             "download_queue_failed",
-            "Download job could not be queued.",
+            "Catalog download job could not be queued.",
             DiagnosticSeverity::Warning,
         );
         result

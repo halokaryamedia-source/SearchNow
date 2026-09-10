@@ -3,7 +3,10 @@ use super::{
     DownloadSourceRef, DownloadTransport, DownloadTransportFailure, DownloadTransportStream,
     HttpTransport,
 };
-use crate::error::{BackendError, BackendResult};
+use crate::{
+    error::{BackendError, BackendResult},
+    identity::{valid_provider_key, valid_stable_resource_id},
+};
 use std::{
     collections::HashMap,
     io::{self, Read},
@@ -12,8 +15,6 @@ use std::{
 };
 
 pub const RESOLVED_PROVIDER_TRANSPORT_KEY: &str = "provider-resolved";
-const MAX_PROVIDER_KEY_BYTES: usize = 64;
-const MAX_STABLE_RESOURCE_ID_BYTES: usize = 2_048;
 const MAX_REFRESH_ATTEMPTS: usize = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -236,26 +237,12 @@ fn validate_provider_reference(reference: &ProviderResourceRef) -> Result<(), &'
     if !valid_provider_key(&reference.provider) {
         return Err("Provider resource reference contains an invalid provider key.");
     }
-    if reference.resource_id.is_empty()
-        || reference.resource_id.len() > MAX_STABLE_RESOURCE_ID_BYTES
-        || reference.resource_id.chars().any(char::is_control)
-        || reference.resource_id.contains("://")
-        || reference.resource_id.contains('?')
-        || reference.resource_id.contains('#')
-    {
+    if !valid_stable_resource_id(&reference.resource_id) {
         return Err(
             "Provider resource id must be a stable non-secret opaque identity, not runtime URL material.",
         );
     }
     Ok(())
-}
-
-fn valid_provider_key(key: &str) -> bool {
-    !key.is_empty()
-        && key.len() <= MAX_PROVIDER_KEY_BYTES
-        && key
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 fn reference_failure() -> DownloadTransportFailure {

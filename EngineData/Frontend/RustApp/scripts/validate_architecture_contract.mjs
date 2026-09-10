@@ -26,6 +26,7 @@ const backendRequired = [
   "Cargo.toml",
   "src/lib.rs",
   "src/app_runtime.rs",
+  "src/identity.rs",
   "src/settings.rs",
   "src/minecraft.rs",
   "src/library.rs",
@@ -109,6 +110,13 @@ for (const file of commandPaths) {
   }
 }
 
+const downloadCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/download.rs"), "utf8");
+if (downloadCommand.includes("DownloadRequest")) errors.push("download.rs: raw DownloadRequest/transport selection must not cross the Tauri IPC boundary");
+if (!downloadCommand.includes("QueueCatalogDownloadRequest")) errors.push("download.rs: download IPC must accept provider-neutral catalog download intent");
+
+const registry = await readFile(resolve(appRoot, "src-tauri/src/commands/registry.rs"), "utf8");
+if (!registry.includes("queue_catalog_download")) errors.push("Tauri registry must expose queue_catalog_download instead of raw transport queuing");
+
 const bootstrap = await readFile(resolve(appRoot, "src-tauri/src/app_bootstrap.rs"), "utf8");
 if (!bootstrap.includes("SearchNowBackendRuntime::new")) errors.push("Tauri bootstrap must construct the consolidated SearchNowBackendRuntime");
 if (!bootstrap.includes("app.manage(runtime)")) errors.push("Tauri bootstrap must manage one consolidated backend runtime");
@@ -119,6 +127,7 @@ for (const forbidden of ["DownloadExecutionRuntime", "DownloadTransportRegistry"
 const lib = await readFile(resolve(backendRoot, "src/lib.rs"), "utf8");
 if (!lib.includes("pub mod app_runtime")) errors.push("RustCore must expose the application backend runtime");
 if (!lib.includes("pub mod catalog")) errors.push("RustCore must expose the provider-neutral catalog domain");
+if (!lib.includes("pub mod identity")) errors.push("RustCore must expose the canonical provider/resource identity contract");
 if (!lib.includes("pub mod provider_session")) errors.push("RustCore must expose the shared provider-session runtime boundary");
 if (!lib.includes("pub mod provider_adapter")) errors.push("RustCore must expose the integrated provider adapter boundary");
 
@@ -131,9 +140,11 @@ for (const needle of [
   "ProviderResolvedTransport::new",
   "DownloadExecutionRuntime::new",
   "BackendRuntimeSnapshot",
+  "QueueCatalogDownloadRequest",
 ]) {
   if (!appRuntime.includes(needle)) errors.push(`application backend runtime is missing composition contract ${needle}`);
 }
+if (appRuntime.includes("DownloadTransportRegistry::with_local_file")) errors.push("production application runtime must not register local-file fixture transport");
 
 if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);

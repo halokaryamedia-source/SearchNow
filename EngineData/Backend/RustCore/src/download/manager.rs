@@ -3,14 +3,18 @@ use super::{
         DownloadFailure, DownloadJob, DownloadJobState, DownloadManagerSnapshot, DownloadPolicy,
         DownloadProgress, DownloadRequest, PersistedDownloadState, DOWNLOAD_SCHEMA_VERSION,
     },
-    workspace::validate_destination_file_name,
+    workspace::{validate_destination_file_name, validate_job_id},
 };
-use crate::error::{BackendError, BackendResult};
-use std::time::{SystemTime, UNIX_EPOCH};
+use crate::{
+    error::{BackendError, BackendResult},
+    identity::MAX_DOWNLOAD_RESOURCE_ID_BYTES,
+};
+use std::{collections::HashSet, time::{SystemTime, UNIX_EPOCH}};
 
 const MAX_TRANSPORT_KEY_BYTES: usize = 64;
-const MAX_RESOURCE_ID_BYTES: usize = 512;
 const MAX_DISPLAY_NAME_BYTES: usize = 256;
+const MAX_FAILURE_CODE_BYTES: usize = 64;
+const MAX_FAILURE_MESSAGE_BYTES: usize = 512;
 const MAX_ACTIVE_JOBS: usize = 16;
 const MAX_RETAINED_JOBS: usize = 5_000;
 
@@ -48,6 +52,27 @@ impl DownloadManager {
                 "Persisted download state exceeds the configured job limit.",
             ));
         }
+
+        let mut seen_ids = HashSet::with_capacity(persisted.jobs.len());
+        let mut max_sequence = 0_u64;
+        for job in &persisted.jobs {
+            validate_persisted_job(job)?;
+            if !seen_ids.insert(job.id.as_str()) {
+                return Err(BackendError::new(
+                    "download_state_duplicate_job",
+                    "Persisted download state contains duplicate job identities.",
+                ));
+            }
+            max_sequence = max_sequence.max(parse_job_sequence(&job.id)?);
+        }
+
+        if persisted.next_sequence == u64::MAX || max_sequence == u64::MAX {
+            return Err(BackendError::new(
+                "download_state_sequence_invalid",
+                "Persisted download sequence cannot be safely advanced.",
+            ));
+        }
+
         let now = now_ms();
         let mut jobs = persisted.jobs;
         for job in &mut jobs {
@@ -61,9 +86,13 @@ impl DownloadManager {
                 job.updated_at_ms = now;
             }
         }
+
         Ok(Self {
             policy,
-            next_sequence: persisted.next_sequence.max(1),
+            next_sequence: persisted
+                .next_sequence
+                .max(max_sequence.saturating_add(1))
+                .max(1),
             jobs,
         })
     }
@@ -78,6 +107,7 @@ impl DownloadManager {
                 .filter(|job| job.state == DownloadJobState::Queued)
                 .count(),
             jobs: self.jobs.clone(),
+            scheduler_error: None,
         }
     }
 
@@ -97,7 +127,7 @@ impl DownloadManager {
                 "Download history reached its configured retained-job limit.",
             ));
         }
-        let id = self.next_id();
+        let id = self.next_id()?;
         let now = now_ms();
         let job = DownloadJob {
             id,
@@ -344,12 +374,18 @@ impl DownloadManager {
             })
     }
 
-    fn next_id(&mut self) -> String {
+    fn next_id(&mut self) -> BackendResult<String> {
         loop {
-            let id = format!("download-{:06}", self.next_sequence);
-            self.next_sequence = self.next_sequence.saturating_add(1);
+            let sequence = self.next_sequence;
+            self.next_sequence = self.next_sequence.checked_add(1).ok_or_else(|| {
+                BackendError::new(
+                    "download_sequence_exhausted",
+                    "Download sequence cannot be safely advanced.",
+                )
+            })?;
+            let id = format!("download-{sequence:06}");
             if !self.jobs.iter().any(|job| job.id == id) {
-                return id;
+                return Ok(id);
             }
         }
     }
@@ -395,7 +431,7 @@ fn validate_request(request: &DownloadRequest) -> BackendResult<()> {
         ));
     }
     if request.source.resource_id.is_empty()
-        || request.source.resource_id.len() > MAX_RESOURCE_ID_BYTES
+        || request.source.resource_id.len() > MAX_DOWNLOAD_RESOURCE_ID_BYTES
         || request.source.resource_id.chars().any(char::is_control)
     {
         return Err(BackendError::new(
@@ -404,6 +440,87 @@ fn validate_request(request: &DownloadRequest) -> BackendResult<()> {
         ));
     }
     validate_destination_file_name(&request.destination_file_name)
+}
+
+fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
+    validate_job_id(&job.id)?;
+    let _ = parse_job_sequence(&job.id)?;
+    validate_request(&DownloadRequest {
+        source: job.source.clone(),
+        display_name: job.display_name.clone(),
+        destination_file_name: job.destination_file_name.clone(),
+        expected_bytes: job.progress.total_bytes,
+    })?;
+
+    if job.created_at_ms > job.updated_at_ms
+        || job
+            .progress
+            .total_bytes
+            .is_some_and(|total| job.progress.downloaded_bytes > total)
+    {
+        return Err(invalid_persisted_job());
+    }
+
+    if let Some(error) = &job.last_error {
+        if error.code.is_empty()
+            || error.code.len() > MAX_FAILURE_CODE_BYTES
+            || !error
+                .code
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+            || error.message.is_empty()
+            || error.message.len() > MAX_FAILURE_MESSAGE_BYTES
+            || error.message.chars().any(char::is_control)
+        {
+            return Err(invalid_persisted_job());
+        }
+    }
+
+    match job.state {
+        DownloadJobState::Completed => {
+            if job.last_error.is_some()
+                || job
+                    .progress
+                    .total_bytes
+                    .is_some_and(|total| job.progress.downloaded_bytes != total)
+            {
+                return Err(invalid_persisted_job());
+            }
+        }
+        DownloadJobState::Failed => {
+            if job.last_error.is_none() {
+                return Err(invalid_persisted_job());
+            }
+        }
+        DownloadJobState::Interrupted => {
+            if !job
+                .last_error
+                .as_ref()
+                .is_some_and(|error| error.retryable)
+            {
+                return Err(invalid_persisted_job());
+            }
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
+fn parse_job_sequence(job_id: &str) -> BackendResult<u64> {
+    let value = job_id
+        .strip_prefix("download-")
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .ok_or_else(invalid_persisted_job)?;
+    Ok(value)
+}
+
+fn invalid_persisted_job() -> BackendError {
+    BackendError::new(
+        "download_state_job_invalid",
+        "Persisted download state contains a malformed or inconsistent job.",
+    )
 }
 
 fn require_state(

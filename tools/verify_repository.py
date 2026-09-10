@@ -25,6 +25,7 @@ REQUIRED = [
     "docs/legacy/05-recovered-symbol-map.md", "docs/legacy/06-runtime-data-contracts.md", "docs/legacy/07-reconstruction-evidence.md",
     "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/src/lib.rs",
     "EngineData/Backend/RustCore/src/app_runtime.rs", "EngineData/Backend/RustCore/src/diagnostics.rs",
+    "EngineData/Backend/RustCore/src/identity.rs",
     "EngineData/Backend/RustCore/src/settings.rs", "EngineData/Backend/RustCore/src/storage.rs",
     "EngineData/Backend/RustCore/src/minecraft.rs", "EngineData/Backend/RustCore/src/library.rs",
     "EngineData/Backend/RustCore/src/download/store.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
@@ -36,6 +37,7 @@ REQUIRED = [
     "EngineData/Backend/RustCore/src/provider_adapter/runtime.rs",
     "EngineData/Frontend/RustApp/src-tauri/build.rs",
     "EngineData/Frontend/RustApp/src-tauri/icons/icon.png",
+    "EngineData/Frontend/RustApp/src-tauri/icons/icon.ico",
     "EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
     "tools/windows_smoke_readiness.ps1",
@@ -55,7 +57,7 @@ checks = {
     "docs/foundation/08-provider-session-architecture.md": ["ProviderSessionSource", "ProviderSessionManager", "non-serializable", "refresh storm"],
     "docs/foundation/09-provider-adapter-architecture.md": ["IntegratedProvider", "ProviderAdapterRuntime", "CatalogProvider", "ResourceResolver"],
     "docs/foundation/10-application-runtime-architecture.md": ["SearchNowBackendRuntime", "one managed state", "ProviderResolvedTransport", "BackendRuntimeSnapshot"],
-    "docs/foundation/11-observability-windows-readiness.md": ["DiagnosticsBuffer", "bounded", "Windows RustCore + Tauri compile gate", "icons/icon.png"],
+    "docs/foundation/11-observability-windows-readiness.md": ["DiagnosticsBuffer", "bounded", "Windows RustCore + Tauri compile gate", "icons/icon.png", "icons/icon.ico", "AtomicFileStore"],
 }
 
 for rel, needles in checks.items():
@@ -107,6 +109,14 @@ for name in ["runtime.rs", "settings.rs", "minecraft.rs", "library.rs", "package
         if forbidden in text:
             errors.append(f"{path.relative_to(ROOT)}: backend sub-runtime ownership belongs in SearchNowBackendRuntime, not Tauri command: {forbidden!r}")
 
+download_command = commands_root / "download.rs"
+if download_command.exists():
+    text = download_command.read_text(encoding="utf-8", errors="replace")
+    if "DownloadRequest" in text:
+        errors.append("download command must not expose raw DownloadRequest transport selection")
+    if "QueueCatalogDownloadRequest" not in text:
+        errors.append("download command must accept provider-neutral QueueCatalogDownloadRequest")
+
 bootstrap = ROOT / "EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs"
 if bootstrap.exists():
     text = bootstrap.read_text(encoding="utf-8", errors="replace")
@@ -117,9 +127,11 @@ if bootstrap.exists():
 app_runtime = ROOT / "EngineData/Backend/RustCore/src/app_runtime.rs"
 if app_runtime.exists():
     text = app_runtime.read_text(encoding="utf-8", errors="replace")
-    for needle in ["SearchNowBackendRuntime", "ProviderAdapterRuntime::compose", "providers.resolvers()", "ProviderResolvedTransport::new", "DownloadExecutionRuntime::new", "SettingsStore::new", "BackendRuntimeSnapshot", "DiagnosticsBuffer"]:
+    for needle in ["SearchNowBackendRuntime", "ProviderAdapterRuntime::compose", "providers.resolvers()", "ProviderResolvedTransport::new", "DownloadExecutionRuntime::new", "SettingsStore::new", "BackendRuntimeSnapshot", "DiagnosticsBuffer", "QueueCatalogDownloadRequest"]:
         if needle not in text:
             errors.append(f"{app_runtime.relative_to(ROOT)}: missing application composition/observability contract {needle!r}")
+    if "DownloadTransportRegistry::with_local_file" in text:
+        errors.append(f"{app_runtime.relative_to(ROOT)}: production runtime must not register local-file fixture transport")
 
 storage = ROOT / "EngineData/Backend/RustCore/src/storage.rs"
 if storage.exists():

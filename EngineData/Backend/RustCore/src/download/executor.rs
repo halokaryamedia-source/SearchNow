@@ -1,7 +1,8 @@
 use super::{
-    cleanup_workspace, ensure_workspace, finalize_payload, plan_workspace, prepare_payload_file,
-    DownloadJob, DownloadJobState, DownloadManager, DownloadManagerSnapshot, DownloadPolicy,
-    DownloadRequest, DownloadStore, DownloadTransportRegistry,
+    cleanup_finalization_stage, cleanup_workspace, ensure_workspace, finalize_payload,
+    finalized_file_matches, plan_workspace, prepare_payload_file, DownloadFailure, DownloadJob,
+    DownloadJobState, DownloadManager, DownloadManagerSnapshot, DownloadPolicy, DownloadRequest,
+    DownloadStore, DownloadTransportRegistry, PersistedDownloadState,
 };
 use crate::error::{BackendError, BackendResult};
 use std::{
@@ -9,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     thread,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 const TRANSFER_BUFFER_BYTES: usize = 256 * 1024;
@@ -25,6 +27,7 @@ struct DownloadExecutionInner {
     workspace_root: PathBuf,
     destination_root: PathBuf,
     transports: DownloadTransportRegistry,
+    scheduler_error: Mutex<Option<DownloadFailure>>,
 }
 
 impl DownloadExecutionRuntime {
@@ -35,16 +38,21 @@ impl DownloadExecutionRuntime {
         destination_root: impl Into<PathBuf>,
         transports: DownloadTransportRegistry,
     ) -> BackendResult<Self> {
-        let manager = DownloadManager::recover(policy, store.load()?)?;
+        let workspace_root = workspace_root.into();
+        let destination_root = destination_root.into();
+        let mut persisted = store.load()?;
+        reconcile_persisted_state(&mut persisted, &workspace_root, &destination_root)?;
+        let manager = DownloadManager::recover(policy, persisted)?;
         store.save(&manager.persisted_state())?;
 
         let runtime = Self {
             inner: Arc::new(DownloadExecutionInner {
                 manager: Mutex::new(manager),
                 store,
-                workspace_root: workspace_root.into(),
-                destination_root: destination_root.into(),
+                workspace_root,
+                destination_root,
                 transports,
+                scheduler_error: Mutex::new(None),
             }),
         };
         runtime.pump()?;
@@ -53,12 +61,19 @@ impl DownloadExecutionRuntime {
 
     pub fn snapshot(&self) -> BackendResult<DownloadManagerSnapshot> {
         let manager = self.lock_manager()?;
-        Ok(manager.snapshot())
+        let mut snapshot = manager.snapshot();
+        snapshot.scheduler_error = self
+            .inner
+            .scheduler_error
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        Ok(snapshot)
     }
 
     pub fn queue(&self, request: DownloadRequest) -> BackendResult<DownloadJob> {
         let job = self.mutate_persist(|manager| manager.enqueue(request))?;
-        let _ = self.pump();
+        self.pump_best_effort();
         Ok(job)
     }
 
@@ -68,7 +83,7 @@ impl DownloadExecutionRuntime {
 
     pub fn retry(&self, job_id: &str) -> BackendResult<DownloadJob> {
         let job = self.mutate_persist(|manager| manager.retry(job_id))?;
-        let _ = self.pump();
+        self.pump_best_effort();
         Ok(job)
     }
 
@@ -76,6 +91,15 @@ impl DownloadExecutionRuntime {
         self.mutate_persist(|manager| {
             manager.remove_terminal(job_id)?;
             Ok(manager.snapshot())
+        })
+        .map(|mut snapshot| {
+            snapshot.scheduler_error = self
+                .inner
+                .scheduler_error
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .clone();
+            snapshot
         })
     }
 
@@ -85,6 +109,7 @@ impl DownloadExecutionRuntime {
             let mut candidate = manager.clone();
             let claimed = candidate.claim_ready_jobs();
             if claimed.is_empty() {
+                self.clear_scheduler_error();
                 return Ok(0);
             }
             self.inner.store.save(&candidate.persisted_state())?;
@@ -92,6 +117,7 @@ impl DownloadExecutionRuntime {
             claimed
         };
         let count = claimed.len();
+        self.clear_scheduler_error();
 
         for job in claimed {
             let runtime = self.clone();
@@ -99,10 +125,38 @@ impl DownloadExecutionRuntime {
                 if let Err(error) = runtime.execute_claimed_job(&job.id) {
                     runtime.fail_from_backend_error(&job.id, error);
                 }
-                let _ = runtime.pump();
+                runtime.pump_best_effort();
             });
         }
         Ok(count)
+    }
+
+    fn pump_best_effort(&self) {
+        if self.pump().is_err() {
+            self.record_scheduler_error();
+        }
+    }
+
+    fn record_scheduler_error(&self) {
+        let mut slot = self
+            .inner
+            .scheduler_error
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        *slot = Some(DownloadFailure {
+            code: "download_scheduler_failed".into(),
+            message: "Download scheduler could not continue automatically.".into(),
+            retryable: true,
+        });
+    }
+
+    fn clear_scheduler_error(&self) {
+        let mut slot = self
+            .inner
+            .scheduler_error
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        *slot = None;
     }
 
     fn execute_claimed_job(&self, job_id: &str) -> BackendResult<()> {
@@ -230,7 +284,7 @@ impl DownloadExecutionRuntime {
         }
 
         self.mutate_persist(|manager| manager.mark_completed(job_id))?;
-        let _ = cleanup_workspace(&plan);
+        let _cleanup_result = cleanup_workspace(&plan);
         Ok(())
     }
 
@@ -267,7 +321,7 @@ impl DownloadExecutionRuntime {
         }
 
         self.mutate_persist(|manager| manager.acknowledge_cancel(job_id))?;
-        let _ = cleanup_workspace(plan);
+        let _cleanup_result = cleanup_workspace(plan);
         Ok(true)
     }
 
@@ -286,7 +340,7 @@ impl DownloadExecutionRuntime {
         self.mutate_persist(|manager| {
             manager.mark_failed(job_id, code.to_string(), message.to_string(), retryable)
         })?;
-        let _ = cleanup_workspace(plan);
+        let _cleanup_result = cleanup_workspace(plan);
         Ok(())
     }
 
@@ -304,9 +358,15 @@ impl DownloadExecutionRuntime {
             &job.id,
             &job.destination_file_name,
         ) else {
+            self.record_scheduler_error();
             return;
         };
-        let _ = self.fail_job(job_id, &plan, error.code(), error.message(), true);
+        if self
+            .fail_job(job_id, &plan, error.code(), error.message(), true)
+            .is_err()
+        {
+            self.record_scheduler_error();
+        }
     }
 
     fn current_job(&self, job_id: &str) -> BackendResult<DownloadJob> {
@@ -336,6 +396,42 @@ impl DownloadExecutionRuntime {
     }
 }
 
+fn reconcile_persisted_state(
+    state: &mut PersistedDownloadState,
+    workspace_root: &Path,
+    destination_root: &Path,
+) -> BackendResult<()> {
+    for job in &mut state.jobs {
+        let Ok(plan) = plan_workspace(
+            workspace_root,
+            destination_root,
+            &job.id,
+            &job.destination_file_name,
+        ) else {
+            continue;
+        };
+
+        cleanup_finalization_stage(&plan)?;
+
+        if job.state == DownloadJobState::Finalizing
+            && finalized_file_matches(&plan, job.progress.downloaded_bytes)
+            && job
+                .progress
+                .total_bytes
+                .is_none_or(|total| total == job.progress.downloaded_bytes)
+        {
+            job.state = DownloadJobState::Completed;
+            job.last_error = None;
+            job.updated_at_ms = now_ms();
+        }
+
+        if job.state.is_terminal() {
+            let _cleanup_result = cleanup_workspace(&plan);
+        }
+    }
+    Ok(())
+}
+
 fn transfer_read_failure(kind: ErrorKind) -> (&'static str, bool) {
     match kind {
         ErrorKind::TimedOut | ErrorKind::WouldBlock => ("download_transfer_timeout", true),
@@ -351,6 +447,14 @@ fn find_job(snapshot: &DownloadManagerSnapshot, job_id: &str) -> BackendResult<D
         .find(|job| job.id == job_id)
         .cloned()
         .ok_or_else(|| BackendError::new("download_job_not_found", "Download job was not found."))
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
 }
 
 pub fn default_download_paths(app_data_root: &Path) -> (PathBuf, PathBuf, PathBuf) {

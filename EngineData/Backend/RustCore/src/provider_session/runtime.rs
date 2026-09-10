@@ -1,13 +1,14 @@
 use super::{ProviderSessionError, ProviderSessionState, ProviderSessionStatus};
-use crate::error::{BackendError, BackendResult};
+use crate::{
+    error::{BackendError, BackendResult},
+    identity::valid_provider_key,
+};
 use std::{
     any::Any,
     collections::HashMap,
     sync::{Arc, Condvar, Mutex, MutexGuard},
     time::{SystemTime, UNIX_EPOCH},
 };
-
-const MAX_PROVIDER_KEY_BYTES: usize = 64;
 
 pub struct ProviderSessionFailure {
     pub code: String,
@@ -307,14 +308,6 @@ fn sanitize_failure(failure: ProviderSessionFailure) -> ProviderSessionError {
         "Provider session could not be acquired or refreshed.",
         failure.retryable,
     )
-}
-
-fn valid_provider_key(key: &str) -> bool {
-    !key.is_empty()
-        && key.len() <= MAX_PROVIDER_KEY_BYTES
-        && key
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 fn now_ms() -> u64 {

@@ -183,6 +183,7 @@ fn scheduler_respects_active_concurrency() {
             .all(|job| job.state == DownloadJobState::Completed)
     });
     assert_eq!(finished.jobs.len(), 3);
+    assert!(finished.scheduler_error.is_none());
 }
 
 #[test]
@@ -256,4 +257,74 @@ fn unavailable_transport_fails_without_retry_loop() {
         "download_transport_unavailable"
     );
     assert!(!failed.last_error.as_ref().expect("failure").retryable);
+}
+
+#[test]
+fn startup_reconciles_a_final_file_published_before_state_commit() {
+    let directory = tempfile::tempdir().expect("tempdir");
+    let store = DownloadStore::new(directory.path().join("state.json"));
+    let workspace = directory.path().join("workspace");
+    let files = directory.path().join("files");
+    let payload = vec![9_u8; 10];
+
+    let mut manager = DownloadManager::new(DownloadPolicy::default()).expect("manager");
+    let job = manager
+        .enqueue(request("fixture", "asset".into(), "recovered", payload.len()))
+        .expect("queue");
+    manager.claim_ready_jobs();
+    manager.mark_transferring(&job.id).expect("transfer");
+    manager
+        .report_progress(&job.id, payload.len() as u64, Some(payload.len() as u64))
+        .expect("progress");
+    manager.begin_finalizing(&job.id).expect("finalizing");
+    store.save(&manager.persisted_state()).expect("save state");
+
+    std::fs::create_dir_all(&files).expect("files root");
+    std::fs::write(files.join("recovered.mcpack"), &payload).expect("published final");
+
+    let runtime = DownloadExecutionRuntime::new(
+        DownloadPolicy::default(),
+        store,
+        workspace,
+        files,
+        DownloadTransportRegistry::new(),
+    )
+    .expect("runtime");
+    let snapshot = runtime.snapshot().expect("snapshot");
+    assert_eq!(snapshot.jobs[0].state, DownloadJobState::Completed);
+    assert!(snapshot.jobs[0].last_error.is_none());
+}
+
+#[test]
+fn startup_removes_stale_destination_stage_before_retry() {
+    let directory = tempfile::tempdir().expect("tempdir");
+    let store = DownloadStore::new(directory.path().join("state.json"));
+    let workspace = directory.path().join("workspace");
+    let files = directory.path().join("files");
+
+    let mut manager = DownloadManager::new(DownloadPolicy::default()).expect("manager");
+    let job = manager
+        .enqueue(request("fixture", "asset".into(), "staged", 10))
+        .expect("queue");
+    manager.claim_ready_jobs();
+    store.save(&manager.persisted_state()).expect("save state");
+
+    std::fs::create_dir_all(&files).expect("files root");
+    let plan = plan_workspace(&workspace, &files, &job.id, "staged.mcpack").expect("plan");
+    let stage = finalization_stage_path(&plan).expect("stage path");
+    std::fs::write(&stage, b"stale").expect("stale stage");
+
+    let runtime = DownloadExecutionRuntime::new(
+        DownloadPolicy::default(),
+        store,
+        workspace,
+        files,
+        DownloadTransportRegistry::new(),
+    )
+    .expect("runtime");
+    assert!(!stage.exists());
+    assert_eq!(
+        runtime.snapshot().expect("snapshot").jobs[0].state,
+        DownloadJobState::Interrupted
+    );
 }

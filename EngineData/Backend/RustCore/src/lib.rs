@@ -3,6 +3,7 @@ pub mod catalog;
 pub mod diagnostics;
 pub mod download;
 pub mod error;
+pub mod identity;
 pub mod library;
 pub mod minecraft;
 pub mod package;

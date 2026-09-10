@@ -24,7 +24,8 @@ pub use transport::{
     DownloadTransportStream, LocalFileTransport,
 };
 pub use workspace::{
-    cleanup_workspace, ensure_workspace, finalize_payload, plan_workspace, prepare_payload_file,
+    cleanup_finalization_stage, cleanup_workspace, ensure_workspace, finalization_stage_path,
+    finalize_payload, finalized_file_matches, plan_workspace, prepare_payload_file,
     validate_destination_file_name, DownloadWorkspacePlan,
 };
 

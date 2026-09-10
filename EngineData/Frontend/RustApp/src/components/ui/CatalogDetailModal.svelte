@@ -33,7 +33,7 @@
 
 {#if open && item}
   <div class="catalog-modal__backdrop" role="presentation" onclick={handleBackdrop}>
-    <section class="catalog-modal" role="dialog" aria-modal="true" aria-labelledby="catalog-modal-title">
+    <div class="catalog-modal" role="dialog" aria-modal="true" aria-labelledby="catalog-modal-title">
       <button class="catalog-modal__close" type="button" aria-label="Close details" onclick={onClose}>
         <X size={18} aria-hidden="true" />
       </button>
@@ -89,6 +89,6 @@
           </div>
         {/if}
       </div>
-    </section>
+    </div>
   </div>
 {/if}

@@ -184,3 +184,31 @@ impl AtomicFileStore {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stale_temp_cleanup_only_removes_matching_regular_files() {
+        let directory = tempfile::tempdir().expect("tempdir");
+        let store = AtomicFileStore::new(
+            directory.path().join("state.json"),
+            ".state.backup",
+            ".searchnow-state",
+        );
+
+        let matching = directory.path().join(".searchnow-state.10.20.tmp");
+        let similar_prefix = directory.path().join(".searchnow-state-old.10.20.tmp");
+        let similar_suffix = directory.path().join(".searchnow-state.10.20.tmp.keep");
+        fs::write(&matching, b"stale").expect("matching temp");
+        fs::write(&similar_prefix, b"keep").expect("similar prefix");
+        fs::write(&similar_suffix, b"keep").expect("similar suffix");
+
+        store.cleanup_stale_temps(directory.path());
+
+        assert!(!matching.exists());
+        assert!(similar_prefix.exists());
+        assert!(similar_suffix.exists());
+    }
+}

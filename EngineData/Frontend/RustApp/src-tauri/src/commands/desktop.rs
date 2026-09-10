@@ -1,10 +1,12 @@
 use super::error::CommandError;
 use std::{path::PathBuf, process::Command};
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use tauri_plugin_dialog::DialogExt;
 
 #[tauri::command]
-pub async fn choose_download_directory(app: AppHandle) -> Result<Option<String>, CommandError> {
+pub async fn choose_download_directory<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<String>, CommandError> {
     let selected = app.dialog().file().blocking_pick_folder();
     let Some(selected) = selected else {
         return Ok(None);

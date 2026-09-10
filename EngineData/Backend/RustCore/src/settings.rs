@@ -1,12 +1,9 @@
-use crate::error::{BackendError, BackendResult};
-use serde::{Deserialize, Serialize};
-use std::{
-    fs::{self, OpenOptions},
-    io::Write,
-    path::{Path, PathBuf},
-    process,
-    time::{SystemTime, UNIX_EPOCH},
+use crate::{
+    error::{BackendError, BackendResult},
+    storage::AtomicFileStore,
 };
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 const MAX_SETTINGS_BYTES: u64 = 512 * 1024;
@@ -81,42 +78,24 @@ impl AppSettings {
 
 #[derive(Debug, Clone)]
 pub struct SettingsStore {
-    path: PathBuf,
+    file: AtomicFileStore,
 }
 
 impl SettingsStore {
     pub fn new(path: impl Into<PathBuf>) -> Self {
-        Self { path: path.into() }
+        Self {
+            file: AtomicFileStore::new(path, ".settings.backup", ".settings"),
+        }
     }
 
     pub fn path(&self) -> &Path {
-        &self.path
+        self.file.path()
     }
 
     pub fn load(&self) -> BackendResult<AppSettings> {
-        if !self.path.exists() {
+        let Some(text) = self.file.read_to_string(MAX_SETTINGS_BYTES)? else {
             return Ok(AppSettings::default());
-        }
-        let metadata = fs::metadata(&self.path).map_err(|error| {
-            BackendError::from_io(
-                "settings_metadata_failed",
-                "SearchNow could not inspect its settings file.",
-                error,
-            )
-        })?;
-        if metadata.len() > MAX_SETTINGS_BYTES {
-            return Err(BackendError::new(
-                "settings_too_large",
-                "SearchNow settings are unexpectedly large and were not loaded.",
-            ));
-        }
-        let text = fs::read_to_string(&self.path).map_err(|error| {
-            BackendError::from_io(
-                "settings_read_failed",
-                "SearchNow could not read its settings file.",
-                error,
-            )
-        })?;
+        };
         let settings: AppSettings = serde_json::from_str(&text).map_err(|error| {
             BackendError::new(
                 "settings_invalid_json",
@@ -129,77 +108,13 @@ impl SettingsStore {
 
     pub fn save(&self, settings: &AppSettings) -> BackendResult<()> {
         settings.validate()?;
-        let parent = self.path.parent().ok_or_else(|| {
-            BackendError::new(
-                "settings_path_invalid",
-                "SearchNow settings path has no parent directory.",
-            )
-        })?;
-        fs::create_dir_all(parent).map_err(|error| {
-            BackendError::from_io(
-                "settings_directory_failed",
-                "SearchNow could not create its settings directory.",
-                error,
-            )
-        })?;
         let bytes = serde_json::to_vec_pretty(settings).map_err(|error| {
             BackendError::new(
                 "settings_serialize_failed",
                 format!("SearchNow could not serialize settings: {error}"),
             )
         })?;
-        let token = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        let temp = parent.join(format!(".settings.{}.{}.tmp", process::id(), token));
-        let backup = parent.join(".settings.backup");
-
-        let mut file = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&temp)
-            .map_err(|error| {
-                BackendError::from_io(
-                    "settings_stage_failed",
-                    "SearchNow could not stage settings for saving.",
-                    error,
-                )
-            })?;
-        file.write_all(&bytes)
-            .and_then(|_| file.sync_all())
-            .map_err(|error| {
-                let _ = fs::remove_file(&temp);
-                BackendError::from_io(
-                    "settings_stage_failed",
-                    "SearchNow could not finish staging settings.",
-                    error,
-                )
-            })?;
-
-        if self.path.exists() {
-            let _ = fs::remove_file(&backup);
-            fs::rename(&self.path, &backup).map_err(|error| {
-                let _ = fs::remove_file(&temp);
-                BackendError::from_io(
-                    "settings_replace_failed",
-                    "SearchNow could not prepare the existing settings for replacement.",
-                    error,
-                )
-            })?;
-        }
-
-        if let Err(error) = fs::rename(&temp, &self.path) {
-            let _ = fs::rename(&backup, &self.path);
-            let _ = fs::remove_file(&temp);
-            return Err(BackendError::from_io(
-                "settings_replace_failed",
-                "SearchNow could not replace its settings file.",
-                error,
-            ));
-        }
-        let _ = fs::remove_file(&backup);
-        Ok(())
+        self.file.replace(&bytes, MAX_SETTINGS_BYTES)
     }
 }
 
@@ -214,6 +129,7 @@ fn default_true() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn defaults_are_local_safe() {
@@ -232,6 +148,20 @@ mod tests {
         settings.minecraft.include_preview = true;
         store.save(&settings).expect("save");
         assert_eq!(store.load().expect("load"), settings);
+    }
+
+    #[test]
+    fn recovers_backup_when_primary_is_missing() {
+        let directory = tempfile::tempdir().expect("tempdir");
+        let path = directory.path().join("settings.json");
+        let store = SettingsStore::new(&path);
+        let mut settings = AppSettings::default();
+        settings.minecraft.include_preview = true;
+        let backup = directory.path().join(".settings.backup");
+        fs::write(&backup, serde_json::to_vec(&settings).expect("json")).expect("backup");
+        assert_eq!(store.load().expect("load"), settings);
+        assert!(path.exists());
+        assert!(!backup.exists());
     }
 
     #[test]

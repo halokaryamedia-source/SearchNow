@@ -11,6 +11,7 @@ pub mod provider_adapter;
 pub mod provider_session;
 pub mod runtime;
 pub mod settings;
+pub mod storage;
 
 #[cfg(test)]
 mod app_runtime_tests;

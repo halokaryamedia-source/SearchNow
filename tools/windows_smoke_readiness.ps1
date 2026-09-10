@@ -22,6 +22,10 @@ Write-Check "LOCALAPPDATA" (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)
 Write-Check "APPDATA" (-not [string]::IsNullOrWhiteSpace($env:APPDATA)) ($env:APPDATA ?? "missing")
 
 $candidates = @()
+if ($env:APPDATA) {
+    $candidates += Join-Path $env:APPDATA "Minecraft Bedrock\users\shared\games\com.mojang"
+    $candidates += Join-Path $env:APPDATA "Minecraft Bedrock Preview\users\shared\games\com.mojang"
+}
 if ($env:LOCALAPPDATA) {
     $candidates += Join-Path $env:LOCALAPPDATA "Packages\Microsoft.MinecraftUWP_8wekyb3d8bbwe\LocalState\games\com.mojang"
     $candidates += Join-Path $env:LOCALAPPDATA "Packages\Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe\LocalState\games\com.mojang"
@@ -34,6 +38,13 @@ foreach ($candidate in $candidates) {
 if ($CompileChecks) {
     Write-Host "Running repository compile checks only; no application launch occurs."
     cargo test --manifest-path EngineData/Backend/RustCore/Cargo.toml
+    Push-Location EngineData/Frontend/RustApp
+    try {
+        npm install --no-audit --no-fund
+        npm run build:frontend
+    } finally {
+        Pop-Location
+    }
     cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml
 }
 
@@ -43,7 +54,7 @@ Write-Host "  1. Launch SearchNow and inspect safe backend health/diagnostics."
 Write-Host "  2. Confirm Minecraft discovery matches the installed Bedrock channel/account root."
 Write-Host "  3. Save one harmless settings toggle, restart, and confirm persistence."
 Write-Host "  4. Inspect a known user-owned .mcpack/.mcaddon read-only."
-Write-Host "  5. Run one local-file download fixture and confirm atomic finalization."
+Write-Host "  5. Run one approved local download fixture and confirm finalization/recovery."
 Write-Host "  6. Confirm diagnostics contain no absolute input path, token, Authorization, cookie, or signed URL."
 Write-Host ""
 Write-Host "No local smoke evidence is claimed until those runtime checks are actually performed."

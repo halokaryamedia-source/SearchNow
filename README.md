@@ -34,12 +34,17 @@ Tauri 2 desktop shell
 │  ├─ pages/components
 │  ├─ product facade
 │  └─ thin Tauri API bridge
-└─ Rust backend/runtime
-   ├─ commands/  thin IPC boundary
-   └─ engine/    application/runtime truth
+└─ EngineData/Backend/RustCore
+   ├─ SearchNowBackendRuntime = single application backend owner
+   ├─ settings + atomic persistence
+   ├─ Minecraft discovery + local library
+   ├─ read-only package inspection
+   ├─ provider-neutral catalog/session/resolver composition
+   ├─ persistent bounded download execution
+   └─ bounded safe diagnostics
 ```
 
-No Python worker or second backend process exists in the current architecture.
+No Python worker, local HTTP backend, or second backend process exists in the current architecture.
 
 Current product surfaces:
 
@@ -50,35 +55,41 @@ Downloads
 Settings
 ```
 
+## Current Backend Status
+
+Implemented at repository/runtime-core level:
+
+- typed settings and shared crash-recoverable persistence;
+- Minecraft Bedrock GDK/account-scoped discovery with Preview opt-in and legacy UWP fallback;
+- bounded local content indexing;
+- read-only folder / `.mcpack` / `.mcaddon` inspection with archive safety limits;
+- provider-neutral catalog, provider-session, adapter, and runtime resource-resolution boundaries;
+- bounded persistent download queue with HTTPS/provider-resolved transports and atomic no-overwrite finalization;
+- one consolidated `SearchNowBackendRuntime` managed by Tauri;
+- bounded secret-safe diagnostics and hosted Windows readiness gates.
+
+Not implemented yet:
+
+- real provider login/credentials/endpoints;
+- Marketplace/PlayFab-specific integration;
+- production Discover/provider frontend wiring;
+- installer/release branding and clean-machine acceptance.
+
 ## Source Map
 
 ```text
 EngineData/
+├── Backend/RustCore/        reusable backend/runtime truth
 └── Frontend/RustApp/
     ├── src/                 Svelte product UI + bridge
-    └── src-tauri/src/       Rust commands + engine
+    └── src-tauri/src/       thin Tauri bootstrap + commands
 
 UserData/                    runtime-data ownership contract
 docs/foundation/             durable product/architecture policy
 docs/knowledge/              continuation, ownership, decisions, evidence
 docs/legacy/                 recovered BlueCoin 2.4 evidence
+tools/                       repository and Windows readiness checks
 ```
-
-## Current Executable Slice
-
-The first implemented vertical slice proves the architecture itself:
-
-```text
-Svelte App
-→ runtimeProductFacade
-→ runtimeApi
-→ Tauri get_runtime_status
-→ Rust command
-→ Rust engine
-→ runtime status returned to UI
-```
-
-Minecraft discovery/catalog/download logic is intentionally not implemented yet.
 
 ## Developer Quick Start
 
@@ -97,4 +108,4 @@ Repository contract check:
 python tools/verify_repository.py
 ```
 
-Repository/static checks do not prove installed Windows runtime behavior. See `docs/knowledge/reviews/current-validation.md`.
+Repository/static and hosted compile checks do not prove installed Windows runtime behavior. See `docs/knowledge/reviews/current-validation.md`.

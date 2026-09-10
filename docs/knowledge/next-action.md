@@ -2,45 +2,43 @@
 
 ## Current Status
 
-`APPLICATION_BACKEND_RUNTIME_READY`
+`FOUNDATION_CLOSURE_IN_PROGRESS`
 
-Completed:
+Completed before this closure slice:
 
-1. Tauri/Svelte/Rust desktop scaffold and PRD-Creator-style development workflow are established;
-2. local settings, Minecraft discovery, bounded library indexing, and read-only package inspection are implemented in RustCore;
-3. persistent download lifecycle, bounded execution, safe workspace/finalization, `local-file`, `https-public`, and `provider-resolved` transports are implemented;
-4. provider-neutral catalog, runtime resource resolver, shared provider-session manager, and integrated-provider composition are implemented;
-5. `SearchNowBackendRuntime` now composes SettingsStore/PlatformContext, ProviderAdapterRuntime, and DownloadExecutionRuntime into one application backend owner;
-6. provider-resolved application downloads use the exact `ResourceResolverRegistry` created by the composed provider runtime;
-7. `BackendRuntimeSnapshot` exposes only safe runtime/Minecraft/provider/download aggregate state;
-8. Tauri bootstrap manages one `SearchNowBackendRuntime`; feature commands no longer construct separate settings/download/provider runtime owners;
-9. filesystem-heavy local operations remain on `spawn_blocking`, while download execution keeps its bounded worker/thread model;
-10. settings and download persistence remain in their existing stores; no second application database was introduced;
-11. deterministic application-runtime tests cover safe startup, provider-resolver → download integration, and fail-closed provider construction;
-12. repository CI passes with **59 RustCore tests**, strict clippy, Tauri formatting, architecture/source-size validation, Svelte typecheck, and frontend build.
+1. Tauri/Svelte/Rust desktop scaffold and PRD-Creator-style development workflow;
+2. local settings, Minecraft discovery, bounded library indexing, and read-only package inspection in RustCore;
+3. persistent bounded download lifecycle with local fixture, public HTTPS, and provider-resolved execution boundaries;
+4. provider-neutral catalog, shared provider-session manager, resource resolver, and integrated-provider composition;
+5. one `SearchNowBackendRuntime` owning settings/platform/provider/download/diagnostics composition;
+6. thin Tauri commands delegating through that one runtime;
+7. bounded secret-safe diagnostics and hosted Linux/Windows verification structure.
+
+## Foundation closure being applied
+
+- replace the Windows build-only icon workaround with the standard committed Tauri icon path;
+- consolidate SettingsStore and DownloadStore replacement/recovery mechanics into shared `AtomicFileStore`;
+- preserve backup recovery when an interrupted replacement leaves the primary state file missing;
+- update repository verification so workaround-specific implementation details are not frozen as architecture;
+- synchronize README, validation, roadmap/continuity documentation with the actual implemented backend.
 
 ## Active Boundary
 
 Keep work on `develop`. `Local` and `main` remain untouched until explicit promotion.
 
-No real provider login, PlayFab/Marketplace endpoint, hardcoded provider secret, protected-content bypass, package mutation/export, or frontend provider/Discover wiring is implemented.
+No real provider login, PlayFab/Marketplace endpoint, durable provider credential storage, protected-content bypass, package mutation/export, or production Discover/provider frontend wiring belongs in this closure slice.
 
-Hosted CI still does not replace installed Windows/runtime/network evidence.
+## Required proof before moving to the next feature
 
-## Next Step
+1. repository contract PASS;
+2. RustCore format/tests/clippy PASS;
+3. frontend architecture/type/build PASS;
+4. Windows RustCore PASS;
+5. Windows Tauri `cargo check` PASS using the normal committed icon path;
+6. no regression to duplicate backend ownership or secret-bearing public/persisted DTOs.
 
-Continue backend-first with **Backend Observability / Health / Windows Readiness Boundary**.
+If any closure gate fails, fix the first wrong owner/root cause before adding feature work.
 
-Prepare the generic backend for reliable local testing before any real provider is added:
+## Next feature boundary after closure
 
-- define safe structured diagnostic events with component, stable code, severity, timestamp/duration, and redacted message fields;
-- add a bounded in-memory diagnostic/health buffer rather than unbounded logging;
-- expose safe application health/startup phase information through `SearchNowBackendRuntime` without credentials, request headers, signed URLs, opaque provider session values, or raw provider bodies;
-- instrument important backend boundaries (startup, local discovery/library/package, catalog/session/resolver, download lifecycle) with coarse timings and stable result codes while avoiding per-chunk/per-file spam;
-- define redaction rules for user paths and network/provider error details before any persistent diagnostic log is enabled;
-- add TARGET_WINDOWS readiness gates, prioritizing a real Windows Tauri `cargo check`/build compile gate because hosted Linux currently only formats the Tauri crate;
-- add a compact Windows smoke-test checklist/script for AppData path resolution, Minecraft GDK/UWP discovery, settings persistence, package inspection, and download finalization;
-- keep diagnostics best-effort so diagnostic failures cannot break core product operations;
-- keep real PlayFab/Marketplace/provider credentials and frontend feature wiring out of this slice.
-
-Do not implement DRM/key-sharing/protected-content bypass paths.
+Once the closure commit is green, continue backend-first with a **real-provider preparation boundary**, not direct provider endpoint implementation. That next slice should first define canonical provider identity/resource types, provider retry/timeout semantics, production credential-storage requirements, and product-intent APIs that keep transport details out of the frontend.

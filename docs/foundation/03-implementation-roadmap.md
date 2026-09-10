@@ -2,29 +2,29 @@
 
 ## Objective
 
-Build SearchNow as a small, maintainable Minecraft Bedrock content-management desktop application with clear ownership between presentation, native command boundaries, reusable runtime logic, local data, and network/filesystem adapters.
+Build SearchNow as a small, maintainable Minecraft Bedrock content-management desktop application with one native backend owner and thin UI/IPC boundaries.
 
-The old BlueCoin WinForms structure is evidence only; it is not the source architecture to recreate.
+The old BlueCoin WinForms structure remains evidence only; it is not the source architecture to recreate.
 
 ## Approved implementation shape
 
 ```text
-EngineData/Frontend/RustApp/
-├── src/
-│   ├── App.svelte
-│   ├── pages/
-│   ├── components/
-│   ├── app/bridge/
-│   ├── app/shared/
-│   └── styles/
-└── src-tauri/src/
-    ├── main.rs
-    ├── app_bootstrap.rs
-    ├── commands/
-    └── engine/
+EngineData/
+├── Backend/RustCore/
+│   └── src/
+│       ├── app_runtime.rs
+│       ├── settings.rs + storage.rs
+│       ├── minecraft.rs + library.rs
+│       ├── package/
+│       ├── download/
+│       ├── catalog/
+│       ├── provider_session/
+│       ├── provider_adapter/
+│       └── diagnostics.rs
+└── Frontend/RustApp/
+    ├── src/                 Svelte product UI + facade/bridge
+    └── src-tauri/src/       thin Tauri bootstrap + commands
 ```
-
-Architecture authority: `05-application-architecture.md`.
 
 ## Runtime rule
 
@@ -33,137 +33,57 @@ Svelte UI
 → product facade
 → thin runtime API
 → Tauri command
-→ Rust engine
+→ SearchNowBackendRuntime
+→ RustCore domain/runtime owner
 ```
 
-Keep SearchNow in one desktop process whenever practical. Do not add Python, a local HTTP server, or another worker process unless a concrete capability requires an ecosystem/runtime that Rust cannot serve cleanly and a new architecture decision is approved.
+Do not add Python, a local HTTP server, or another backend process unless a concrete capability cannot be served cleanly by the Rust process and an explicit architecture decision revises this rule.
 
-## Target engine ownership
-
-As features arrive, grow the Rust engine by responsibility rather than by legacy class names:
-
-```text
-engine/
-├── runtime.rs
-├── minecraft/      installation discovery + local Minecraft boundaries
-├── library/        normalized local content model/index
-├── catalog/        permitted remote catalog/session behavior
-├── downloads/      runtime-owned transfer/process queue
-├── package/        manifest/archive inspection + validation
-├── storage/        typed settings/cache/index persistence
-└── diagnostics/    redacted structured diagnostics
-```
-
-Add modules only when a caller/current responsibility exists; do not pre-create empty abstraction trees.
-
-## Candidate domain models
-
-```text
-MinecraftInstallation
-ContentItem
-ContentSource
-ContentType
-ContentStatus
-PackageManifest
-DownloadJob
-ValidationResult
-AppSettings
-```
-
-Transport-specific DTOs stay at their adapter/boundary and must not leak through the whole application.
-
-## Development phases
+## Phase status
 
 ### Phase 0 — Evidence / Development System
 
-Status: **complete**
-
-- legacy executable architecture recovered;
-- product/safety boundaries documented;
-- PRD-Creator-style repository workflow established.
+**Complete.** Legacy architecture, product/safety boundaries, branch model, and development routing are documented.
 
 ### Phase 1 — Application Architecture Scaffold
 
-Status: **complete at repository/static level**
+**Complete at repository/static level.** Tauri/Svelte/Rust stack, four product surfaces, thin bridge, source-size contracts, and runtime-status vertical slice are established.
 
-- Tauri/Svelte/Rust stack chosen;
-- four product surfaces scaffolded;
-- frontend bridge boundary established;
-- Rust commands/engine separation established;
-- runtime-status end-to-end slice added;
-- source-size and architecture contracts added.
+### Phase 2 — Minecraft Discovery + Local Library
 
-Target-Windows execution remains a separate proof boundary.
+**Backend complete; frontend product wiring still partial.** RustCore discovers current Bedrock GDK/account roots, optional Preview, and legacy UWP fallback, then performs bounded local indexing.
 
-### Phase 2 — Minecraft Discovery + Library
+### Phase 3 — Package Inspection
 
-Next implementation target.
+**Backend complete for read-only inspection.** Folder / `.mcpack` / `.mcaddon` metadata inspection, manifest classification, BP/RP relationship detection, and archive safety checks are implemented without extraction/mutation.
 
-Deliver one thin vertical slice:
+### Phase 4 — Download Runtime
 
-```text
-user opens Library
-→ Rust discovers configured/default Minecraft Bedrock location
-→ local result normalized
-→ product facade receives library/install snapshot
-→ Library renders truthful detected/not-detected state
-```
+**Backend complete for generic execution boundary.** Persistent bounded queue, cancellation/retry, restart recovery, local deterministic fixture transport, public HTTPS transport, provider-resolved transport, and staged no-overwrite finalization are implemented.
 
-Constraints:
+Further hardening remains part of foundation closure where crash recovery or platform behavior requires it.
 
-- no network call;
-- no entitlement/key upload;
-- no hidden background sharing;
-- filesystem failure must be recoverable;
-- UI does not own scan truth.
+### Phase 5 — Provider-Neutral Runtime
 
-### Phase 3 — Local Content Index
+**Backend foundation complete.** Catalog domain, provider-session manager, resolver registry, integrated-provider composition, and shared application ownership exist with secret-safe public state.
 
-- enumerate legitimate local packs/world/templates;
-- normalized `ContentItem` model;
-- deduplicate and categorize;
-- cache/index only after the direct scan contract is correct.
+No real provider endpoint/login is implemented yet.
 
-### Phase 4 — Catalog / Discover
+### Phase 6 — Application Runtime + Observability
 
-- permitted catalog adapter;
-- explicit session/network ownership;
-- debounced search;
-- normalized catalog DTO → product model;
-- clear offline/error state.
+**Implemented; foundation closure in progress.** Tauri manages one `SearchNowBackendRuntime`; bounded diagnostics/health and hosted Windows compile gates exist. Current closure work removes the old Tauri icon workaround and consolidates file persistence/recovery.
 
-### Phase 5 — Download Queue
+### Phase 7 — Real Provider Preparation
 
-Runtime-owned state machine:
+**Next after closure is green.** Before integrating a real provider, define canonical provider/resource identity types, retry/timeout policy, credential-storage requirements, and product-intent APIs that prevent frontend transport leakage.
 
-```text
-Queued
-→ Downloading
-→ Validating
-→ Processing
-→ Completed
+### Phase 8 — Discover / Downloads / Settings Product Wiring
 
-or Failed / Cancelled
-```
+Wire implemented backend behavior into the product facade/UI without moving runtime truth into Svelte.
 
-The frontend observes jobs; it does not perform transfer/process logic.
+### Phase 9 — Target-Windows Acceptance / Release
 
-### Phase 6 — Package / Export
-
-- manifest/archive inspection;
-- content-type detection;
-- BP/RP pairing where legitimate/applicable;
-- staged/atomic export;
-- post-write validation;
-- never silently overwrite source input.
-
-### Phase 7 — Diagnostics / Release
-
-- redacted diagnostics;
-- cache cleanup;
-- Windows target acceptance;
-- installer/bundle contract;
-- clean-machine verification.
+Installed Windows smoke testing, representative large-library/network fixtures, installer/bundle/branding, clean-machine verification, and Local → main promotion.
 
 ## Quality rules
 
@@ -173,4 +93,5 @@ The frontend observes jobs; it does not perform transfer/process logic.
 4. No business logic inside command wrappers.
 5. Keep source-size budgets green; split ownership before god-objects form.
 6. Network operations must map to identifiable product behavior.
-7. Repository/static proof never upgrades itself to target-Windows runtime proof.
+7. Repository/static/hosted compile proof never upgrades itself to installed Windows runtime proof.
+8. Do not freeze temporary workarounds into repository contracts.

@@ -1,45 +1,49 @@
 # Current Validation
 
-## Consolidated application backend runtime target
+## Foundation-closure target
 
 Target claim:
 
-> SearchNow has one in-process application backend runtime that composes local settings/platform behavior, provider catalog/session/resolver composition, and persistent download execution while Tauri manages only that consolidated backend owner.
+> SearchNow has one in-process application backend runtime, shared crash-recoverable file persistence, provider-neutral catalog/session/resolver/download composition, secret-safe diagnostics, and a native Windows Tauri compile gate.
 
-Repository/CI evidence on `develop`:
+## Last verified baseline before foundation-closure commit
 
-- repository contract: PASS;
-- RustCore format: PASS;
-- RustCore compile/tests: PASS — **59 tests, 0 failures**;
-- RustCore clippy with warnings denied: PASS;
-- Tauri adapter format: PASS;
+The last `develop` workflow before this closure work established:
+
+- Linux repository contract: PASS;
+- RustCore format/tests/clippy: PASS — 62 tests, 0 failures on that commit;
 - frontend architecture/source-size/type/build gates: PASS;
-- package/download/HTTP/resolver/catalog/session/provider-adapter regression fixtures remain passing;
-- `SearchNowBackendRuntime` startup succeeds with zero providers and emits a safe aggregate snapshot;
-- invalid provider composition prevents application runtime construction;
-- application-runtime fixture proves the resolver registry produced by provider composition is the registry used by actual provider-resolved download execution;
-- all active Tauri feature commands delegate through `State<SearchNowBackendRuntime>`;
-- Tauri bootstrap manages one consolidated backend state instead of separate download/provider/settings engines.
+- Windows RustCore tests: PASS;
+- Windows frontend build: PASS;
+- Windows Tauri compile: **FAIL**, because `tauri::generate_context!()` still attempted to resolve the missing default `src-tauri/icons/icon.png`.
 
-Application-runtime boundary established by CI:
+Therefore that commit is **not** a promotable clean baseline.
 
-- canonical paths for settings/download state/workspace/final files are assembled once for application construction;
-- `ProviderAdapterRuntime` is composed before provider-resolved transport registration;
-- `ProviderResolvedTransport` receives `providers.resolvers()` from that exact composed runtime;
-- `DownloadExecutionRuntime` remains the only download lifecycle/persistence/finalization owner;
-- `SettingsStore` and `DownloadStore` remain their existing persistence authorities; no second application database was introduced;
-- safe `BackendRuntimeSnapshot` contains runtime status, Minecraft discovery, safe provider status/capabilities, and download summary only;
-- filesystem-heavy local commands continue to use Tauri `spawn_blocking`; download transfer remains on the existing bounded worker threads;
-- architecture validator rejects old per-command/sub-runtime ownership assumptions.
+## Closure changes now expected to verify
 
-Claims **not** established by hosted CI:
+- standard Tauri icon path exists at `src-tauri/icons/icon.png`;
+- `src-tauri/build.rs` no longer generates an `OUT_DIR` placeholder icon;
+- settings and download state use one `AtomicFileStore` replacement/recovery mechanism;
+- settings backup recovery has deterministic regression coverage;
+- repository contracts require the normal Tauri icon/build path rather than the obsolete workaround;
+- documentation reflects the implemented backend instead of the old scaffold-only state.
+
+Do not upgrade these expected results to PASS until the workflow for the closure commit is green.
+
+## Existing backend evidence
+
+The existing test suite already covers safe runtime startup, provider-resolver → download integration, fail-closed provider construction, bounded diagnostics, catalog validation, session refresh deduplication, HTTPS limits/redirect rules, download cancellation/recovery, package/archive safety, Minecraft discovery, library indexing, and settings persistence.
+
+All active Tauri feature commands delegate through `State<SearchNowBackendRuntime>`; feature commands do not construct separate settings/download/provider engines.
+
+## Claims not established by hosted CI
 
 - installed Windows Tauri execution;
-- Tauri Rust compile/link on the actual Windows target;
-- real Windows AppData/Minecraft account-scoped behavior;
+- real Windows AppData/Minecraft account-scoped behavior on a user machine;
 - large-library/package performance on representative Windows machines;
 - production HTTPS/TLS reliability against representative servers/CDNs;
 - any real provider login/catalog/resource endpoint or provider-specific auth semantics;
-- secure OS credential storage if a future provider requires durable user credentials.
+- secure OS credential storage if a future provider requires durable user credentials;
+- installer/clean-machine release behavior.
 
 These remain TARGET_WINDOWS / REAL_FIXTURE / NETWORK / PROVIDER evidence.

@@ -235,6 +235,13 @@ export type CatalogDownloadRef =
   | { kind: "publicHttps"; url: string }
   | { kind: "providerResolved"; provider: string; resourceId: string };
 
+export type QueueCatalogDownloadRequest = {
+  download: CatalogDownloadRef;
+  displayName: string;
+  destinationFileName: string;
+  expectedBytes: number | null;
+};
+
 export type CatalogItem = {
   provider: string;
   itemId: string;

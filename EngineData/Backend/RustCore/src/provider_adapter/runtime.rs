@@ -3,11 +3,10 @@ use crate::{
     catalog::{CatalogProvider, CatalogProviderRegistry, CatalogService},
     download::{ResourceResolver, ResourceResolverRegistry},
     error::{BackendError, BackendResult},
+    provider_identity::valid_provider_key,
     provider_session::{ProviderSessionManager, ProviderSessionRegistry, ProviderSessionSource},
 };
 use std::{collections::HashSet, sync::Arc};
-
-const MAX_PROVIDER_KEY_BYTES: usize = 64;
 
 pub trait IntegratedProvider: Send + Sync {
     fn provider_key(&self) -> &str;
@@ -138,12 +137,7 @@ impl ProviderAdapterRuntime {
 
 fn validate_key(key: &str) -> BackendResult<&str> {
     let key = key.trim();
-    if key.is_empty()
-        || key.len() > MAX_PROVIDER_KEY_BYTES
-        || !key
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
-    {
+    if !valid_provider_key(key) {
         return Err(BackendError::new(
             "provider_adapter_key_invalid",
             "Provider adapter key is empty or unsupported.",

@@ -42,6 +42,16 @@
   color: var(--sn-text);
 }
 
+.notice__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.notice__action {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
 @media (max-width: 560px) {
   .results-bar {
     align-items: flex-start;
@@ -52,5 +62,13 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 2px;
+  }
+
+  .notice:has(.notice__action) {
+    flex-wrap: wrap;
+  }
+
+  .notice__action {
+    width: 100%;
   }
 }

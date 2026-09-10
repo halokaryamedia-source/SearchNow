@@ -3,6 +3,7 @@
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { downloadStateLabel, formatBytes, formatDateTime, progressPercent } from "../app/shared/format";
   import type { DownloadJob, DownloadManagerSnapshot } from "../app/shared/types";
+  import MetricCard from "../components/ui/MetricCard.svelte";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
   import ResultsBar from "../components/ui/ResultsBar.svelte";
@@ -116,15 +117,15 @@
       <p>Track active downloads, retry interrupted transfers, and manage completed history.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={() => refresh()} disabled={!runtimeReady || loading}>
-      <RefreshCw size={15} class={loading ? "spin" : ""} />
+      <RefreshCw size={15} class={loading ? "spin" : ""} aria-hidden="true" />
       Refresh
     </button>
   </div>
 
   <div class="metric-grid">
-    <article class="metric-card"><span>Active</span><strong>{snapshot?.activeJobs ?? "—"}</strong><small>Maximum {snapshot?.policy.maxActive ?? "—"} concurrent</small></article>
-    <article class="metric-card"><span>Queued</span><strong>{snapshot?.queuedJobs ?? "—"}</strong><small>Waiting for an execution slot</small></article>
-    <article class="metric-card"><span>History</span><strong>{snapshot?.jobs.length ?? "—"}</strong><small>Maximum {snapshot?.policy.maxJobs ?? "—"} retained jobs</small></article>
+    <MetricCard label="Active" value={snapshot?.activeJobs ?? "—"} detail={`Maximum ${snapshot?.policy.maxActive ?? "—"} concurrent`} />
+    <MetricCard label="Queued" value={snapshot?.queuedJobs ?? "—"} detail="Waiting for an execution slot" />
+    <MetricCard label="History" value={snapshot?.jobs.length ?? "—"} detail={`Maximum ${snapshot?.policy.maxJobs ?? "—"} retained jobs`} />
   </div>
 
   {#if snapshot && jobs.length > 0}

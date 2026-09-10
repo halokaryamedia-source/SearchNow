@@ -37,6 +37,13 @@
     baselineSettings = settings;
   }
 
+  function revertChanges(): void {
+    if (!baselineSettings) return;
+    applySettings(baselineSettings);
+    error = "";
+    saved = false;
+  }
+
   async function load(): Promise<void> {
     if (!active || !snapshot?.ready || loading) return;
     loading = true;
@@ -99,13 +106,21 @@
       <p>Manage Minecraft discovery preferences and review the local desktop runtime.</p>
     </div>
     <button class="button button--primary" type="button" onclick={save} disabled={!active || !snapshot?.ready || loading || saving || !dirty}>
-      {#if saved && !saving}<Check size={15} />{:else}<Save size={15} />{/if}
+      {#if saved && !saving}<Check size={15} aria-hidden="true" />{:else}<Save size={15} aria-hidden="true" />{/if}
       {saving ? "Saving" : saved ? "Saved" : "Save settings"}
     </button>
   </div>
 
   {#if error}
     <Notice tone="error" title="Settings action failed." message={error} />
+  {:else if dirty}
+    <Notice
+      tone="info"
+      title="Unsaved settings"
+      message="Changes are local to this form until you save them. Rescan stays disabled to avoid mixing saved and unsaved discovery settings."
+      actionLabel="Revert changes"
+      onAction={revertChanges}
+    />
   {:else if saved}
     <Notice tone="success" title="Settings saved." message="Minecraft discovery preferences are stored locally." />
   {/if}
@@ -122,7 +137,7 @@
             onclick={rescan}
             disabled={!active || !snapshot?.ready || scanning || dirty}
           >
-            <RefreshCw size={14} class={scanning ? "spin" : ""} />Rescan
+            <RefreshCw size={14} class={scanning ? "spin" : ""} aria-hidden="true" />Rescan
           </button>
         </div>
 

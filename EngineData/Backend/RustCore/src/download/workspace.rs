@@ -219,6 +219,48 @@ pub fn finalized_file_matches(plan: &DownloadWorkspacePlan, expected_bytes: u64)
         && metadata.len() == expected_bytes
 }
 
+fn ensure_destination_directory(destination_dir: &Path) -> BackendResult<()> {
+    if destination_dir.exists() {
+        let metadata = fs::symlink_metadata(destination_dir).map_err(|error| {
+            BackendError::from_io(
+                "download_destination_metadata_failed",
+                "SearchNow could not inspect the selected download folder.",
+                error,
+            )
+        })?;
+        if metadata.file_type().is_symlink() || !metadata.file_type().is_dir() {
+            return Err(BackendError::new(
+                "download_destination_directory_invalid",
+                "The selected download destination is no longer a regular folder.",
+            ));
+        }
+        return Ok(());
+    }
+
+    fs::create_dir_all(destination_dir).map_err(|error| {
+        BackendError::from_io(
+            "download_destination_create_failed",
+            "SearchNow could not create the download destination directory.",
+            error,
+        )
+    })?;
+
+    let metadata = fs::symlink_metadata(destination_dir).map_err(|error| {
+        BackendError::from_io(
+            "download_destination_metadata_failed",
+            "SearchNow could not verify the selected download folder.",
+            error,
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.file_type().is_dir() {
+        return Err(BackendError::new(
+            "download_destination_directory_invalid",
+            "The selected download destination is not a regular folder.",
+        ));
+    }
+    Ok(())
+}
+
 pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> {
     validate_destination_file_name(
         plan.final_path
@@ -246,13 +288,7 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
             "Download destination has no parent directory.",
         )
     })?;
-    fs::create_dir_all(destination_dir).map_err(|error| {
-        BackendError::from_io(
-            "download_destination_create_failed",
-            "SearchNow could not create the download destination directory.",
-            error,
-        )
-    })?;
+    ensure_destination_directory(destination_dir)?;
 
     cleanup_finalization_stage(plan)?;
     let stage_path = finalization_stage_path(plan)?;

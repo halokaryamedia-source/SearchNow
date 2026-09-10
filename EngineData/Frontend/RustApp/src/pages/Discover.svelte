@@ -9,6 +9,7 @@
     CatalogSort,
     ProviderRuntimeStatus,
   } from "../app/shared/types";
+  import ContentTypeMark from "../components/ui/ContentTypeMark.svelte";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
   import ResultsBar from "../components/ui/ResultsBar.svelte";
@@ -195,7 +196,9 @@
     <div class="content-grid content-grid--catalog" aria-busy={loading}>
       {#each page.items as item (`${item.provider}:${item.itemId}`)}
         <article class="content-card content-card--catalog">
-          <div class="content-card__preview" aria-hidden="true"><span>{item.contentType === "world" ? "W" : item.contentType === "addon" ? "A" : "C"}</span></div>
+          <div class="content-card__preview">
+            <ContentTypeMark kind={item.contentType} />
+          </div>
           <div class="content-card__body">
             <div class="content-card__meta"><span>{catalogContentTypeLabel(item.contentType)}</span><span class="chip">{item.provider}</span></div>
             <h2 title={item.title}>{item.title}</h2>

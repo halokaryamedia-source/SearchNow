@@ -101,7 +101,9 @@ impl SearchNowBackendRuntime {
             Some(provider_started.elapsed()),
         );
 
-        let mut transports = DownloadTransportRegistry::with_local_file()?;
+        // Production exposes network/provider transports only. The deterministic
+        // local-file transport remains available to tests and explicit dev fixtures.
+        let mut transports = DownloadTransportRegistry::new();
         transports.register(Arc::new(http.clone()))?;
         transports.register(Arc::new(ProviderResolvedTransport::new(
             providers.resolvers(),

@@ -4,6 +4,7 @@
   import { catalogContentTypeLabel, formatDateTime } from "../app/shared/format";
   import type {
     CatalogContentType,
+    CatalogItem,
     CatalogPage,
     CatalogRequest,
     CatalogSort,
@@ -68,6 +69,18 @@
     };
   }
 
+  function mergeUniqueItems(existing: CatalogItem[], incoming: CatalogItem[]): CatalogItem[] {
+    const seen = new Set(existing.map((item) => `${item.provider}:${item.itemId}`));
+    const merged = existing.slice();
+    for (const item of incoming) {
+      const key = `${item.provider}:${item.itemId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+    return merged;
+  }
+
   function resetControls(): void {
     query = "";
     contentFilter = "all";
@@ -97,7 +110,7 @@
       if (append && page) {
         page = {
           ...result.data,
-          items: [...page.items, ...result.data.items],
+          items: mergeUniqueItems(page.items, result.data.items),
         };
       } else {
         page = result.data;

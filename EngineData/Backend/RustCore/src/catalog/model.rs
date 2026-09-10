@@ -95,6 +95,8 @@ pub struct CatalogItem {
     pub provider: String,
     pub item_id: String,
     pub title: String,
+    pub creator_name: Option<String>,
+    pub thumbnail_url: Option<String>,
     pub description: Option<String>,
     pub content_type: CatalogContentType,
     pub tags: Vec<String>,
@@ -137,6 +139,8 @@ impl CatalogError {
 pub struct CatalogProviderItem {
     pub item_id: String,
     pub title: String,
+    pub creator_name: Option<String>,
+    pub thumbnail_url: Option<String>,
     pub description: Option<String>,
     pub content_type: CatalogContentType,
     pub tags: Vec<String>,

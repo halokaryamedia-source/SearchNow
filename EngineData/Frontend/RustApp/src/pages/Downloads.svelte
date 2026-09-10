@@ -156,7 +156,14 @@
   {/if}
 
   {#if error}
-    <Notice tone="error" title="Download action failed." message={error} />
+    <Notice
+      tone="error"
+      title="Download action failed."
+      message={error}
+      actionLabel="Refresh"
+      actionDisabled={loading}
+      onAction={() => void refresh()}
+    />
   {/if}
 
   {#if !runtimeReady}

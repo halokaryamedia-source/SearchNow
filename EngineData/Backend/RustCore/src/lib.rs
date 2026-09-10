@@ -9,6 +9,7 @@ pub mod package;
 mod persistence;
 pub mod platform;
 pub mod provider_adapter;
+mod provider_identity;
 pub mod provider_session;
 pub mod runtime;
 pub mod settings;

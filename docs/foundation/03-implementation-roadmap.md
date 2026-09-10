@@ -40,6 +40,10 @@ Svelte UI
 
 Do not add Python, a local HTTP server, or another backend process unless a concrete capability cannot be served cleanly by the Rust process and an explicit architecture decision revises this rule.
 
+## Sequencing note
+
+Phase numbers describe capability/verification boundaries. The owner has intentionally deferred Phase 8 target-Windows runtime smoke and continued provider-independent frontend implementation remotely. This does not waive Phase 8 evidence; it only changes the immediate work order.
+
 ## Phase status
 
 ### Phase 0 — Evidence / Development System
@@ -52,15 +56,17 @@ Do not add Python, a local HTTP server, or another backend process unless a conc
 
 ### Phase 2 — Minecraft Discovery + Local Library
 
-**Backend complete; frontend product wiring still partial.** RustCore discovers current Bedrock GDK/account roots, optional Preview, and legacy UWP fallback, then performs bounded local indexing.
+**Backend complete; provider-independent frontend wiring complete remotely.** RustCore discovers current Bedrock GDK/account roots, optional Preview, and legacy UWP fallback, then performs bounded local indexing. Library now renders the actual runtime snapshot with summary/search/filter/warning states. Target-machine behavior remains unproven until Phase 8.
 
 ### Phase 3 — Package Inspection
 
 **Backend complete for read-only inspection.** Folder / `.mcpack` / `.mcaddon` metadata inspection, manifest classification, BP/RP relationship detection, and archive safety checks are implemented without extraction/mutation.
 
+Package file-picker/import UX remains deferred until a concrete target-runtime interaction path is approved and tested.
+
 ### Phase 4 — Download Runtime
 
-**Backend foundation complete.** Persistent bounded queue, cancellation/retry, fail-closed persisted-state validation, startup crash reconciliation, Windows-safe destination naming, staged no-overwrite finalization, public HTTPS transport, and provider-resolved transport are implemented.
+**Backend foundation complete; queue frontend wired remotely.** Persistent bounded queue, cancellation/retry, fail-closed persisted-state validation, startup crash reconciliation, Windows-safe destination naming, staged no-overwrite finalization, public HTTPS transport, and provider-resolved transport are implemented. Downloads renders actual queue/progress/error state and exposes allowed lifecycle actions.
 
 The deterministic `local-file` transport remains test/development-only and is not registered by the production application runtime.
 
@@ -74,23 +80,29 @@ No real provider endpoint/login is implemented yet.
 
 **Remote foundation complete.** Tauri manages one `SearchNowBackendRuntime`; Settings/Downloads share one atomic persistence owner; current health is separated from historical diagnostics; scheduler continuation failures are surfaced; raw transport selection is kept behind the backend boundary; hosted Linux and Windows verification are green.
 
+Settings now exposes safe runtime diagnostics without introducing a second logging system.
+
 ### Phase 7 — Deterministic Build / Verification
 
 **Complete for repository verification.** npm and both Rust application scopes have committed lockfiles. Repository, Local-promotion, and stable-release workflows use `npm ci` and Cargo `--locked`, with current GitHub Actions runtime versions.
 
 ### Phase 8 — Target-Windows Runtime Smoke
 
-**Next validation boundary.** Run non-destructive local Windows evidence for AppData resolution, current GDK/UWP discovery, settings save/reload, package inspection, download finalization, diagnostics, and actual Tauri application launch.
+**Required, currently deferred by owner.** Run non-destructive local Windows evidence for AppData resolution, current GDK/UWP discovery, settings save/reload, package inspection, download finalization, diagnostics, and actual Tauri application launch.
 
 Hosted Windows compilation is prerequisite evidence, not a substitute for this phase.
 
 ### Phase 9 — Real Provider Integration
 
-After local foundation smoke is accepted, define and implement the concrete provider credential/session acquisition, endpoint contracts, timeout/retry/backoff behavior, and Marketplace/PlayFab-specific adapters without changing the established product/transport boundary.
+**Not started.** Define and implement concrete provider credential/session acquisition, endpoint contracts, timeout/retry/backoff behavior, and Marketplace/PlayFab-specific adapters without changing the established product/transport boundary.
+
+This work may begin before Phase 8 only if the owner explicitly chooses that sequencing; it still cannot claim target-machine validation.
 
 ### Phase 10 — Discover / Downloads / Settings Product Wiring
 
-Wire implemented backend/provider behavior into the product facade/UI without moving runtime truth into Svelte.
+**Provider-independent portion complete remotely.** Library, Downloads, Settings, runtime health, diagnostics, and the provider-neutral Discover query surface are wired through the existing facade/API/Tauri/runtime path.
+
+Live Discover results still depend on Phase 9. A Discover download action must not guess destination filename/package metadata; it should be completed only after the provider contract supplies a truthful output descriptor.
 
 ### Phase 11 — Release Acceptance
 
@@ -107,3 +119,4 @@ Representative large-library/network fixtures, installer/bundle/branding, clean-
 7. Repository/static/hosted compile proof never upgrades itself to installed Windows runtime proof.
 8. Do not freeze temporary workarounds into repository contracts.
 9. Verification must use committed dependency graphs; update lockfiles only as an explicit dependency change.
+10. Frontend must not fabricate provider/local-runtime capabilities merely to make a screen look complete.

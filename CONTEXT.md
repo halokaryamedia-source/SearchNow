@@ -1,6 +1,6 @@
 # SearchNow Context
 
-Status: remote repository/backend foundation complete; target-Windows runtime smoke pending  
+Status: remote backend foundation + provider-independent frontend ready; target-Windows runtime smoke pending  
 Development branch: `develop`  
 Verified integration baseline: `Local`  
 Stable branch: `main`
@@ -36,6 +36,8 @@ Downloads
 Settings
 ```
 
+Library, Downloads, Settings, runtime health/diagnostics, and the provider-neutral Discover query surface are now wired remotely to the existing application runtime. Real provider login/network behavior and installed target-Windows interaction remain separate future evidence boundaries.
+
 ## Current architecture
 
 ```text
@@ -66,6 +68,8 @@ Svelte owns UI/transient state only. Rust owns persistent/runtime truth: Minecra
 
 Settings/download persistence share one crash-recoverable atomic storage primitive. Production downloads expose product intent rather than caller-selected transports. Provider/resource identity validation has one canonical owner. Dependency graphs are committed and verified with npm/Cargo lockfiles.
 
+The frontend uses one `runtimeProductFacade` over one raw `runtimeApi` Tauri bridge. Pages/components do not create a second API client, persist backend truth, choose internal transports, or handle provider secrets.
+
 ## Evidence boundary
 
 ```text
@@ -78,7 +82,7 @@ legacy binary evidence
 → target-Windows installed runtime proof
 ```
 
-Source/build success is not proof of installed Windows behavior.
+Source/build success is not proof of installed Windows behavior. The owner has intentionally deferred target-Windows runtime smoke while provider-independent frontend implementation continues remotely.
 
 ## Safety/privacy boundary
 

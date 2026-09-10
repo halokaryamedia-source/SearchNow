@@ -1,55 +1,51 @@
 # Next Action
 
-Status: `REMOTE_GITHUB_FOUNDATION_COMPLETE`
+Status: `FRONTEND_PROVIDER_INDEPENDENT_READY`
+
+## Sequencing note
+
+The target-Windows runtime smoke remains required, but it is intentionally deferred because the owner is not currently available to run local tests. Development therefore continued with frontend work that can be implemented and verified remotely without inventing local-runtime or real-provider behavior.
 
 ## Verified checkpoint
 
-The `develop` repository foundation is closed for the current backend-first scope.
+The `develop` branch now contains the closed remote backend foundation plus a provider-independent frontend workspace built on the same runtime boundaries.
 
-Completed remotely:
+Frontend surfaces now implemented remotely:
 
-- one `SearchNowBackendRuntime` application owner;
-- settings/Minecraft/library/package/catalog/provider/download runtime foundations;
-- shared crash-recoverable persistence;
-- fail-closed persisted download recovery and crash reconciliation;
-- Windows-safe destination naming;
-- production transport isolation and provider-neutral download intent at Tauri IPC;
-- canonical provider/resource identity validation;
-- secret-safe diagnostics with current component health separated from event history;
-- observable scheduler continuation failure state;
-- standard committed Tauri PNG/ICO resources;
-- committed npm + Rust dependency locks;
-- read-only deterministic CI using `npm ci` and Cargo `--locked`;
-- hosted Linux repository/backend/frontend verification;
-- hosted Windows RustCore tests and Tauri compile verification.
+- one application bootstrap using the safe backend/runtime snapshot;
+- Library scan, summary metrics, search/filter, warning/empty/error states, and collapsed technical details;
+- Downloads queue/history, actual runtime progress, adaptive polling while mounted, cancel/retry/remove actions, and scheduler-error visibility;
+- Settings load/save for current Minecraft discovery preferences with dirty-state protection;
+- Minecraft storage rescan and detected-root presentation;
+- safe runtime health and recent diagnostics in Settings;
+- Discover search/filter/sort/pagination UI through the provider-neutral catalog command when a catalog-capable provider exists;
+- one `runtimeProductFacade` over the single raw Tauri `runtimeApi` bridge;
+- no frontend-owned persistence, filesystem scan, download transport selection, credential handling, or second runtime client.
 
-The current RustCore suite contains **71 passing tests** in the remote verification baseline.
+The current RustCore suite remains **71 passing tests**. The frontend architecture/source-size/Svelte typecheck/production-build gates and hosted Windows RustCore/Tauri compile gate pass for the current remote frontend code baseline.
 
-## Next boundary
+## Deliberately not claimed
+
+The following remain outside the verified frontend checkpoint:
+
+- real provider login or Marketplace/PlayFab network behavior;
+- live catalog results without a registered real provider;
+- Discover download-button behavior that would require guessing package/output filename metadata not yet supplied by the provider contract;
+- package import/file-picker interaction not yet backed by an approved target-runtime interaction path;
+- installed application behavior on the owner's Windows machine;
+- real local Minecraft libraries, AppData paths, and user-machine performance.
+
+## Remaining paths
 
 ```text
-REMOTE_GITHUB_FOUNDATION_COMPLETE
-→ TARGET_WINDOWS_RUNTIME_SMOKE
+FRONTEND_PROVIDER_INDEPENDENT_READY
+├── TARGET_WINDOWS_RUNTIME_SMOKE        deferred by owner, still required for local-runtime proof
+├── REAL_PROVIDER_INTEGRATION          future functional dependency for live Discover
+└── VISUAL_PRODUCT_REFINEMENT          may continue remotely when a concrete visual direction is requested
 ```
 
-The next canonical action is **local Windows runtime validation**, not another repository-foundation rewrite.
+No backend-foundation rewrite is required before any of those paths.
 
-Use the existing non-destructive readiness tooling and actual Tauri app runtime to validate:
+When real provider work begins, preserve the existing provider/session/resource and product-intent boundaries. The frontend should receive normalized catalog/product state, not provider secrets, raw endpoints, or internal transport controls.
 
-1. application/AppData path resolution;
-2. current Minecraft Bedrock GDK/account-scoped discovery and legacy UWP fallback;
-3. settings save/reload recovery behavior;
-4. local library/package inspection against representative content;
-5. download finalization/recovery behavior with representative fixtures;
-6. safe diagnostics/health snapshots;
-7. actual Tauri window startup and command invocation on the target Windows machine.
-
-## Boundary after local smoke
-
-Only after the target-Windows foundation smoke is accepted should active development move to the next product slice, expected to be real provider integration and then Discover/Downloads/Settings product wiring.
-
-Real-provider work must preserve the existing runtime, credential, provider-resource, and product-intent boundaries; it is an extension of this foundation, not a second system.
-
-## Proof rule
-
-Hosted Linux/Windows CI proves repository correctness and native Windows compilation. It does **not** prove installed-app behavior, user-machine Minecraft discovery, production provider compatibility, or clean-machine release readiness.
+When local testing becomes available, use `tools/windows_smoke_readiness.ps1` plus the actual Tauri application for `TARGET_WINDOWS_RUNTIME_SMOKE`; do not treat hosted compilation as installed-runtime proof.

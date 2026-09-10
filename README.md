@@ -72,12 +72,27 @@ Implemented at repository/runtime-core level:
 - committed npm/Rust lockfiles and deterministic `npm ci` / Cargo `--locked` verification;
 - hosted Linux verification and native Windows RustCore/Tauri compile gates.
 
+## Current Frontend Status
+
+Implemented remotely against the existing runtime contracts:
+
+- runtime/health bootstrap and refresh;
+- Library scan, summary, search/filter, warning/error/empty states, and collapsed technical details;
+- Downloads queue/history, progress, adaptive refresh, cancel/retry/remove actions, and scheduler-error state;
+- Settings load/save with dirty-state protection and Minecraft storage rescan;
+- safe runtime diagnostics in Settings;
+- provider-neutral Discover search/filter/sort/pagination when a catalog-capable provider is registered;
+- one `runtimeProductFacade` over one raw Tauri `runtimeApi`; pages do not own runtime truth.
+
 Not implemented yet:
 
 - real provider login/credentials/endpoints;
-- Marketplace/PlayFab-specific integration;
-- production Discover/provider frontend wiring;
+- Marketplace/PlayFab-specific integration and live catalog data;
+- Discover download action until provider metadata supplies a deterministic safe output descriptor;
+- package file-picker/import interaction;
 - installer/release branding and clean-machine acceptance.
+
+Target-Windows installed/runtime smoke is still required. It is currently deferred by the owner and is not replaced by hosted compilation.
 
 ## Source Map
 

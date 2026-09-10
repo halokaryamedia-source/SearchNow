@@ -26,6 +26,9 @@ All notable SearchNow repository/product changes will be recorded here.
 - Provider-neutral `QueueCatalogDownloadRequest` product intent at the Tauri IPC boundary.
 - Sanitized download scheduler continuation-error state exposed through download snapshots.
 - Committed `package-lock.json` plus standalone RustCore and Tauri `Cargo.lock` dependency graphs.
+- Runtime-connected frontend workspace for Library, Downloads, Settings, runtime health, and safe diagnostics.
+- Provider-neutral Discover search/filter/sort/pagination UI plus a thin Tauri `query_catalog` adapter over the existing Rust application runtime.
+- Shared frontend DTO/format helpers and a single normalized `runtimeProductFacade` over the raw Tauri bridge.
 
 ### Changed
 
@@ -39,14 +42,22 @@ All notable SearchNow repository/product changes will be recorded here.
 - Repository, Local-promotion, and stable-release verification now use current GitHub Actions v7 releases, `npm ci`, Cargo `--locked`, and read-only repository permissions.
 - Repository validation now requires committed dependency locks and guards the product-intent/production-transport boundary.
 - README, context, implementation roadmap, next-action, validation, backlog, and observability documentation describe the closed remote foundation rather than the initial scaffold state.
+- Library, Downloads, and Settings react when runtime availability changes instead of depending only on their first mount.
+- Downloads refreshes adaptively while mounted and stops polling when the page/runtime is unavailable.
+- Settings tracks unsaved changes, disables redundant saves, clears stale `Saved` feedback after edits, and requires saved discovery preferences before rescan.
+- Product-facing loading/empty/unavailable copy no longer exposes implementation details that belong in technical/diagnostic surfaces.
 
 ### Verified
 
-- Remote foundation verification passes 71 RustCore tests with strict Clippy, frontend architecture/size/typecheck/build checks, and native hosted-Windows RustCore/Tauri locked compilation.
+- Remote backend foundation verification passes 71 RustCore tests with strict Clippy, frontend architecture/size/typecheck/build checks, and native hosted-Windows RustCore/Tauri locked compilation.
+- Provider-independent frontend code through `c2ffdad5fef9b03df13d61335ee929ffe43f92be` passes Repository Verify **#168** on Linux.
+- The first Windows attempt for that same commit hit a transient local HTTP fixture timeout; a rerun of the identical SHA passed the 71-test RustCore suite, frontend build, and native Tauri compile gate without any Rust/source change.
 
 ### Safety / Architecture
 
 - Runtime credential material remains excluded from persisted download/catalog DTOs and public provider status.
 - Provider-session material remains opaque, runtime-only, non-serializable, and non-Debug.
 - Product UI/IPC cannot select arbitrary internal download transports.
+- Frontend pages/components do not own persistent/runtime truth and do not call raw Tauri `invoke` directly.
+- Discover does not fabricate real-provider results or guess package/output filenames in order to expose an unsupported download action.
 - Protected-content bypass, key distribution, and hidden entitlement-data transmission remain outside the product boundary.

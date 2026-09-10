@@ -48,21 +48,28 @@ Svelte page/component
 
 Download IPC accepts provider-neutral catalog download intent. The frontend does not select internal transport keys.
 
-## Current backend-connected surfaces
+## Connected product surfaces
 
-The repository foundation exposes typed boundaries for:
+The remote frontend implementation now uses the existing Rust runtime for:
 
-```text
-runtime/diagnostics
-settings
-Minecraft discovery
-local library
-package inspection
-download lifecycle
-provider-neutral catalog/download intent
-```
+- application/runtime health bootstrap and refresh;
+- Library scan, summary, search/filter, warnings, and technical details;
+- Downloads queue/progress plus cancel, retry, remove, scheduler-error visibility, and adaptive refresh while the page is mounted;
+- Settings load/save for the current Minecraft discovery preferences;
+- Minecraft storage rescan and detected-root presentation;
+- safe runtime diagnostics and recent event presentation;
+- provider-neutral Discover search/filter/sort/pagination when a catalog-capable provider is registered.
 
-Real provider login/endpoints and production Discover wiring remain future product work.
+The bridge has no second API client and pages do not own persistent/runtime truth.
+
+## Deliberately deferred
+
+The frontend does not fabricate behavior that the backend/provider cannot truthfully support yet:
+
+- no real provider login or Marketplace/PlayFab network adapter is present;
+- Discover does not guess destination filenames/package types for downloads before provider metadata defines a safe output contract;
+- package import/file-picker actions are not claimed as working until the target runtime interaction is implemented and tested;
+- installed Windows behavior is not considered verified by hosted CI.
 
 ## Development
 
@@ -73,6 +80,8 @@ npm ci
 npm run validate:quick
 npm run dev:app
 ```
+
+`validate:quick` checks the architecture contract, source-size budget, Svelte/TypeScript types, and production frontend build.
 
 Do not replace `npm ci` with unconstrained dependency resolution during normal verification. Dependency graph changes should be explicit and reviewed together with the updated lockfile.
 

@@ -21,7 +21,7 @@
 
 <aside class="sidebar">
   <div class="brand">
-    <div class="brand__mark">S</div>
+    <div class="brand__mark" aria-hidden="true">S</div>
     <div>
       <strong>SearchNow</strong>
       <span>Bedrock content manager</span>
@@ -34,9 +34,11 @@
         class:nav-item--active={route === item.id}
         class="nav-item"
         type="button"
+        aria-current={route === item.id ? "page" : undefined}
+        title={item.label}
         onclick={() => onNavigate(item.id)}
       >
-        <item.icon size={18} strokeWidth={1.8} />
+        <item.icon size={18} strokeWidth={1.8} aria-hidden="true" />
         <span>{item.label}</span>
       </button>
     {/each}

@@ -5,6 +5,7 @@
   import type { DownloadJob, DownloadManagerSnapshot } from "../app/shared/types";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
+  import ResultsBar from "../components/ui/ResultsBar.svelte";
 
   type DownloadFilter = "all" | "active" | "completed" | "issues";
 
@@ -19,6 +20,7 @@
   let jobs = $derived((snapshot?.jobs ?? []).slice().sort((a, b) => b.updatedAtMs - a.updatedAtMs));
   let visibleJobs = $derived(jobs.filter((job) => matchesFilter(job)));
   let hasActivity = $derived((snapshot?.activeJobs ?? 0) > 0 || (snapshot?.queuedJobs ?? 0) > 0);
+  let controlsChanged = $derived(query.trim().length > 0 || filter !== "all");
 
   function matchesFilter(job: DownloadJob): boolean {
     if (filter === "active" && !["queued", "preparing", "transferring", "finalizing", "cancelRequested"].includes(job.state)) return false;
@@ -27,6 +29,11 @@
     const needle = query.trim().toLowerCase();
     if (!needle) return true;
     return `${job.displayName} ${job.destinationFileName} ${job.state}`.toLowerCase().includes(needle);
+  }
+
+  function resetControls(): void {
+    query = "";
+    filter = "all";
   }
 
   function canCancel(job: DownloadJob): boolean {
@@ -133,6 +140,13 @@
         <option value="issues">Needs attention</option>
       </select>
     </div>
+    <ResultsBar
+      label={`${visibleJobs.length} of ${jobs.length} download${jobs.length === 1 ? "" : "s"}`}
+      detail={controlsChanged ? "Current search and history filter are applied." : "Showing the complete retained download history."}
+      showReset={controlsChanged}
+      resetLabel="Reset history view"
+      onReset={resetControls}
+    />
   {/if}
 
   {#if snapshot?.schedulerError}
@@ -150,7 +164,13 @@
   {:else if snapshot && jobs.length === 0}
     <PageState marker="03" title="No downloads yet" message="Downloads started from Discover will appear here with their current state and progress." />
   {:else if snapshot && visibleJobs.length === 0}
-    <PageState marker="03" title="No matching downloads" message="Change the search or history filter to see other download jobs." />
+    <PageState
+      marker="03"
+      title="No matching downloads"
+      message="Reset or change the current search and history filter to see other download jobs."
+      actionLabel={controlsChanged ? "Reset history view" : null}
+      onAction={controlsChanged ? resetControls : null}
+    />
   {:else if snapshot}
     <div class="download-list" aria-live="polite">
       {#each visibleJobs as job (job.id)}
@@ -191,17 +211,17 @@
           <div class="download-card__actions">
             {#if canCancel(job)}
               <button class="icon-button" type="button" title="Cancel download" aria-label={`Cancel ${job.displayName}`} onclick={() => cancel(job)} disabled={actionJobId === job.id}>
-                <X size={16} />
+                <X size={16} aria-hidden="true" />
               </button>
             {/if}
             {#if canRetry(job)}
               <button class="icon-button" type="button" title="Retry download" aria-label={`Retry ${job.displayName}`} onclick={() => retry(job)} disabled={actionJobId === job.id}>
-                <RotateCcw size={16} />
+                <RotateCcw size={16} aria-hidden="true" />
               </button>
             {/if}
             {#if canRemove(job)}
               <button class="icon-button" type="button" title="Remove from history" aria-label={`Remove ${job.displayName} from history`} onclick={() => remove(job)} disabled={actionJobId === job.id}>
-                <Trash2 size={16} />
+                <Trash2 size={16} aria-hidden="true" />
               </button>
             {/if}
           </div>

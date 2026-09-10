@@ -66,11 +66,15 @@ fn matches_query(item: &CatalogProviderItem, query: &CatalogQuery) -> bool {
     if let Some(text) = &query.text {
         let needle = text.to_ascii_lowercase();
         let title_match = item.title.to_ascii_lowercase().contains(&needle);
+        let creator_match = item
+            .creator_name
+            .as_ref()
+            .is_some_and(|value| value.to_ascii_lowercase().contains(&needle));
         let description_match = item
             .description
             .as_ref()
             .is_some_and(|value| value.to_ascii_lowercase().contains(&needle));
-        if !title_match && !description_match {
+        if !title_match && !creator_match && !description_match {
             return false;
         }
     }
@@ -112,6 +116,8 @@ fn item(
     CatalogProviderItem {
         item_id: id.to_string(),
         title: title.to_string(),
+        creator_name: Some("Example Creator".to_string()),
+        thumbnail_url: Some(format!("https://cdn.example.com/{id}.webp")),
         description: Some(format!("{title} description")),
         content_type,
         tags: tags.iter().map(|tag| (*tag).to_string()).collect(),
@@ -196,6 +202,11 @@ fn fake_provider_supports_filter_sort_and_cursor_pagination() {
         })
         .expect("first page");
     assert_eq!(first.items[0].item_id, "alpha");
+    assert_eq!(first.items[0].creator_name.as_deref(), Some("Example Creator"));
+    assert_eq!(
+        first.items[0].thumbnail_url.as_deref(),
+        Some("https://cdn.example.com/alpha.webp")
+    );
     assert_eq!(first.next_cursor.as_deref(), Some("1"));
 
     let second = catalog
@@ -212,6 +223,28 @@ fn fake_provider_supports_filter_sort_and_cursor_pagination() {
         .expect("second page");
     assert_eq!(second.items[0].item_id, "gamma");
     assert!(second.next_cursor.is_none());
+}
+
+#[test]
+fn creator_text_participates_in_search() {
+    let provider = Arc::new(FakeCatalogProvider::new(vec![item(
+        "creator-item",
+        "Unrelated title",
+        CatalogContentType::Addon,
+        &[],
+        10,
+    )]));
+    let catalog = service(provider);
+    let page = catalog
+        .query(&CatalogRequest {
+            provider: "fake".into(),
+            query: CatalogQuery {
+                text: Some("example creator".into()),
+                ..CatalogQuery::default()
+            },
+        })
+        .expect("creator search");
+    assert_eq!(page.items.len(), 1);
 }
 
 #[test]
@@ -239,6 +272,8 @@ impl CatalogProvider for MalformedProvider {
             items: vec![CatalogProviderItem {
                 item_id: "bad-item".into(),
                 title: "x".repeat(300),
+                creator_name: None,
+                thumbnail_url: None,
                 description: None,
                 content_type: CatalogContentType::Other,
                 tags: Vec::new(),
@@ -262,6 +297,44 @@ fn malformed_provider_data_fails_closed() {
         .expect_err("malformed item");
     assert_eq!(error.code, "catalog_provider_data_invalid");
     assert!(!error.retryable);
+}
+
+struct UnsafeThumbnailProvider;
+
+impl CatalogProvider for UnsafeThumbnailProvider {
+    fn key(&self) -> &str {
+        "unsafe-thumbnail"
+    }
+
+    fn query(&self, _query: &CatalogQuery) -> Result<CatalogProviderPage, CatalogProviderFailure> {
+        Ok(CatalogProviderPage {
+            items: vec![CatalogProviderItem {
+                item_id: "unsafe".into(),
+                title: "Unsafe thumbnail".into(),
+                creator_name: Some("Example Creator".into()),
+                thumbnail_url: Some("http://example.com/image.png".into()),
+                description: None,
+                content_type: CatalogContentType::Other,
+                tags: Vec::new(),
+                published_at_ms: None,
+                updated_at_ms: None,
+                download: None,
+            }],
+            next_cursor: None,
+        })
+    }
+}
+
+#[test]
+fn thumbnail_must_be_public_https() {
+    let catalog = service(Arc::new(UnsafeThumbnailProvider));
+    let error = catalog
+        .query(&CatalogRequest {
+            provider: "unsafe-thumbnail".into(),
+            query: CatalogQuery::default(),
+        })
+        .expect_err("unsafe thumbnail must fail");
+    assert_eq!(error.code, "catalog_provider_data_invalid");
 }
 
 struct SecretFailureProvider;

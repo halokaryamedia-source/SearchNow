@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::{
-    collections::VecDeque,
+    collections::{HashSet, VecDeque},
     sync::{Arc, Mutex},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -16,7 +16,7 @@ pub enum DiagnosticSeverity {
     Error,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum DiagnosticComponent {
     Runtime,
@@ -66,6 +66,7 @@ pub struct BackendHealthSnapshot {
     pub dropped_events: u64,
     pub warning_events: usize,
     pub error_events: usize,
+    pub degraded_components: Vec<DiagnosticComponent>,
     pub last_code: Option<&'static str>,
 }
 
@@ -86,6 +87,7 @@ struct DiagnosticsInner {
     startup_phase: BackendStartupPhase,
     events: VecDeque<DiagnosticEvent>,
     dropped_events: u64,
+    degraded_components: HashSet<DiagnosticComponent>,
 }
 
 impl Default for DiagnosticsBuffer {
@@ -102,6 +104,7 @@ impl DiagnosticsBuffer {
                 startup_phase: BackendStartupPhase::Starting,
                 events: VecDeque::with_capacity(capacity),
                 dropped_events: 0,
+                degraded_components: HashSet::new(),
             })),
             capacity,
         }
@@ -124,18 +127,18 @@ impl DiagnosticsBuffer {
         let Ok(mut inner) = self.inner.lock() else {
             return;
         };
-        if inner.events.len() == self.capacity {
-            inner.events.pop_front();
-            inner.dropped_events = inner.dropped_events.saturating_add(1);
-        }
-        inner.events.push_back(DiagnosticEvent {
-            timestamp_ms: unix_timestamp_ms(),
-            component,
-            severity,
-            code,
-            message,
-            duration_ms: duration.map(duration_ms),
-        });
+        push_event(
+            &mut inner,
+            self.capacity,
+            DiagnosticEvent {
+                timestamp_ms: unix_timestamp_ms(),
+                component,
+                severity,
+                code,
+                message,
+                duration_ms: duration.map(duration_ms),
+            },
+        );
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -155,24 +158,31 @@ impl DiagnosticsBuffer {
         } else {
             (failure_severity, failure_code, failure_message)
         };
-        self.record(component, severity, code, message, Some(started.elapsed()));
+        let Ok(mut inner) = self.inner.lock() else {
+            return;
+        };
+        if success {
+            inner.degraded_components.remove(&component);
+        } else if failure_severity == DiagnosticSeverity::Error {
+            inner.degraded_components.insert(component);
+        }
+        push_event(
+            &mut inner,
+            self.capacity,
+            DiagnosticEvent {
+                timestamp_ms: unix_timestamp_ms(),
+                component,
+                severity,
+                code,
+                message,
+                duration_ms: Some(duration_ms(started.elapsed())),
+            },
+        );
     }
 
     pub fn snapshot(&self) -> BackendDiagnosticsSnapshot {
         let Ok(inner) = self.inner.lock() else {
-            return BackendDiagnosticsSnapshot {
-                health: BackendHealthSnapshot {
-                    startup_phase: BackendStartupPhase::Unknown,
-                    state: BackendHealthState::Unknown,
-                    diagnostics_available: false,
-                    retained_events: 0,
-                    dropped_events: 0,
-                    warning_events: 0,
-                    error_events: 0,
-                    last_code: None,
-                },
-                events: Vec::new(),
-            };
+            return unavailable_snapshot();
         };
 
         let warning_events = inner
@@ -185,7 +195,9 @@ impl DiagnosticsBuffer {
             .iter()
             .filter(|event| event.severity == DiagnosticSeverity::Error)
             .count();
-        let state = if error_events == 0 {
+        let mut degraded_components: Vec<_> = inner.degraded_components.iter().copied().collect();
+        degraded_components.sort_by_key(component_order);
+        let state = if degraded_components.is_empty() {
             BackendHealthState::Healthy
         } else {
             BackendHealthState::Degraded
@@ -199,10 +211,49 @@ impl DiagnosticsBuffer {
                 dropped_events: inner.dropped_events,
                 warning_events,
                 error_events,
+                degraded_components,
                 last_code: inner.events.back().map(|event| event.code),
             },
             events: inner.events.iter().cloned().collect(),
         }
+    }
+}
+
+fn push_event(inner: &mut DiagnosticsInner, capacity: usize, event: DiagnosticEvent) {
+    if inner.events.len() == capacity {
+        inner.events.pop_front();
+        inner.dropped_events = inner.dropped_events.saturating_add(1);
+    }
+    inner.events.push_back(event);
+}
+
+fn unavailable_snapshot() -> BackendDiagnosticsSnapshot {
+    BackendDiagnosticsSnapshot {
+        health: BackendHealthSnapshot {
+            startup_phase: BackendStartupPhase::Unknown,
+            state: BackendHealthState::Unknown,
+            diagnostics_available: false,
+            retained_events: 0,
+            dropped_events: 0,
+            warning_events: 0,
+            error_events: 0,
+            degraded_components: Vec::new(),
+            last_code: None,
+        },
+        events: Vec::new(),
+    }
+}
+
+fn component_order(component: &DiagnosticComponent) -> u8 {
+    match component {
+        DiagnosticComponent::Runtime => 0,
+        DiagnosticComponent::Settings => 1,
+        DiagnosticComponent::Minecraft => 2,
+        DiagnosticComponent::Library => 3,
+        DiagnosticComponent::Package => 4,
+        DiagnosticComponent::Catalog => 5,
+        DiagnosticComponent::Provider => 6,
+        DiagnosticComponent::Download => 7,
     }
 }
 
@@ -239,6 +290,37 @@ mod tests {
         assert_eq!(snapshot.health.dropped_events, 1);
         assert_eq!(snapshot.events[0].code, "second");
         assert_eq!(snapshot.events[1].code, "third");
+    }
+
+    #[test]
+    fn current_health_recovers_without_erasing_error_history() {
+        let diagnostics = DiagnosticsBuffer::default();
+        diagnostics.record_outcome(
+            DiagnosticComponent::Settings,
+            Instant::now(),
+            false,
+            "settings_ok",
+            "Settings are healthy.",
+            "settings_failed",
+            "Settings failed.",
+            DiagnosticSeverity::Error,
+        );
+        assert_eq!(diagnostics.snapshot().health.state, BackendHealthState::Degraded);
+
+        diagnostics.record_outcome(
+            DiagnosticComponent::Settings,
+            Instant::now(),
+            true,
+            "settings_ok",
+            "Settings are healthy.",
+            "settings_failed",
+            "Settings failed.",
+            DiagnosticSeverity::Error,
+        );
+        let snapshot = diagnostics.snapshot();
+        assert_eq!(snapshot.health.state, BackendHealthState::Healthy);
+        assert_eq!(snapshot.health.error_events, 1);
+        assert!(snapshot.health.degraded_components.is_empty());
     }
 
     #[test]

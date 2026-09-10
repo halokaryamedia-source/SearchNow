@@ -9,6 +9,7 @@ import type {
   DownloadManagerSnapshot,
   LocalBackendSnapshot,
   MinecraftDiscoverySnapshot,
+  QueueCatalogDownloadRequest,
   RuntimeStatus,
 } from "../shared/types";
 
@@ -43,6 +44,10 @@ export const runtimeApi = {
 
   getDownloadSnapshot(): Promise<DownloadManagerSnapshot> {
     return invoke<DownloadManagerSnapshot>("get_download_snapshot");
+  },
+
+  queueCatalogDownload(request: QueueCatalogDownloadRequest): Promise<DownloadJob> {
+    return invoke<DownloadJob>("queue_catalog_download", { request });
   },
 
   cancelDownload(jobId: string): Promise<DownloadJob> {

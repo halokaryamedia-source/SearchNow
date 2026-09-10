@@ -9,7 +9,7 @@
   type LibraryFilter = "all" | LocalContentType | "issues";
   type LibrarySort = "nameAsc" | "nameDesc" | "type" | "status";
 
-  let { runtimeReady }: { runtimeReady: boolean } = $props();
+  let { runtimeReady, active }: { runtimeReady: boolean; active: boolean } = $props();
   let loading = $state(false);
   let loaded = $state(false);
   let snapshot = $state<LocalBackendSnapshot | null>(null);
@@ -56,15 +56,12 @@
   }
 
   $effect(() => {
-    if (!runtimeReady) {
-      loaded = false;
-      return;
-    }
+    if (!active || !runtimeReady) return;
     if (!loaded && !loading) void refresh();
   });
 </script>
 
-<section class="page">
+<section class="page" hidden={!active}>
   <div class="page-heading page-heading--actions">
     <div>
       <span class="eyebrow">My content</span>

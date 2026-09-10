@@ -202,7 +202,10 @@ fn fake_provider_supports_filter_sort_and_cursor_pagination() {
         })
         .expect("first page");
     assert_eq!(first.items[0].item_id, "alpha");
-    assert_eq!(first.items[0].creator_name.as_deref(), Some("Example Creator"));
+    assert_eq!(
+        first.items[0].creator_name.as_deref(),
+        Some("Example Creator")
+    );
     assert_eq!(
         first.items[0].thumbnail_url.as_deref(),
         Some("https://cdn.example.com/alpha.webp")

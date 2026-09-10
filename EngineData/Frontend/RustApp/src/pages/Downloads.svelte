@@ -8,7 +8,7 @@
 
   type DownloadFilter = "all" | "active" | "completed" | "issues";
 
-  let { runtimeReady }: { runtimeReady: boolean } = $props();
+  let { runtimeReady, active }: { runtimeReady: boolean; active: boolean } = $props();
   let snapshot = $state<DownloadManagerSnapshot | null>(null);
   let loading = $state(false);
   let error = $state("");
@@ -84,13 +84,13 @@
   }
 
   $effect(() => {
-    if (!runtimeReady) return;
+    if (!active || !runtimeReady) return;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const poll = async (): Promise<void> => {
       await refresh(false);
-      if (!disposed) timer = setTimeout(poll, hasActivity ? 1200 : 5000);
+      if (!disposed && active) timer = setTimeout(poll, hasActivity ? 1200 : 5000);
     };
     void poll();
 
@@ -101,7 +101,7 @@
   });
 </script>
 
-<section class="page">
+<section class="page" hidden={!active}>
   <div class="page-heading page-heading--actions">
     <div>
       <span class="eyebrow">Transfer queue</span>

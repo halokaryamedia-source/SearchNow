@@ -10,6 +10,7 @@
     CatalogSort,
     ProviderRuntimeStatus,
   } from "../app/shared/types";
+  import ContentDetails from "../components/ui/ContentDetails.svelte";
   import ContentTypeMark from "../components/ui/ContentTypeMark.svelte";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
@@ -236,6 +237,17 @@
                 <span>{formatDateTime(item.updatedAtMs ?? item.publishedAtMs ?? 0)}</span>
               {/if}
             </div>
+            <ContentDetails
+              description={item.description}
+              items={[
+                { label: "Provider", value: item.provider },
+                { label: "Content type", value: catalogContentTypeLabel(item.contentType) },
+                { label: "Tags", value: item.tags.length ? item.tags.join(", ") : null },
+                { label: "Published", value: item.publishedAtMs ? formatDateTime(item.publishedAtMs) : null },
+                { label: "Updated", value: item.updatedAtMs ? formatDateTime(item.updatedAtMs) : null },
+                { label: "Availability", value: item.download ? "Download available" : "Browse only" },
+              ]}
+            />
           </div>
         </article>
       {/each}

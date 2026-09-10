@@ -161,9 +161,13 @@ impl DownloadExecutionRuntime {
 
     fn execute_claimed_job(&self, job_id: &str) -> BackendResult<()> {
         let job = self.current_job(job_id)?;
+        let destination_root = job
+            .destination_directory
+            .as_deref()
+            .unwrap_or(&self.inner.destination_root);
         let plan = plan_workspace(
             &self.inner.workspace_root,
-            &self.inner.destination_root,
+            destination_root,
             &job.id,
             &job.destination_file_name,
         )?;
@@ -277,12 +281,21 @@ impl DownloadExecutionRuntime {
 
         self.mutate_persist(|manager| manager.begin_finalizing(job_id))?;
 
-        if let Err(error) = finalize_payload(&plan) {
-            let retryable = error.code() != "download_destination_exists";
-            self.fail_job(job_id, &plan, error.code(), error.message(), retryable)?;
-            return Ok(());
-        }
+        let final_path = match finalize_payload(&plan) {
+            Ok(path) => path,
+            Err(error) => {
+                self.fail_job(job_id, &plan, error.code(), error.message(), true)?;
+                return Ok(());
+            }
+        };
 
+        if let Some(file_name) = final_path.file_name().and_then(|value| value.to_str()) {
+            if file_name != job.destination_file_name {
+                self.mutate_persist(|manager| {
+                    manager.set_destination_file_name(job_id, file_name.to_string())
+                })?;
+            }
+        }
         self.mutate_persist(|manager| manager.mark_completed(job_id))?;
         let _cleanup_result = cleanup_workspace(&plan);
         Ok(())
@@ -352,9 +365,13 @@ impl DownloadExecutionRuntime {
             return;
         }
 
+        let destination_root = job
+            .destination_directory
+            .as_deref()
+            .unwrap_or(&self.inner.destination_root);
         let Ok(plan) = plan_workspace(
             &self.inner.workspace_root,
-            &self.inner.destination_root,
+            destination_root,
             &job.id,
             &job.destination_file_name,
         ) else {
@@ -402,9 +419,13 @@ fn reconcile_persisted_state(
     destination_root: &Path,
 ) -> BackendResult<()> {
     for job in &mut state.jobs {
+        let selected_destination = job
+            .destination_directory
+            .as_deref()
+            .unwrap_or(destination_root);
         let Ok(plan) = plan_workspace(
             workspace_root,
-            destination_root,
+            selected_destination,
             &job.id,
             &job.destination_file_name,
         ) else {

@@ -11,6 +11,7 @@ use crate::{
 };
 use std::{
     collections::HashSet,
+    path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -123,7 +124,16 @@ impl DownloadManager {
     }
 
     pub fn enqueue(&mut self, request: DownloadRequest) -> BackendResult<DownloadJob> {
+        self.enqueue_to(request, None)
+    }
+
+    pub fn enqueue_to(
+        &mut self,
+        request: DownloadRequest,
+        destination_directory: Option<PathBuf>,
+    ) -> BackendResult<DownloadJob> {
         validate_request(&request)?;
+        validate_destination_directory(destination_directory.as_ref())?;
         if self.jobs.len() >= self.policy.max_jobs {
             return Err(BackendError::new(
                 "download_queue_full",
@@ -137,7 +147,7 @@ impl DownloadManager {
             source: request.source,
             display_name: request.display_name.trim().to_string(),
             destination_file_name: request.destination_file_name,
-            destination_directory: request.destination_directory,
+            destination_directory,
             state: DownloadJobState::Queued,
             progress: DownloadProgress {
                 downloaded_bytes: 0,
@@ -460,17 +470,17 @@ fn validate_request(request: &DownloadRequest) -> BackendResult<()> {
             "Download resource id is empty or unsupported.",
         ));
     }
-    if request
-        .destination_directory
-        .as_ref()
-        .is_some_and(|path| path.as_os_str().is_empty() || !path.is_absolute())
-    {
+    validate_destination_file_name(&request.destination_file_name)
+}
+
+fn validate_destination_directory(path: Option<&PathBuf>) -> BackendResult<()> {
+    if path.is_some_and(|path| path.as_os_str().is_empty() || !path.is_absolute()) {
         return Err(BackendError::new(
             "download_destination_directory_invalid",
             "Download destination folder must be an absolute path.",
         ));
     }
-    validate_destination_file_name(&request.destination_file_name)
+    Ok(())
 }
 
 fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
@@ -480,9 +490,9 @@ fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
         source: job.source.clone(),
         display_name: job.display_name.clone(),
         destination_file_name: job.destination_file_name.clone(),
-        destination_directory: job.destination_directory.clone(),
         expected_bytes: job.progress.total_bytes,
     })?;
+    validate_destination_directory(job.destination_directory.as_ref())?;
 
     if job.created_at_ms > job.updated_at_ms
         || job

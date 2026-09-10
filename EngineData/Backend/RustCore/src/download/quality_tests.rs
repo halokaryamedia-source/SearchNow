@@ -79,13 +79,8 @@ fn destination_that_changes_into_a_file_is_rejected_before_publish() {
     let directory = tempfile::tempdir().expect("tempdir");
     let workspace = directory.path().join("workspace");
     let destination = directory.path().join("chosen");
-    let plan = plan_workspace(
-        &workspace,
-        &destination,
-        "download-000002",
-        "pack.mcaddon",
-    )
-    .expect("plan");
+    let plan =
+        plan_workspace(&workspace, &destination, "download-000002", "pack.mcaddon").expect("plan");
 
     ensure_workspace(&plan).expect("workspace");
     fs::write(&plan.payload_path, b"payload").expect("payload");
@@ -103,13 +98,8 @@ fn deleted_destination_directory_is_recreated_safely() {
     let destination = directory.path().join("chosen");
     fs::create_dir_all(&destination).expect("initial destination");
 
-    let plan = plan_workspace(
-        &workspace,
-        &destination,
-        "download-000003",
-        "pack.mcaddon",
-    )
-    .expect("plan");
+    let plan =
+        plan_workspace(&workspace, &destination, "download-000003", "pack.mcaddon").expect("plan");
     ensure_workspace(&plan).expect("workspace");
     fs::write(&plan.payload_path, b"payload").expect("payload");
     fs::remove_dir(&destination).expect("remove destination");
@@ -128,13 +118,8 @@ fn keep_both_rejects_name_that_would_exceed_windows_safe_limit() {
     let file_name = format!("{long_stem}.mcaddon");
     assert_eq!(file_name.len(), 239);
 
-    let plan = plan_workspace(
-        &workspace,
-        &destination,
-        "download-000004",
-        &file_name,
-    )
-    .expect("base file name should fit");
+    let plan = plan_workspace(&workspace, &destination, "download-000004", &file_name)
+        .expect("base file name should fit");
     ensure_workspace(&plan).expect("workspace");
     fs::write(&plan.payload_path, b"payload").expect("payload");
 
@@ -155,13 +140,8 @@ fn symlink_destination_directory_is_rejected_before_publish() {
     fs::create_dir_all(&target).expect("target");
     symlink(&target, &destination).expect("destination symlink");
 
-    let plan = plan_workspace(
-        &workspace,
-        &destination,
-        "download-000005",
-        "pack.mcaddon",
-    )
-    .expect("plan");
+    let plan =
+        plan_workspace(&workspace, &destination, "download-000005", "pack.mcaddon").expect("plan");
     ensure_workspace(&plan).expect("workspace");
     fs::write(&plan.payload_path, b"payload").expect("payload");
 

@@ -7,6 +7,7 @@
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
   import ResultsBar from "../components/ui/ResultsBar.svelte";
+  import StatePill from "../components/ui/StatePill.svelte";
   import TechnicalDetails from "../components/ui/TechnicalDetails.svelte";
 
   type DownloadFilter = "all" | "active" | "completed" | "issues";
@@ -188,7 +189,7 @@
           <div class="download-card__main">
             <div class="download-card__heading">
               <div>
-                <span class={`state-pill state-pill--${job.state}`}>{downloadStateLabel(job.state)}</span>
+                <StatePill state={job.state} label={downloadStateLabel(job.state)} />
                 <h2>{job.displayName}</h2>
               </div>
               <span class="download-card__time">{formatDateTime(job.updatedAtMs)}</span>

@@ -65,9 +65,7 @@ fn validate_download_schema(state: &PersistedDownloadState) -> BackendResult<()>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::download::{
-        DownloadJob, DownloadJobState, DownloadProgress, DownloadSourceRef,
-    };
+    use crate::download::{DownloadJob, DownloadJobState, DownloadProgress, DownloadSourceRef};
     use std::fs;
 
     fn state(sequence: u64) -> PersistedDownloadState {

@@ -35,7 +35,9 @@ pub(crate) fn validate_and_reconcile_persisted_state(
     for job in &mut persisted.jobs {
         validate_persisted_job(job)?;
         if !seen.insert(job.id.clone()) {
-            return Err(invalid_state("Persisted download state contains duplicate job ids."));
+            return Err(invalid_state(
+                "Persisted download state contains duplicate job ids.",
+            ));
         }
 
         if job.state == DownloadJobState::Finalizing
@@ -81,23 +83,31 @@ fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
     {
-        return Err(invalid_state("Persisted download transport identity is invalid."));
+        return Err(invalid_state(
+            "Persisted download transport identity is invalid.",
+        ));
     }
     if job.source.resource_id.is_empty()
         || job.source.resource_id.len() > MAX_RESOURCE_ID_BYTES
         || job.source.resource_id.chars().any(char::is_control)
     {
-        return Err(invalid_state("Persisted download resource identity is invalid."));
+        return Err(invalid_state(
+            "Persisted download resource identity is invalid.",
+        ));
     }
     if job
         .progress
         .total_bytes
         .is_some_and(|total| job.progress.downloaded_bytes > total)
     {
-        return Err(invalid_state("Persisted download progress exceeds its total size."));
+        return Err(invalid_state(
+            "Persisted download progress exceeds its total size.",
+        ));
     }
     if job.updated_at_ms < job.created_at_ms {
-        return Err(invalid_state("Persisted download timestamps are inconsistent."));
+        return Err(invalid_state(
+            "Persisted download timestamps are inconsistent.",
+        ));
     }
     if job.state == DownloadJobState::Completed {
         if job.last_error.is_some()
@@ -106,11 +116,15 @@ fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
                 .total_bytes
                 .is_some_and(|total| job.progress.downloaded_bytes != total)
         {
-            return Err(invalid_state("Persisted completed download state is inconsistent."));
+            return Err(invalid_state(
+                "Persisted completed download state is inconsistent.",
+            ));
         }
     }
     if job.state == DownloadJobState::Failed && job.last_error.is_none() {
-        return Err(invalid_state("Persisted failed download is missing failure state."));
+        return Err(invalid_state(
+            "Persisted failed download is missing failure state.",
+        ));
     }
     if let Some(error) = &job.last_error {
         if error.code.is_empty()
@@ -123,7 +137,9 @@ fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
                 .chars()
                 .any(|character| character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
         {
-            return Err(invalid_state("Persisted download failure metadata is invalid."));
+            return Err(invalid_state(
+                "Persisted download failure metadata is invalid.",
+            ));
         }
     }
     Ok(())

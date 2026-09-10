@@ -303,7 +303,8 @@ fn is_reserved_windows_name(value: &str) -> bool {
     }
     if stem.len() == 4 {
         let (prefix, digit) = stem.split_at(3);
-        return matches!(prefix, "COM" | "LPT") && matches!(digit, "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9");
+        return matches!(prefix, "COM" | "LPT")
+            && matches!(digit, "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9");
     }
     false
 }

@@ -305,7 +305,10 @@ mod tests {
             "Settings failed.",
             DiagnosticSeverity::Error,
         );
-        assert_eq!(diagnostics.snapshot().health.state, BackendHealthState::Degraded);
+        assert_eq!(
+            diagnostics.snapshot().health.state,
+            BackendHealthState::Degraded
+        );
 
         diagnostics.record_outcome(
             DiagnosticComponent::Settings,

@@ -79,7 +79,10 @@ impl AtomicJsonStore {
         fs::create_dir_all(parent).map_err(|error| {
             BackendError::from_io(
                 self.contract.directory_failed,
-                format!("SearchNow could not create the {} directory.", self.contract.subject),
+                format!(
+                    "SearchNow could not create the {} directory.",
+                    self.contract.subject
+                ),
                 error,
             )
         })?;
@@ -87,13 +90,19 @@ impl AtomicJsonStore {
         let bytes = serde_json::to_vec_pretty(value).map_err(|error| {
             BackendError::new(
                 self.contract.serialize_failed,
-                format!("SearchNow could not serialize {}: {error}", self.contract.subject),
+                format!(
+                    "SearchNow could not serialize {}: {error}",
+                    self.contract.subject
+                ),
             )
         })?;
         if bytes.len() as u64 > self.contract.max_bytes {
             return Err(BackendError::new(
                 self.contract.too_large,
-                format!("SearchNow refused to persist oversized {}.", self.contract.subject),
+                format!(
+                    "SearchNow refused to persist oversized {}.",
+                    self.contract.subject
+                ),
             ));
         }
 
@@ -116,7 +125,10 @@ impl AtomicJsonStore {
                 let _ = fs::remove_file(&temp);
                 BackendError::from_io(
                     self.contract.stage_failed,
-                    format!("SearchNow could not finish staging {}.", self.contract.subject),
+                    format!(
+                        "SearchNow could not finish staging {}.",
+                        self.contract.subject
+                    ),
                     error,
                 )
             })?;
@@ -131,7 +143,10 @@ impl AtomicJsonStore {
                     let _ = fs::remove_file(&temp);
                     BackendError::from_io(
                         self.contract.replace_failed,
-                        format!("SearchNow could not rotate the previous {} backup.", self.contract.subject),
+                        format!(
+                            "SearchNow could not rotate the previous {} backup.",
+                            self.contract.subject
+                        ),
                         error,
                     )
                 })?;
@@ -140,7 +155,10 @@ impl AtomicJsonStore {
                 let _ = fs::remove_file(&temp);
                 BackendError::from_io(
                     self.contract.replace_failed,
-                    format!("SearchNow could not prepare existing {} for replacement.", self.contract.subject),
+                    format!(
+                        "SearchNow could not prepare existing {} for replacement.",
+                        self.contract.subject
+                    ),
                     error,
                 )
             })?;
@@ -177,7 +195,10 @@ impl AtomicJsonStore {
         if metadata.len() > self.contract.max_bytes {
             return Err(BackendError::new(
                 self.contract.too_large,
-                format!("SearchNow {} is unexpectedly large and was not loaded.", self.contract.subject),
+                format!(
+                    "SearchNow {} is unexpectedly large and was not loaded.",
+                    self.contract.subject
+                ),
             ));
         }
         let text = fs::read_to_string(path).map_err(|error| {
@@ -190,7 +211,10 @@ impl AtomicJsonStore {
         let value = serde_json::from_str(&text).map_err(|error| {
             BackendError::new(
                 self.contract.invalid_json,
-                format!("SearchNow {} contains invalid JSON: {error}", self.contract.subject),
+                format!(
+                    "SearchNow {} contains invalid JSON: {error}",
+                    self.contract.subject
+                ),
             )
         })?;
         validate(&value)?;
@@ -208,7 +232,10 @@ impl AtomicJsonStore {
         if metadata.file_type().is_symlink() || !metadata.file_type().is_file() {
             return Err(BackendError::new(
                 self.contract.read_failed,
-                format!("SearchNow {} must be a regular non-symlink file.", self.contract.subject),
+                format!(
+                    "SearchNow {} must be a regular non-symlink file.",
+                    self.contract.subject
+                ),
             ));
         }
         Ok(())
@@ -218,7 +245,10 @@ impl AtomicJsonStore {
         self.path.parent().ok_or_else(|| {
             BackendError::new(
                 self.contract.replace_failed,
-                format!("SearchNow {} path has no parent directory.", self.contract.subject),
+                format!(
+                    "SearchNow {} path has no parent directory.",
+                    self.contract.subject
+                ),
             )
         })
     }
@@ -295,8 +325,12 @@ mod tests {
         let directory = tempfile::tempdir().expect("tempdir");
         let path = directory.path().join("state.json");
         let store = AtomicJsonStore::new(&path, FIXTURE);
-        store.save(&FixtureState { value: 1 }, valid).expect("first save");
-        store.save(&FixtureState { value: 2 }, valid).expect("second save");
+        store
+            .save(&FixtureState { value: 1 }, valid)
+            .expect("first save");
+        store
+            .save(&FixtureState { value: 2 }, valid)
+            .expect("second save");
         fs::remove_file(&path).expect("simulate crash gap");
 
         let recovered = store
@@ -311,8 +345,12 @@ mod tests {
         let directory = tempfile::tempdir().expect("tempdir");
         let path = directory.path().join("state.json");
         let store = AtomicJsonStore::new(&path, FIXTURE);
-        store.save(&FixtureState { value: 7 }, valid).expect("first save");
-        store.save(&FixtureState { value: 8 }, valid).expect("second save");
+        store
+            .save(&FixtureState { value: 7 }, valid)
+            .expect("first save");
+        store
+            .save(&FixtureState { value: 8 }, valid)
+            .expect("second save");
         fs::write(&path, "not-json").expect("corrupt primary");
 
         let recovered = store

@@ -107,10 +107,7 @@ impl SettingsStore {
     }
 
     pub fn load(&self) -> BackendResult<AppSettings> {
-        Ok(self
-            .store
-            .load(AppSettings::validate)?
-            .unwrap_or_default())
+        Ok(self.store.load(AppSettings::validate)?.unwrap_or_default())
     }
 
     pub fn save(&self, settings: &AppSettings) -> BackendResult<()> {

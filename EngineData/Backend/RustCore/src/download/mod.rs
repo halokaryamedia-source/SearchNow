@@ -24,11 +24,11 @@ pub use transport::{
     DownloadTransport, DownloadTransportFailure, DownloadTransportRegistry,
     DownloadTransportStream, LocalFileTransport,
 };
+pub(crate) use workspace::{cleanup_destination_stage, validate_job_id};
 pub use workspace::{
     cleanup_workspace, ensure_workspace, finalize_payload, plan_workspace, prepare_payload_file,
     validate_destination_file_name, DownloadWorkspacePlan,
 };
-pub(crate) use workspace::{cleanup_destination_stage, validate_job_id};
 
 #[cfg(test)]
 mod executor_tests;

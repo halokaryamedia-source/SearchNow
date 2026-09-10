@@ -30,7 +30,7 @@ pub struct LocalBackendSnapshot {
     pub library: LibrarySnapshot,
 }
 
-pub fn build_local_backend_snapshot(
+pub(crate) fn build_local_backend_snapshot(
     settings: &AppSettings,
     platform: &PlatformContext,
 ) -> LocalBackendSnapshot {

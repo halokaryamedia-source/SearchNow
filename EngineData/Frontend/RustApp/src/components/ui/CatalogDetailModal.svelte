@@ -25,17 +25,14 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape") onClose();
+    if (open && event.key === "Escape") onClose();
   }
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 {#if open && item}
-  <div
-    class="catalog-modal__backdrop"
-    role="presentation"
-    onclick={handleBackdrop}
-    onkeydown={handleKeydown}
-  >
+  <div class="catalog-modal__backdrop" role="presentation" onclick={handleBackdrop}>
     <section class="catalog-modal" role="dialog" aria-modal="true" aria-labelledby="catalog-modal-title">
       <button class="catalog-modal__close" type="button" aria-label="Close details" onclick={onClose}>
         <X size={18} aria-hidden="true" />
@@ -80,15 +77,17 @@
           </div>
         {/if}
 
-        <div class="catalog-modal__footer">
-          {#if item.download && item.fileName}
+        {#if onDownload && item.download && item.fileName}
+          <div class="catalog-modal__footer">
             <button class="button button--primary" type="button" onclick={() => onDownload?.()} disabled={!canDownload || downloadBusy}>
               {downloadBusy ? "Starting…" : "Download"}
             </button>
-          {:else}
+          </div>
+        {:else if !item.download || !item.fileName}
+          <div class="catalog-modal__footer">
             <span class="catalog-modal__unavailable">Download unavailable</span>
-          {/if}
-        </div>
+          </div>
+        {/if}
       </div>
     </section>
   </div>

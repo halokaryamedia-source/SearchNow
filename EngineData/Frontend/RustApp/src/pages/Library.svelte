@@ -7,6 +7,7 @@
   import PageState from "../components/ui/PageState.svelte";
 
   type LibraryFilter = "all" | LocalContentType | "issues";
+  type LibrarySort = "nameAsc" | "nameDesc" | "type" | "status";
 
   let { runtimeReady }: { runtimeReady: boolean } = $props();
   let loading = $state(false);
@@ -15,9 +16,13 @@
   let error = $state("");
   let query = $state("");
   let filter = $state<LibraryFilter>("all");
+  let sort = $state<LibrarySort>("nameAsc");
 
   let filteredItems = $derived(
-    (snapshot?.library.items ?? []).filter((item) => matchesCurrentFilter(item)),
+    (snapshot?.library.items ?? [])
+      .filter((item) => matchesCurrentFilter(item))
+      .slice()
+      .sort(compareItems),
   );
 
   function matchesCurrentFilter(item: LocalContentItem): boolean {
@@ -26,6 +31,17 @@
     const needle = query.trim().toLowerCase();
     if (!needle) return true;
     return `${item.title} ${item.description ?? ""}`.toLowerCase().includes(needle);
+  }
+
+  function compareItems(left: LocalContentItem, right: LocalContentItem): number {
+    if (sort === "nameDesc") return right.title.localeCompare(left.title);
+    if (sort === "type") {
+      return localContentTypeLabel(left.contentType).localeCompare(localContentTypeLabel(right.contentType)) || left.title.localeCompare(right.title);
+    }
+    if (sort === "status") {
+      return left.status.localeCompare(right.status) || left.title.localeCompare(right.title);
+    }
+    return left.title.localeCompare(right.title);
   }
 
   async function refresh(): Promise<void> {
@@ -98,6 +114,12 @@
         <option value="skinPack">Skin packs</option>
         <option value="issues">Needs review</option>
       </select>
+      <select class="select-field" bind:value={sort} aria-label="Sort local library">
+        <option value="nameAsc">Name A–Z</option>
+        <option value="nameDesc">Name Z–A</option>
+        <option value="type">Content type</option>
+        <option value="status">Review status</option>
+      </select>
     </div>
   {/if}
 
@@ -152,7 +174,7 @@
     <PageState
       marker="01"
       title={snapshot.library.items.length ? "No matching content" : "No local content found"}
-      message={snapshot.library.items.length ? "Change the search or content filter to see other items." : snapshot.minecraft.message}
+      message={snapshot.library.items.length ? "Change the search, filter, or sort controls to see other items." : snapshot.minecraft.message}
     />
   {/if}
 </section>

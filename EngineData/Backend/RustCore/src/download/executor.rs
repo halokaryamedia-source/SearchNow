@@ -72,7 +72,15 @@ impl DownloadExecutionRuntime {
     }
 
     pub fn queue(&self, request: DownloadRequest) -> BackendResult<DownloadJob> {
-        let job = self.mutate_persist(|manager| manager.enqueue(request))?;
+        self.queue_to(request, None)
+    }
+
+    pub fn queue_to(
+        &self,
+        request: DownloadRequest,
+        destination_directory: Option<PathBuf>,
+    ) -> BackendResult<DownloadJob> {
+        let job = self.mutate_persist(|manager| manager.enqueue_to(request, destination_directory))?;
         self.pump_best_effort();
         Ok(job)
     }

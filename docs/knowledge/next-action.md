@@ -1,38 +1,44 @@
 # Next Action
 
-Status: `FRONTEND_INFORMATION_HIERARCHY_READY`
+Status: `FRONTEND_VISUAL_REFINEMENT_READY`
 
 ## Sequencing note
 
-The target-Windows runtime smoke remains required, but it is intentionally deferred because the owner is not currently available to run local tests. Frontend development may continue only where behavior can be implemented and verified remotely without inventing installed-runtime or real-provider behavior.
+The target-Windows runtime smoke remains required, but it is intentionally deferred because the owner is not currently available to run local tests. Remote frontend work is now limited to behavior that does not invent installed-runtime or real-provider capabilities.
 
 ## Current checkpoint
 
-The `develop` branch contains the closed remote backend foundation plus a provider-independent frontend product shell using the same runtime boundaries.
+The `develop` branch contains the closed remote backend foundation plus a provider-independent frontend product shell with its remote visual/product refinement pass completed.
 
 Current remote frontend coverage:
 
 - one application bootstrap using the safe backend/runtime snapshot;
-- persistent mounted page sessions for Library, Discover, Downloads, and Settings with active-page execution gating;
-- session-only last-route restoration without introducing another persistent frontend state owner;
-- centralized route metadata shared by Sidebar and a route-aware topbar;
+- persistent mounted Library, Discover, Downloads, and Settings pages with active-page execution gating;
+- session-only last-route restoration;
+- centralized route metadata shared by Sidebar and the route-aware topbar;
 - shared `PageState`, `Notice`, `MetricCard`, `ResultsBar`, `ContentTypeMark`, `ContentDetails`, `TechnicalDetails`, and `StatePill` primitives;
-- responsive narrow-window behavior, focus-visible treatment, reduced-motion handling, and current-route semantics;
-- Library scan, metrics, search/filter/sort/reset, content-type marks, readable product details, and collapsed technical metadata;
+- responsive narrow-window behavior, keyboard focus visibility, reduced-motion handling, and semantic download progress;
+- Library scan, metrics, search/filter/sort/reset, readable details, content-type marks, and separate technical metadata;
 - Discover provider-neutral search/filter/sort/pagination, duplicate-result suppression, retry/reset flows, readable catalog details, and no fabricated provider/download behavior;
-- Downloads queue/history, semantic progress bars, adaptive active-page polling, search/filter/reset, cancel/retry/remove actions, recovery refresh, scheduler-error visibility, and technical metadata;
-- Settings load/save, dirty/revert protection, discovery rescan, friendly Minecraft channel/storage labels, detected-root presentation, and safe diagnostics;
+- Downloads queue/history, adaptive active-page polling, search/filter/reset, cancel/retry/remove actions, recovery refresh, scheduler-error visibility, semantic progress, and technical metadata;
+- Settings load/save, dirty/revert protection, discovery rescan, friendly Minecraft storage labels, detected-root presentation, and safe diagnostics;
 - typed frontend `QueueCatalogDownloadRequest` bridge/facade support while raw transport selection remains inaccessible to product UI;
+- final visual polish for spacing/density, card balance, metric readability, hover/focus feedback, form affordance, mobile spacing, and distinct loading-state presentation;
 - one `runtimeProductFacade` over the single raw Tauri `runtimeApi` bridge;
 - no frontend-owned persistence, filesystem scan, credential handling, provider endpoint ownership, or second runtime client.
 
 ## Verification state
 
-The latest information-hierarchy code endpoint is `fbbf1c247869a4ac95038d3e1c135f883a34dbac`.
+Latest visual-refinement code endpoint:
 
-Repository Verify run **#234** has passed the Linux/static/frontend gate for that SHA, including repository contracts, 71 RustCore tests, Tauri formatting, locked dependency installation, frontend architecture/source-size checks, Svelte/TypeScript checking, and production frontend build.
+- commit: `bd4f8426a77638fc3da54103876560390932fd9d`;
+- GitHub Actions: `Repository Verify` run **#241**;
+- Linux/static/frontend verification: **PASS**;
+- hosted Windows gate for this exact SHA: **queued at this checkpoint**.
 
-The native hosted-Windows gate for that exact SHA is still pending/queued at this checkpoint. Earlier frontend baselines have already demonstrated Windows RustCore/frontend/Tauri compilation, but no claim is made here that `fbbf1c2` has completed that native Windows gate yet.
+The Linux gate proves repository contracts, 71 RustCore tests, Tauri formatting, locked dependency installation, frontend architecture/source-size validation, Svelte/TypeScript checking, and production frontend build for the visual-final code.
+
+The immediately preceding information-hierarchy documentation baseline has already passed the complete hosted Windows RustCore/frontend/Tauri compile gate. That remains compile evidence only, not installed-runtime proof.
 
 ## Deliberately not claimed
 
@@ -46,17 +52,12 @@ The following remain outside this checkpoint:
 - package import/file-picker interaction without an approved target-runtime interaction path;
 - installer/branding/clean-machine release acceptance.
 
-The typed download intent remains prepared in the frontend bridge without exposing an unsupported product button or guessing filenames.
-
 ## Remaining paths
 
 ```text
-FRONTEND_INFORMATION_HIERARCHY_READY
+FRONTEND_VISUAL_REFINEMENT_READY
 ├── TARGET_WINDOWS_RUNTIME_SMOKE        deferred by owner, still required for local-runtime proof
-├── REAL_PROVIDER_INTEGRATION          functional dependency for live Discover behavior
-└── VISUAL_PRODUCT_REFINEMENT          can continue remotely without changing runtime ownership
+└── REAL_PROVIDER_INTEGRATION          next functional dependency for live Discover behavior
 ```
 
-No backend-foundation rewrite or second frontend state/runtime system is required.
-
-When real provider work begins, preserve the existing provider/session/resource and product-intent boundaries. The frontend should receive normalized catalog/product state, not provider secrets, raw endpoints, or internal transport controls.
+No further frontend logic should be invented solely to avoid those dependencies. Preserve the current provider/session/resource and product-intent boundaries when real provider work begins.

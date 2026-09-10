@@ -185,7 +185,7 @@
     <div class="download-list" aria-live="polite">
       {#each visibleJobs as job (job.id)}
         {@const percent = progressPercent(job.progress.downloadedBytes, job.progress.totalBytes)}
-        <article class="download-card">
+        <article class="download-card" aria-busy={actionJobId === job.id}>
           <div class="download-card__main">
             <div class="download-card__heading">
               <div>
@@ -195,7 +195,16 @@
               <span class="download-card__time">{formatDateTime(job.updatedAtMs)}</span>
             </div>
 
-            <div class:progress-track--indeterminate={percent === null && ["preparing", "transferring", "finalizing"].includes(job.state)} class="progress-track" aria-label={`${job.displayName} progress`}>
+            <div
+              class:progress-track--indeterminate={percent === null && ["preparing", "transferring", "finalizing"].includes(job.state)}
+              class="progress-track"
+              role="progressbar"
+              aria-label={`${job.displayName} progress`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent ?? undefined}
+              aria-valuetext={percent === null ? downloadStateLabel(job.state) : `${percent}%`}
+            >
               {#if percent !== null}<span style={`width:${percent}%`}></span>{:else}<span></span>{/if}
             </div>
 

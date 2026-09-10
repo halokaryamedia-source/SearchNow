@@ -3,6 +3,7 @@ import App from "./App.svelte";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/diagnostics.css";
+import "./styles/results.css";
 import "./styles/responsive.css";
 
 const target = document.getElementById("app");

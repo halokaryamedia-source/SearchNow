@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -44,16 +44,16 @@ jobs:
         run: npm run validate:quick
       - name: Generate Tauri dependency lock
         run: cargo generate-lockfile --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml
-      - name: Export resolved dependency locks
-        uses: actions/upload-artifact@v7
-        with:
-          name: dependency-locks-${{ github.sha }}
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            EngineData/Backend/RustCore/Cargo.lock
-            EngineData/Frontend/RustApp/src-tauri/Cargo.lock
-            EngineData/Frontend/RustApp/package-lock.json
+      - name: Persist resolved dependency locks
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add EngineData/Backend/RustCore/Cargo.lock EngineData/Frontend/RustApp/src-tauri/Cargo.lock EngineData/Frontend/RustApp/package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(deps): lock verified dependency graph"
+            git push origin HEAD:develop
+          fi
 
   windows-readiness:
     name: Windows Rust/Tauri compile gate

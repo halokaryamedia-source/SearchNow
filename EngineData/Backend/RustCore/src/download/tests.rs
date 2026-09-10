@@ -185,7 +185,7 @@ fn windows_reserved_destination_names_are_rejected() {
 }
 
 #[test]
-fn finalization_publishes_complete_file_without_overwrite() {
+fn finalization_keeps_existing_file_and_uses_next_available_name() {
     let directory = tempfile::tempdir().expect("tempdir");
     let workspace = directory.path().join("workspace");
     let destination = directory.path().join("downloads");
@@ -193,11 +193,16 @@ fn finalization_publishes_complete_file_without_overwrite() {
         plan_workspace(&workspace, &destination, "download-000001", "pack.mcpack").expect("plan");
     ensure_workspace(&plan).expect("workspace");
     fs::write(&plan.payload_path, b"complete payload").expect("payload");
-    let final_path = finalize_payload(&plan).expect("finalize");
+
+    let first_path = finalize_payload(&plan).expect("first finalize");
+    assert_eq!(first_path.file_name().and_then(|value| value.to_str()), Some("pack.mcpack"));
+    assert_eq!(fs::read(&first_path).expect("first final file"), b"complete payload");
+
+    let second_path = finalize_payload(&plan).expect("keep both finalize");
     assert_eq!(
-        fs::read(&final_path).expect("final file"),
-        b"complete payload"
+        second_path.file_name().and_then(|value| value.to_str()),
+        Some("pack (2).mcpack")
     );
-    let error = finalize_payload(&plan).expect_err("overwrite must be rejected");
-    assert_eq!(error.code(), "download_destination_exists");
+    assert_eq!(fs::read(&first_path).expect("original final file"), b"complete payload");
+    assert_eq!(fs::read(&second_path).expect("second final file"), b"complete payload");
 }

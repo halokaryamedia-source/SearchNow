@@ -102,6 +102,8 @@ pub struct CatalogItem {
     pub tags: Vec<String>,
     pub published_at_ms: Option<u64>,
     pub updated_at_ms: Option<u64>,
+    pub file_name: Option<String>,
+    pub expected_bytes: Option<u64>,
     pub download: Option<CatalogDownloadRef>,
 }
 
@@ -146,6 +148,8 @@ pub struct CatalogProviderItem {
     pub tags: Vec<String>,
     pub published_at_ms: Option<u64>,
     pub updated_at_ms: Option<u64>,
+    pub file_name: Option<String>,
+    pub expected_bytes: Option<u64>,
     pub download: Option<CatalogDownloadRef>,
 }
 

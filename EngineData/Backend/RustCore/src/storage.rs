@@ -49,15 +49,13 @@ impl AtomicFileStore {
                 "A SearchNow persisted state file exceeds its configured size limit.",
             ));
         }
-        fs::read_to_string(&self.path)
-            .map(Some)
-            .map_err(|error| {
-                BackendError::from_io(
-                    "storage_read_failed",
-                    "SearchNow could not read a persisted state file.",
-                    error,
-                )
-            })
+        fs::read_to_string(&self.path).map(Some).map_err(|error| {
+            BackendError::from_io(
+                "storage_read_failed",
+                "SearchNow could not read a persisted state file.",
+                error,
+            )
+        })
     }
 
     pub fn replace(&self, bytes: &[u8], max_bytes: u64) -> BackendResult<()> {

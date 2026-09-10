@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 pub const DOWNLOAD_SCHEMA_VERSION: u32 = 1;
 
@@ -15,6 +16,8 @@ pub struct DownloadRequest {
     pub source: DownloadSourceRef,
     pub display_name: String,
     pub destination_file_name: String,
+    #[serde(default)]
+    pub destination_directory: Option<PathBuf>,
     pub expected_bytes: Option<u64>,
 }
 
@@ -71,6 +74,8 @@ pub struct DownloadJob {
     pub source: DownloadSourceRef,
     pub display_name: String,
     pub destination_file_name: String,
+    #[serde(default)]
+    pub destination_directory: Option<PathBuf>,
     pub state: DownloadJobState,
     pub progress: DownloadProgress,
     pub attempt: u32,

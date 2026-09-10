@@ -1,19 +1,33 @@
 <script lang="ts">
-  import { RefreshCw, RotateCcw, Trash2, X } from "@lucide/svelte";
+  import { RefreshCw, RotateCcw, Search, Trash2, X } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { downloadStateLabel, formatBytes, formatDateTime, progressPercent } from "../app/shared/format";
   import type { DownloadJob, DownloadManagerSnapshot } from "../app/shared/types";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
 
+  type DownloadFilter = "all" | "active" | "completed" | "issues";
+
   let { runtimeReady }: { runtimeReady: boolean } = $props();
   let snapshot = $state<DownloadManagerSnapshot | null>(null);
   let loading = $state(false);
   let error = $state("");
   let actionJobId = $state<string | null>(null);
+  let query = $state("");
+  let filter = $state<DownloadFilter>("all");
 
   let jobs = $derived((snapshot?.jobs ?? []).slice().sort((a, b) => b.updatedAtMs - a.updatedAtMs));
+  let visibleJobs = $derived(jobs.filter((job) => matchesFilter(job)));
   let hasActivity = $derived((snapshot?.activeJobs ?? 0) > 0 || (snapshot?.queuedJobs ?? 0) > 0);
+
+  function matchesFilter(job: DownloadJob): boolean {
+    if (filter === "active" && !["queued", "preparing", "transferring", "finalizing", "cancelRequested"].includes(job.state)) return false;
+    if (filter === "completed" && job.state !== "completed") return false;
+    if (filter === "issues" && !["failed", "interrupted", "cancelled"].includes(job.state)) return false;
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    return `${job.displayName} ${job.destinationFileName} ${job.state}`.toLowerCase().includes(needle);
+  }
 
   function canCancel(job: DownloadJob): boolean {
     return ["queued", "preparing", "transferring"].includes(job.state);
@@ -106,6 +120,21 @@
     <article class="metric-card"><span>History</span><strong>{snapshot?.jobs.length ?? "—"}</strong><small>Maximum {snapshot?.policy.maxJobs ?? "—"} retained jobs</small></article>
   </div>
 
+  {#if snapshot && jobs.length > 0}
+    <div class="toolbar">
+      <label class="search-field">
+        <Search size={15} aria-hidden="true" />
+        <input bind:value={query} type="search" placeholder="Search downloads" aria-label="Search download history" />
+      </label>
+      <select class="select-field" bind:value={filter} aria-label="Filter download history">
+        <option value="all">All downloads</option>
+        <option value="active">Active</option>
+        <option value="completed">Completed</option>
+        <option value="issues">Needs attention</option>
+      </select>
+    </div>
+  {/if}
+
   {#if snapshot?.schedulerError}
     <Notice tone="warning" title="Download queue needs attention." message={snapshot.schedulerError.message} />
   {/if}
@@ -120,9 +149,11 @@
     <PageState kind="loading" title="Loading downloads" message="Reading your current queue and recent download history." />
   {:else if snapshot && jobs.length === 0}
     <PageState marker="03" title="No downloads yet" message="Downloads started from Discover will appear here with their current state and progress." />
+  {:else if snapshot && visibleJobs.length === 0}
+    <PageState marker="03" title="No matching downloads" message="Change the search or history filter to see other download jobs." />
   {:else if snapshot}
     <div class="download-list" aria-live="polite">
-      {#each jobs as job (job.id)}
+      {#each visibleJobs as job (job.id)}
         {@const percent = progressPercent(job.progress.downloadedBytes, job.progress.totalBytes)}
         <article class="download-card">
           <div class="download-card__main">

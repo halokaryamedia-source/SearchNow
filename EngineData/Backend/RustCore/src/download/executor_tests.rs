@@ -269,7 +269,12 @@ fn startup_reconciles_a_final_file_published_before_state_commit() {
 
     let mut manager = DownloadManager::new(DownloadPolicy::default()).expect("manager");
     let job = manager
-        .enqueue(request("fixture", "asset".into(), "recovered", payload.len()))
+        .enqueue(request(
+            "fixture",
+            "asset".into(),
+            "recovered",
+            payload.len(),
+        ))
         .expect("queue");
     manager.claim_ready_jobs();
     manager.mark_transferring(&job.id).expect("transfer");

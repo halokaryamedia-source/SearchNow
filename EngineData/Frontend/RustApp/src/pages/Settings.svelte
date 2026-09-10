@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Check, RefreshCw, Save } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
+  import { minecraftChannelLabel, minecraftStorageKindLabel } from "../app/shared/format";
   import type { AppSettings, MinecraftDiscoverySnapshot, ProductRuntimeSnapshot } from "../app/shared/types";
   import DiagnosticsPanel from "../components/settings/DiagnosticsPanel.svelte";
   import Notice from "../components/ui/Notice.svelte";
@@ -179,7 +180,7 @@
           <div class="root-list">
             {#each discovery.roots as root (root.id)}
               <div class="root-row">
-                <div><strong>{root.channel === "preview" ? "Minecraft Preview" : root.channel === "custom" ? "Custom location" : "Minecraft Bedrock"}</strong><span>{root.storageKind}</span></div>
+                <div><strong>{minecraftChannelLabel(root.channel)}</strong><span>{minecraftStorageKindLabel(root.storageKind)}</span></div>
                 <code>{root.root}</code>
               </div>
             {/each}

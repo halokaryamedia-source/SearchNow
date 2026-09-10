@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { RefreshCw } from "@lucide/svelte";
   import { runtimeProductFacade } from "./app/bridge/runtimeProductFacade";
-  import { isAppRoute, routeMeta } from "./app/shared/navigation";
+  import { isAppRoute } from "./app/shared/navigation";
   import type { AppRoute, ProductRuntimeSnapshot } from "./app/shared/types";
   import Sidebar from "./components/layout/Sidebar.svelte";
   import PageState from "./components/ui/PageState.svelte";
@@ -20,7 +20,6 @@
   let snapshot = $state<ProductRuntimeSnapshot | null>(null);
 
   let health = $derived(snapshot?.backend?.diagnostics.health.state ?? "unknown");
-  let currentRoute = $derived(routeMeta(route));
   let runtimeLabel = $derived(
     booting
       ? "Checking runtime"
@@ -59,8 +58,7 @@
 
   <main class="app-main">
     <header class="topbar">
-      <strong>{currentRoute.label}</strong>
-      <div class="topbar__actions">
+      <div class="topbar__actions topbar__actions--end">
         <button class="icon-button icon-button--quiet" type="button" title="Refresh runtime" aria-label="Refresh runtime" onclick={refreshRuntime} disabled={booting || refreshing}>
           <RefreshCw size={15} class={refreshing ? "spin" : ""} aria-hidden="true" />
         </button>

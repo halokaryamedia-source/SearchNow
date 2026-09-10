@@ -5,6 +5,7 @@ import "./styles/app.css";
 import "./styles/diagnostics.css";
 import "./styles/results.css";
 import "./styles/content-details.css";
+import "./styles/catalog.css";
 import "./styles/visual-polish.css";
 import "./styles/responsive.css";
 

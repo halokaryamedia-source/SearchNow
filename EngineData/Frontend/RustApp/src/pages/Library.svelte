@@ -5,6 +5,7 @@
   import type { LocalBackendSnapshot, LocalContentItem, LocalContentType } from "../app/shared/types";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
+  import ResultsBar from "../components/ui/ResultsBar.svelte";
 
   type LibraryFilter = "all" | LocalContentType | "issues";
   type LibrarySort = "nameAsc" | "nameDesc" | "type" | "status";
@@ -24,6 +25,7 @@
       .slice()
       .sort(compareItems),
   );
+  let controlsChanged = $derived(query.trim().length > 0 || filter !== "all" || sort !== "nameAsc");
 
   function matchesCurrentFilter(item: LocalContentItem): boolean {
     if (filter === "issues" && item.status !== "invalidMetadata") return false;
@@ -42,6 +44,12 @@
       return left.status.localeCompare(right.status) || left.title.localeCompare(right.title);
     }
     return left.title.localeCompare(right.title);
+  }
+
+  function resetControls(): void {
+    query = "";
+    filter = "all";
+    sort = "nameAsc";
   }
 
   async function refresh(): Promise<void> {
@@ -100,7 +108,7 @@
   {#if snapshot}
     <div class="toolbar">
       <label class="search-field">
-        <Search size={15} />
+        <Search size={15} aria-hidden="true" />
         <input bind:value={query} type="search" placeholder="Search your library" aria-label="Search local library" />
       </label>
       <select class="select-field" bind:value={filter} aria-label="Filter content type">
@@ -118,6 +126,13 @@
         <option value="status">Review status</option>
       </select>
     </div>
+    <ResultsBar
+      label={`${filteredItems.length} of ${snapshot.library.items.length} item${snapshot.library.items.length === 1 ? "" : "s"}`}
+      detail={controlsChanged ? "Current search, filter, and sort are applied." : "Showing the full detected local library."}
+      showReset={controlsChanged}
+      resetLabel="Reset view"
+      onReset={resetControls}
+    />
   {/if}
 
   {#if snapshot?.library.warnings.length}
@@ -171,7 +186,9 @@
     <PageState
       marker="01"
       title={snapshot.library.items.length ? "No matching content" : "No local content found"}
-      message={snapshot.library.items.length ? "Change the search, filter, or sort controls to see other items." : snapshot.minecraft.message}
+      message={snapshot.library.items.length ? "Reset or change the current search and filters to see other items." : snapshot.minecraft.message}
+      actionLabel={snapshot.library.items.length && controlsChanged ? "Reset view" : null}
+      onAction={snapshot.library.items.length && controlsChanged ? resetControls : null}
     />
   {/if}
 </section>

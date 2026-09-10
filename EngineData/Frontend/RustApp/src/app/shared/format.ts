@@ -1,4 +1,10 @@
-import type { CatalogContentType, DownloadJobState, LocalContentType } from "./types";
+import type {
+  CatalogContentType,
+  DownloadJobState,
+  LocalContentType,
+  MinecraftChannel,
+  MinecraftStorageKind,
+} from "./types";
 
 export function formatBytes(value: number | null | undefined): string {
   if (value == null) return "Unknown size";
@@ -39,6 +45,23 @@ export function catalogContentTypeLabel(type: CatalogContentType): string {
     persona: "Persona",
     other: "Other",
   }[type];
+}
+
+export function minecraftChannelLabel(channel: MinecraftChannel): string {
+  return {
+    stable: "Minecraft Bedrock",
+    preview: "Minecraft Preview",
+    custom: "Custom location",
+  }[channel];
+}
+
+export function minecraftStorageKindLabel(kind: MinecraftStorageKind): string {
+  return {
+    gdkShared: "GDK shared storage",
+    gdkUser: "GDK account storage",
+    legacyUwp: "Legacy UWP storage",
+    customOverride: "Manual override",
+  }[kind];
 }
 
 export function downloadStateLabel(state: DownloadJobState): string {

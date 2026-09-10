@@ -418,7 +418,7 @@ fn reconcile_persisted_state(
             && job
                 .progress
                 .total_bytes
-                .is_none_or(|total| total == job.progress.downloaded_bytes)
+                .map_or(true, |total| total == job.progress.downloaded_bytes)
         {
             job.state = DownloadJobState::Completed;
             job.last_error = None;

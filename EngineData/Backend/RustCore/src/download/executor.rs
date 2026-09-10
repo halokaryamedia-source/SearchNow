@@ -3,6 +3,7 @@ use super::{
     DownloadJob, DownloadJobState, DownloadManager, DownloadManagerSnapshot, DownloadPolicy,
     DownloadRequest, DownloadStore, DownloadTransportRegistry,
 };
+use super::recovery::validate_and_reconcile_persisted_state;
 use crate::error::{BackendError, BackendResult};
 use std::{
     io::{ErrorKind, Read, Write},
@@ -35,15 +36,23 @@ impl DownloadExecutionRuntime {
         destination_root: impl Into<PathBuf>,
         transports: DownloadTransportRegistry,
     ) -> BackendResult<Self> {
-        let manager = DownloadManager::recover(policy, store.load()?)?;
+        let workspace_root = workspace_root.into();
+        let destination_root = destination_root.into();
+        let persisted = validate_and_reconcile_persisted_state(
+            store.load()?,
+            policy,
+            &workspace_root,
+            &destination_root,
+        )?;
+        let manager = DownloadManager::recover(policy, persisted)?;
         store.save(&manager.persisted_state())?;
 
         let runtime = Self {
             inner: Arc::new(DownloadExecutionInner {
                 manager: Mutex::new(manager),
                 store,
-                workspace_root: workspace_root.into(),
-                destination_root: destination_root.into(),
+                workspace_root,
+                destination_root,
                 transports,
             }),
         };
@@ -58,7 +67,7 @@ impl DownloadExecutionRuntime {
 
     pub fn queue(&self, request: DownloadRequest) -> BackendResult<DownloadJob> {
         let job = self.mutate_persist(|manager| manager.enqueue(request))?;
-        let _ = self.pump();
+        self.pump()?;
         Ok(job)
     }
 
@@ -68,7 +77,7 @@ impl DownloadExecutionRuntime {
 
     pub fn retry(&self, job_id: &str) -> BackendResult<DownloadJob> {
         let job = self.mutate_persist(|manager| manager.retry(job_id))?;
-        let _ = self.pump();
+        self.pump()?;
         Ok(job)
     }
 
@@ -99,7 +108,10 @@ impl DownloadExecutionRuntime {
                 if let Err(error) = runtime.execute_claimed_job(&job.id) {
                     runtime.fail_from_backend_error(&job.id, error);
                 }
-                let _ = runtime.pump();
+                if runtime.pump().is_err() {
+                    thread::yield_now();
+                    let _ = runtime.pump();
+                }
             });
         }
         Ok(count)

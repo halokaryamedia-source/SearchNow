@@ -1,48 +1,35 @@
 # Current Validation
 
 Reviewed: **2026-09-10**  
-Scope: `develop` remote backend foundation + provider-independent frontend wiring  
-Status: **remote code/static/hosted compile verification complete; target-Windows installed/runtime smoke pending**
+Scope: `develop` remote backend foundation + provider-independent frontend information hierarchy  
+Status: **latest Linux/static/frontend verification complete; target-Windows installed/runtime smoke pending**
 
 ## Latest frontend code proof
 
-Frontend code baseline:
+Current information-hierarchy code endpoint:
 
-- commit: `c2ffdad5fef9b03df13d61335ee929ffe43f92be`;
-- GitHub Actions: `Repository Verify` run **#168**;
+- commit: `fbbf1c247869a4ac95038d3e1c135f883a34dbac`;
+- GitHub Actions: `Repository Verify` run **#234**;
 - Linux repository/backend/frontend verification: **PASS**;
-- hosted Windows verification: **PASS on rerun of the same commit SHA**.
+- hosted Windows verification for this exact SHA: **not yet completed at the recorded checkpoint**.
 
-The first Windows attempt hit one transient timeout in the local HTTP fixture test `stalled_response_body_times_out_as_retryable`. No Rust/source change was made. Re-running the Windows job for the identical commit passed the 71-test RustCore suite, frontend build, and native Tauri compile gate, which classifies the first result as runner/test-fixture timing noise rather than a frontend regression.
+The Linux gate for this endpoint proves repository contracts, 71 RustCore tests, Tauri formatting, locked dependency installation, frontend architecture/source-size contracts, Svelte/TypeScript checking, and production frontend build.
 
-## Verified remotely
-
-The current baseline proves:
-
-- repository contracts pass;
-- Rust formatting passes;
-- **71 RustCore tests pass**;
-- strict Clippy passes with warnings denied;
-- Tauri adapter formatting passes;
-- frontend dependencies install from committed `package-lock.json` via `npm ci`;
-- frontend architecture and source-size contracts pass;
-- Svelte/TypeScript checking passes without frontend compile errors;
-- production frontend build passes;
-- Rust dependency resolution remains locked for RustCore and Tauri;
-- hosted Windows runs the locked RustCore suite;
-- hosted Windows builds the frontend and native Tauri crate successfully.
+Earlier frontend baselines have passed native hosted-Windows RustCore/frontend/Tauri compilation. Several later Windows runs were cancelled when a newer `develop` commit superseded them because the workflow intentionally uses `cancel-in-progress`. A cancelled superseded run is therefore not classified as a source failure.
 
 ## Frontend coverage in this baseline
 
 - application boot/runtime-health presentation uses the consolidated backend snapshot;
-- Library is wired to the Rust-owned local scan and exposes search/filter/status presentation only;
-- Downloads is wired to runtime queue/progress plus cancel/retry/remove behavior and scheduler-error state;
-- Settings loads/saves the existing Minecraft discovery settings, tracks unsaved changes, and avoids stale save feedback;
-- Minecraft rescan/detected-root state is surfaced without moving discovery logic into Svelte;
-- safe diagnostics are visible from Settings while secret/path redaction remains owned by RustCore;
-- Discover has provider-neutral catalog search/filter/sort/pagination wiring and no fabricated real provider;
+- Sidebar and topbar share centralized route metadata;
+- the last route is restored for the current browser/app session only;
+- product pages remain mounted so search/filter/sort state survives navigation while runtime work is gated to the active page;
+- Library exposes metrics, search/filter/sort/reset, content-type marks, readable content disclosure, and separate technical metadata;
+- Discover exposes provider-neutral search/filter/sort/pagination, duplicate-page-item suppression, retry/reset behavior, readable catalog details, and no fabricated real-provider action;
+- Downloads exposes queue/history, adaptive polling, search/filter/reset, semantic progressbar state, cancel/retry/remove, scheduler-error/recovery feedback, and technical metadata;
+- Settings loads/saves current discovery settings, tracks and reverts unsaved changes, uses friendly Minecraft storage labels, and surfaces safe diagnostics;
+- shared presentation primitives include `PageState`, `Notice`, `MetricCard`, `ResultsBar`, `ContentTypeMark`, `ContentDetails`, `TechnicalDetails`, and `StatePill`;
 - `runtimeApi.ts` remains the sole normal raw Tauri invoke owner and pages use `runtimeProductFacade`;
-- download transport selection and credential/session material remain outside the frontend boundary.
+- raw transport selection, credentials/session material, filesystem ownership, and provider endpoint behavior remain outside Svelte.
 
 ## Not yet proven
 
@@ -58,4 +45,4 @@ Remote verification does **not** prove:
 
 ## Deferred proof
 
-`TARGET_WINDOWS_RUNTIME_SMOKE` remains required and is intentionally deferred until the owner can perform local testing. See `../next-action.md`.
+`TARGET_WINDOWS_RUNTIME_SMOKE` remains required and is intentionally deferred until the owner can perform local testing. Hosted compilation must not be presented as installed-runtime proof.

@@ -51,7 +51,7 @@
     <div>
       <span class="eyebrow">My content</span>
       <h1>Library</h1>
-      <p>Installed Minecraft Bedrock worlds and packs detected from the runtime-owned local library.</p>
+      <p>Browse Minecraft Bedrock worlds and packs detected on this device.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={refresh} disabled={!runtimeReady || loading}>
       <RefreshCw size={15} class={loading ? "spin" : ""} />
@@ -113,14 +113,14 @@
     <article class="empty-panel">
       <div class="empty-panel__icon">01</div>
       <div>
-        <h2>Desktop runtime unavailable</h2>
-        <p>The Library UI is ready, but reading Minecraft content requires the Tauri runtime.</p>
+        <h2>Local library unavailable</h2>
+        <p>SearchNow could not connect to the desktop runtime needed to read content from this device.</p>
       </div>
     </article>
   {:else if loading && !loaded}
     <article class="empty-panel">
       <div class="empty-panel__icon"><RefreshCw size={18} class="spin" /></div>
-      <div><h2>Scanning local content</h2><p>SearchNow is reading the bounded Minecraft locations owned by the Rust backend.</p></div>
+      <div><h2>Scanning local content</h2><p>Checking the Minecraft locations configured for this device.</p></div>
     </article>
   {:else if error}
     <article class="empty-panel empty-panel--error">

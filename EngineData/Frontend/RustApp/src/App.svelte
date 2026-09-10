@@ -68,7 +68,7 @@
         <section class="page">
           <article class="empty-panel empty-panel--boot">
             <div class="empty-panel__icon"><RefreshCw size={18} class="spin" /></div>
-            <div><h2>Starting SearchNow</h2><p>Reading one safe runtime snapshot before opening the workspace.</p></div>
+            <div><h2>Starting SearchNow</h2><p>Loading your local Minecraft Bedrock workspace.</p></div>
           </article>
         </section>
       {:else if route === "library"}

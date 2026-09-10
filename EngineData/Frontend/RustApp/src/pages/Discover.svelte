@@ -123,7 +123,7 @@
     <div>
       <span class="eyebrow">Catalog</span>
       <h1>Discover</h1>
-      <p>Browse provider-backed catalog content through one provider-neutral Rust boundary.</p>
+      <p>Search connected catalog sources for worlds, Add-Ons, packs, skins, and persona content.</p>
     </div>
   </div>
 
@@ -159,7 +159,7 @@
   {:else}
     <div class="search-shell" aria-disabled="true">
       <span><Search size={14} /> Search catalog</span>
-      <kbd>Provider pending</kbd>
+      <kbd>Source unavailable</kbd>
     </div>
   {/if}
 
@@ -173,20 +173,20 @@
   {#if !runtimeReady}
     <article class="empty-panel">
       <div class="empty-panel__icon">02</div>
-      <div><h2>Desktop runtime unavailable</h2><p>Discover is staged, but catalog requests require the Tauri runtime.</p></div>
+      <div><h2>Discover unavailable</h2><p>SearchNow could not connect to the desktop runtime needed to browse catalog sources.</p></div>
     </article>
   {:else if catalogProviders.length === 0}
     <article class="empty-panel">
       <div class="empty-panel__icon">02</div>
       <div>
-        <h2>Catalog provider not connected yet</h2>
-        <p>The complete search/filter/result UI and provider-neutral command path are ready. Real provider login and network adapters remain intentionally separate from this frontend slice.</p>
+        <h2>No catalog source connected</h2>
+        <p>You can continue using your local Library and Downloads. Catalog browsing will become available when a source is connected.</p>
       </div>
     </article>
   {:else if loading && !page}
     <article class="empty-panel">
       <div class="empty-panel__icon"><Search size={18} /></div>
-      <div><h2>Searching catalog</h2><p>Waiting for the selected provider to return a normalized catalog page.</p></div>
+      <div><h2>Searching catalog</h2><p>Waiting for results from the selected catalog source.</p></div>
     </article>
   {:else if page && page.items.length > 0}
     <div class="content-grid content-grid--catalog">
@@ -201,8 +201,7 @@
               <div class="chip-row">{#each item.tags.slice(0, 4) as tag}<span class="chip">{tag}</span>{/each}</div>
             {/if}
             <div class="content-card__footer">
-              <span class="state-text">{item.download ? "Download source available" : "Browse only"}</span>
-              <span>Action wiring follows provider metadata</span>
+              <span class="state-text">{item.download ? "Download available" : "Browse only"}</span>
             </div>
           </div>
         </article>

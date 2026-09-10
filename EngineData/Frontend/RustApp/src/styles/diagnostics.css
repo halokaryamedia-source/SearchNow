@@ -1,3 +1,5 @@
+.settings-section__heading .button--compact { margin-top: 0; }
+
 .diagnostic-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
 .diagnostic-summary > div { border: 1px solid var(--sn-border); border-radius: var(--sn-radius-md); background: var(--sn-surface-soft); padding: 11px; }
 .diagnostic-summary span, .diagnostic-summary strong { display: block; }

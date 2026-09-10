@@ -90,7 +90,7 @@
     <div>
       <span class="eyebrow">Transfer queue</span>
       <h1>Downloads</h1>
-      <p>Actual queue state comes from the Rust download runtime; active jobs refresh automatically while this page is open.</p>
+      <p>Track active downloads, retry interrupted transfers, and manage completed history.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={() => refresh()} disabled={!runtimeReady || loading}>
       <RefreshCw size={15} class={loading ? "spin" : ""} />
@@ -107,7 +107,7 @@
   {#if snapshot?.schedulerError}
     <article class="notice notice--warning">
       <AlertTriangle size={16} />
-      <div><strong>Download scheduler needs attention.</strong><span>{snapshot.schedulerError.message}</span></div>
+      <div><strong>Download queue needs attention.</strong><span>{snapshot.schedulerError.message}</span></div>
     </article>
   {/if}
 
@@ -121,17 +121,17 @@
   {#if !runtimeReady}
     <article class="empty-panel">
       <div class="empty-panel__icon">03</div>
-      <div><h2>Desktop runtime unavailable</h2><p>The Downloads interface is ready, but queue state requires the Tauri runtime.</p></div>
+      <div><h2>Downloads unavailable</h2><p>SearchNow could not connect to the desktop runtime needed to manage transfers.</p></div>
     </article>
   {:else if !snapshot && !error}
     <article class="empty-panel">
       <div class="empty-panel__icon"><RefreshCw size={18} class="spin" /></div>
-      <div><h2>Reading download queue</h2><p>SearchNow is loading the runtime-owned queue.</p></div>
+      <div><h2>Loading downloads</h2><p>Reading your current queue and recent download history.</p></div>
     </article>
   {:else if snapshot && jobs.length === 0}
     <article class="empty-panel">
       <div class="empty-panel__icon">03</div>
-      <div><h2>No downloads yet</h2><p>Downloads started from Discover will appear here with their real runtime state and progress.</p></div>
+      <div><h2>No downloads yet</h2><p>Downloads started from Discover will appear here with their current state and progress.</p></div>
     </article>
   {:else if snapshot}
     <div class="download-list">

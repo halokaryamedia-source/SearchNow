@@ -11,6 +11,7 @@
   let includeLegacyUwp = $state(true);
   let includeDevelopmentContent = $state(false);
   let discovery = $state<MinecraftDiscoverySnapshot | null>(snapshot?.backend?.minecraft ?? null);
+  let baselineSettings = $state<AppSettings | null>(null);
   let loading = $state(false);
   let loaded = $state(false);
   let saving = $state(false);
@@ -18,12 +19,21 @@
   let error = $state("");
   let saved = $state(false);
 
+  let dirty = $derived(
+    baselineSettings !== null &&
+      (rootOverride.trim() !== (baselineSettings.minecraft.rootOverride ?? "") ||
+        includePreview !== baselineSettings.minecraft.includePreview ||
+        includeLegacyUwp !== baselineSettings.minecraft.includeLegacyUwp ||
+        includeDevelopmentContent !== baselineSettings.minecraft.includeDevelopmentContent),
+  );
+
   function applySettings(settings: AppSettings): void {
     schemaVersion = settings.schemaVersion;
     rootOverride = settings.minecraft.rootOverride ?? "";
     includePreview = settings.minecraft.includePreview;
     includeLegacyUwp = settings.minecraft.includeLegacyUwp;
     includeDevelopmentContent = settings.minecraft.includeDevelopmentContent;
+    baselineSettings = settings;
   }
 
   async function load(): Promise<void> {
@@ -38,7 +48,7 @@
   }
 
   async function save(): Promise<void> {
-    if (!snapshot?.ready || saving) return;
+    if (!snapshot?.ready || saving || !dirty) return;
     saving = true;
     saved = false;
     error = "";
@@ -61,7 +71,7 @@
   }
 
   async function rescan(): Promise<void> {
-    if (!snapshot?.ready || scanning) return;
+    if (!snapshot?.ready || scanning || dirty) return;
     scanning = true;
     error = "";
     const result = await runtimeProductFacade.discoverMinecraft();
@@ -77,6 +87,10 @@
     }
     if (!loaded && !loading) void load();
   });
+
+  $effect(() => {
+    if (dirty) saved = false;
+  });
 </script>
 
 <section class="page">
@@ -84,9 +98,9 @@
     <div>
       <span class="eyebrow">Application</span>
       <h1>Settings</h1>
-      <p>Local application preferences remain persisted and validated by the Rust runtime.</p>
+      <p>Manage Minecraft discovery preferences and review the local desktop runtime.</p>
     </div>
-    <button class="button button--primary" type="button" onclick={save} disabled={!snapshot?.ready || loading || saving}>
+    <button class="button button--primary" type="button" onclick={save} disabled={!snapshot?.ready || loading || saving || !dirty}>
       {#if saved && !saving}<Check size={15} />{:else}<Save size={15} />{/if}
       {saving ? "Saving" : saved ? "Saved" : "Save settings"}
     </button>
@@ -104,7 +118,13 @@
       <article class="settings-section">
         <div class="settings-section__heading">
           <div><span class="eyebrow">Minecraft</span><h2>Content discovery</h2></div>
-          <button class="button button--secondary button--compact" type="button" onclick={rescan} disabled={!snapshot?.ready || scanning}>
+          <button
+            class="button button--secondary button--compact"
+            type="button"
+            title={dirty ? "Save settings before rescanning" : "Rescan Minecraft locations"}
+            onclick={rescan}
+            disabled={!snapshot?.ready || scanning || dirty}
+          >
             <RefreshCw size={14} class={scanning ? "spin" : ""} />Rescan
           </button>
         </div>
@@ -112,7 +132,7 @@
         <label class="field">
           <span>Manual Minecraft data location</span>
           <input bind:value={rootOverride} type="text" placeholder="Leave empty to use automatic detection" disabled={!snapshot?.ready || loading} />
-          <small>Optional override. SearchNow otherwise uses the runtime-owned Windows discovery rules.</small>
+          <small>Optional override. Leave empty to use automatic Minecraft Bedrock discovery.</small>
         </label>
 
         <div class="toggle-list">
@@ -138,7 +158,7 @@
             {discovery?.state === "found" ? "Detected" : discovery?.state === "unsupportedPlatform" ? "Unsupported" : "Not detected"}
           </span>
         </div>
-        <p class="section-copy">{discovery?.message ?? "Runtime discovery information is not available yet."}</p>
+        <p class="section-copy">{discovery?.message ?? "Minecraft discovery information is not available yet."}</p>
 
         {#if discovery?.roots.length}
           <div class="root-list">

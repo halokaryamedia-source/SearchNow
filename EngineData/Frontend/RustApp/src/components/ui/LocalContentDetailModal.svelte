@@ -24,13 +24,15 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape" && !actionBusy) onClose();
+    if (open && event.key === "Escape" && !actionBusy) onClose();
   }
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 {#if open && item}
-  <div class="catalog-modal__backdrop" role="presentation" onclick={handleBackdrop} onkeydown={handleKeydown}>
-    <section class="catalog-modal" role="dialog" aria-modal="true" aria-labelledby="library-modal-title">
+  <div class="catalog-modal__backdrop" role="presentation" onclick={handleBackdrop}>
+    <div class="catalog-modal" role="dialog" aria-modal="true" aria-labelledby="library-modal-title">
       <button class="catalog-modal__close" type="button" aria-label="Close details" onclick={onClose} disabled={actionBusy}>
         <X size={18} aria-hidden="true" />
       </button>
@@ -80,6 +82,6 @@
           </button>
         </div>
       </div>
-    </section>
+    </div>
   </div>
 {/if}

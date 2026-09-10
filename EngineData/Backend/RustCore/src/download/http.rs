@@ -426,17 +426,25 @@ impl<R> OverallDeadlineReader<R> {
             timeout,
         }
     }
+
+    fn deadline_error() -> io::Error {
+        io::Error::new(
+            io::ErrorKind::TimedOut,
+            "HTTP download exceeded SearchNow's overall transfer deadline.",
+        )
+    }
 }
 
 impl<R: Read> Read for OverallDeadlineReader<R> {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
         if self.started_at.elapsed() >= self.timeout {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "HTTP download exceeded SearchNow's overall transfer deadline.",
-            ));
+            return Err(Self::deadline_error());
         }
-        self.inner.read(buffer)
+        let read = self.inner.read(buffer)?;
+        if self.started_at.elapsed() >= self.timeout {
+            return Err(Self::deadline_error());
+        }
+        Ok(read)
     }
 }
 

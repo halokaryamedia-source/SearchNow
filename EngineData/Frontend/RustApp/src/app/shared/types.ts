@@ -131,6 +131,7 @@ export type DownloadJob = {
   source: DownloadSourceRef;
   displayName: string;
   destinationFileName: string;
+  destinationDirectory: string | null;
   state: DownloadJobState;
   progress: DownloadProgress;
   attempt: number;
@@ -239,6 +240,7 @@ export type QueueCatalogDownloadRequest = {
   download: CatalogDownloadRef;
   displayName: string;
   destinationFileName: string;
+  destinationDirectory: string | null;
   expectedBytes: number | null;
 };
 
@@ -253,6 +255,8 @@ export type CatalogItem = {
   tags: string[];
   publishedAtMs: number | null;
   updatedAtMs: number | null;
+  fileName: string | null;
+  expectedBytes: number | null;
   download: CatalogDownloadRef | null;
 };
 

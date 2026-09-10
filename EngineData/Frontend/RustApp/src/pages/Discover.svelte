@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
-  import { catalogContentTypeLabel } from "../app/shared/format";
+  import { catalogContentTypeLabel, formatDateTime } from "../app/shared/format";
   import type {
     CatalogContentType,
     CatalogPage,
@@ -11,6 +11,7 @@
   } from "../app/shared/types";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
+  import ResultsBar from "../components/ui/ResultsBar.svelte";
 
   type ContentFilter = "all" | CatalogContentType;
 
@@ -35,6 +36,7 @@
   let requestSequence = 0;
 
   let catalogProviders = $derived(providers.filter((provider) => provider.capabilities.catalog));
+  let controlsChanged = $derived(query.trim().length > 0 || contentFilter !== "all" || sort !== "relevance");
 
   $effect(() => {
     const firstProvider = catalogProviders[0]?.capabilities.provider ?? "";
@@ -63,6 +65,12 @@
         page: { limit: 30, cursor },
       },
     };
+  }
+
+  function resetControls(): void {
+    query = "";
+    contentFilter = "all";
+    sort = "relevance";
   }
 
   async function queryCatalog(
@@ -157,6 +165,15 @@
         <option value="nameDesc">Name Z–A</option>
       </select>
     </div>
+    {#if page}
+      <ResultsBar
+        label={`${page.items.length} result${page.items.length === 1 ? "" : "s"} loaded`}
+        detail={`Source: ${page.provider}${page.nextCursor ? " · more results available" : ""}`}
+        showReset={controlsChanged}
+        resetLabel="Reset search"
+        onReset={resetControls}
+      />
+    {/if}
   {:else}
     <div class="search-shell" aria-disabled="true">
       <span><Search size={14} aria-hidden="true" /> Search catalog</span>
@@ -188,6 +205,9 @@
             {/if}
             <div class="content-card__footer">
               <span class="state-text">{item.download ? "Download available" : "Browse only"}</span>
+              {#if item.updatedAtMs || item.publishedAtMs}
+                <span>{formatDateTime(item.updatedAtMs ?? item.publishedAtMs ?? 0)}</span>
+              {/if}
             </div>
           </div>
         </article>
@@ -199,6 +219,12 @@
       </div>
     {/if}
   {:else if page}
-    <PageState marker="02" title="No matching catalog content" message="Try a broader search or another content type." />
+    <PageState
+      marker="02"
+      title="No matching catalog content"
+      message="Try a broader search or reset the current catalog filters."
+      actionLabel={controlsChanged ? "Reset search" : null}
+      onAction={controlsChanged ? resetControls : null}
+    />
   {/if}
 </section>

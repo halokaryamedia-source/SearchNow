@@ -1,6 +1,5 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
-  import { desktopInteractionApi } from "../app/bridge/desktopInteractionApi";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { catalogContentTypeLabel, formatDate } from "../app/shared/format";
   import type {
@@ -107,28 +106,31 @@
 
     downloadBusy = true;
     downloadMessage = "";
-    try {
-      const destinationDirectory = await desktopInteractionApi.chooseDownloadDirectory();
-      if (!destinationDirectory) return;
-
-      const result = await runtimeProductFacade.queueCatalogDownload({
-        download: item.download,
-        displayName: item.title,
-        destinationFileName: item.fileName,
-        destinationDirectory,
-        expectedBytes: item.expectedBytes,
-      });
-      if (result.ok) {
-        selectedItem = null;
-        downloadMessage = `${item.title} was added to Downloads.`;
-      } else {
-        downloadMessage = result.error.message;
-      }
-    } catch {
-      downloadMessage = "SearchNow could not open the folder picker.";
-    } finally {
+    const picker = await runtimeProductFacade.chooseDownloadDirectory();
+    if (!picker.ok) {
+      downloadMessage = picker.error.message;
       downloadBusy = false;
+      return;
     }
+    if (!picker.data) {
+      downloadBusy = false;
+      return;
+    }
+
+    const result = await runtimeProductFacade.queueCatalogDownload({
+      download: item.download,
+      displayName: item.title,
+      destinationFileName: item.fileName,
+      destinationDirectory: picker.data,
+      expectedBytes: item.expectedBytes,
+    });
+    if (result.ok) {
+      selectedItem = null;
+      downloadMessage = `${item.title} was added to Downloads.`;
+    } else {
+      downloadMessage = result.error.message;
+    }
+    downloadBusy = false;
   }
 
   async function queryCatalog(

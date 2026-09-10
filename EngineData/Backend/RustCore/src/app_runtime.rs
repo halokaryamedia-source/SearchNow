@@ -296,13 +296,15 @@ impl SearchNowBackendRuntime {
         let started = Instant::now();
         let result = (|| {
             let source = request.download.to_download_source()?;
-            self.downloads.queue(DownloadRequest {
-                source,
-                display_name: request.display_name,
-                destination_file_name: request.destination_file_name,
-                destination_directory: request.destination_directory,
-                expected_bytes: request.expected_bytes,
-            })
+            self.downloads.queue_to(
+                DownloadRequest {
+                    source,
+                    display_name: request.display_name,
+                    destination_file_name: request.destination_file_name,
+                    expected_bytes: request.expected_bytes,
+                },
+                request.destination_directory,
+            )
         })();
         self.diagnostics.record_outcome(
             DiagnosticComponent::Download,

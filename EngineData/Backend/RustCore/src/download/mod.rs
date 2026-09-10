@@ -34,6 +34,8 @@ mod executor_tests;
 #[cfg(test)]
 mod http_tests;
 #[cfg(test)]
+mod quality_tests;
+#[cfg(test)]
 mod resolver_tests;
 #[cfg(test)]
 mod tests;

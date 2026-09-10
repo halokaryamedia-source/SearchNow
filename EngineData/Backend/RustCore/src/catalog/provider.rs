@@ -1,6 +1,6 @@
 use super::{
-    CatalogError, CatalogItem, CatalogPage, CatalogProviderFailure, CatalogProviderItem,
-    CatalogProviderPage, CatalogQuery, CatalogRequest,
+    CatalogDownloadMetadata, CatalogError, CatalogItem, CatalogPage, CatalogProviderFailure,
+    CatalogProviderItem, CatalogProviderPage, CatalogQuery, CatalogRequest,
 };
 use crate::{
     download::validate_destination_file_name,
@@ -28,6 +28,10 @@ pub trait CatalogProvider: Send + Sync {
     fn key(&self) -> &str;
 
     fn query(&self, query: &CatalogQuery) -> Result<CatalogProviderPage, CatalogProviderFailure>;
+
+    fn download_metadata(&self, _item_id: &str) -> Option<CatalogDownloadMetadata> {
+        None
+    }
 }
 
 #[derive(Default)]
@@ -84,7 +88,7 @@ impl CatalogService {
         let raw_page = provider
             .query(&request.query)
             .map_err(map_provider_failure)?;
-        normalize_page(&request.provider, &request.query, raw_page)
+        normalize_page(&request.provider, &request.query, raw_page, provider.as_ref())
     }
 }
 
@@ -139,9 +143,10 @@ fn validate_request(request: &CatalogRequest) -> Result<(), CatalogError> {
 }
 
 fn normalize_page(
-    provider: &str,
+    provider_key: &str,
     query: &CatalogQuery,
     page: CatalogProviderPage,
+    provider: &dyn CatalogProvider,
 ) -> Result<CatalogPage, CatalogError> {
     if page.items.len() > query.page.limit as usize || page.items.len() > MAX_PAGE_SIZE as usize {
         return Err(invalid_provider_data());
@@ -161,8 +166,12 @@ fn normalize_page(
         if !seen_ids.insert(item.item_id.clone()) {
             return Err(invalid_provider_data());
         }
+
+        let download_metadata = provider.download_metadata(&item.item_id);
+        validate_download_metadata(item.download.as_ref(), download_metadata.as_ref())?;
+
         items.push(CatalogItem {
-            provider: provider.to_string(),
+            provider: provider_key.to_string(),
             item_id: item.item_id,
             title: item.title,
             creator_name: item.creator_name,
@@ -172,14 +181,14 @@ fn normalize_page(
             tags: item.tags,
             published_at_ms: item.published_at_ms,
             updated_at_ms: item.updated_at_ms,
-            file_name: item.file_name,
-            expected_bytes: item.expected_bytes,
+            file_name: download_metadata.as_ref().map(|value| value.file_name.clone()),
+            expected_bytes: download_metadata.and_then(|value| value.expected_bytes),
             download: item.download,
         });
     }
 
     Ok(CatalogPage {
-        provider: provider.to_string(),
+        provider: provider_key.to_string(),
         items,
         next_cursor: page.next_cursor,
     })
@@ -210,16 +219,7 @@ fn validate_provider_item(item: &CatalogProviderItem) -> Result<(), CatalogError
             .thumbnail_url
             .as_ref()
             .is_some_and(|value| !valid_public_thumbnail_url(value))
-        || item
-            .file_name
-            .as_ref()
-            .is_some_and(|value| validate_destination_file_name(value).is_err())
-        || item.expected_bytes == Some(0)
     {
-        return Err(invalid_provider_data());
-    }
-
-    if item.download.is_some() != item.file_name.is_some() {
         return Err(invalid_provider_data());
     }
 
@@ -235,6 +235,21 @@ fn validate_provider_item(item: &CatalogProviderItem) -> Result<(), CatalogError
         download
             .to_download_source()
             .map_err(|_| invalid_provider_data())?;
+    }
+    Ok(())
+}
+
+fn validate_download_metadata(
+    download: Option<&super::CatalogDownloadRef>,
+    metadata: Option<&CatalogDownloadMetadata>,
+) -> Result<(), CatalogError> {
+    if metadata.is_some() && download.is_none() {
+        return Err(invalid_provider_data());
+    }
+    if metadata.is_some_and(|value| {
+        validate_destination_file_name(&value.file_name).is_err() || value.expected_bytes == Some(0)
+    }) {
+        return Err(invalid_provider_data());
     }
     Ok(())
 }

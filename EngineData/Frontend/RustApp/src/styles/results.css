@@ -42,6 +42,11 @@
   color: var(--sn-text);
 }
 
+.results-bar .button--compact,
+.notice__action {
+  margin-top: 0;
+}
+
 .notice__body {
   min-width: 0;
   flex: 1;
@@ -49,7 +54,6 @@
 
 .notice__action {
   flex: 0 0 auto;
-  margin-top: 0;
 }
 
 @media (max-width: 560px) {

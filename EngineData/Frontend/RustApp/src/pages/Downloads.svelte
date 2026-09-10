@@ -22,6 +22,7 @@
 
   let jobs = $derived((snapshot?.jobs ?? []).slice().sort((a, b) => b.updatedAtMs - a.updatedAtMs));
   let visibleJobs = $derived(jobs.filter((job) => matchesFilter(job)));
+  let completedJobs = $derived(jobs.filter((job) => job.state === "completed").length);
   let hasActivity = $derived((snapshot?.activeJobs ?? 0) > 0 || (snapshot?.queuedJobs ?? 0) > 0);
   let controlsChanged = $derived(query.trim().length > 0 || filter !== "all");
 
@@ -31,7 +32,7 @@
     if (filter === "issues" && !["failed", "interrupted", "cancelled"].includes(job.state)) return false;
     const needle = query.trim().toLowerCase();
     if (!needle) return true;
-    return `${job.displayName} ${job.destinationFileName} ${job.state}`.toLowerCase().includes(needle);
+    return `${job.displayName} ${job.destinationFileName} ${job.destinationDirectory ?? ""} ${job.state}`.toLowerCase().includes(needle);
   }
 
   function resetControls(): void {
@@ -114,9 +115,8 @@
 <section class="page" hidden={!active}>
   <div class="page-heading page-heading--actions">
     <div>
-      <span class="eyebrow">Transfer queue</span>
       <h1>Downloads</h1>
-      <p>Track active downloads, retry interrupted transfers, and manage completed history.</p>
+      <p>See current downloads and recently saved files.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={() => refresh()} disabled={!runtimeReady || loading}>
       <RefreshCw size={15} class={loading ? "spin" : ""} aria-hidden="true" />
@@ -125,41 +125,41 @@
   </div>
 
   <div class="metric-grid">
-    <MetricCard label="Active" value={snapshot?.activeJobs ?? "—"} detail={`Maximum ${snapshot?.policy.maxActive ?? "—"} concurrent`} />
-    <MetricCard label="Queued" value={snapshot?.queuedJobs ?? "—"} detail="Waiting for an execution slot" />
-    <MetricCard label="History" value={snapshot?.jobs.length ?? "—"} detail={`Maximum ${snapshot?.policy.maxJobs ?? "—"} retained jobs`} />
+    <MetricCard label="Active" value={snapshot?.activeJobs ?? "—"} detail="Downloading now" />
+    <MetricCard label="Queued" value={snapshot?.queuedJobs ?? "—"} detail="Waiting to start" />
+    <MetricCard label="Downloaded" value={snapshot ? completedJobs : "—"} detail="Saved successfully" />
   </div>
 
   {#if snapshot && jobs.length > 0}
     <div class="toolbar">
       <label class="search-field">
         <Search size={15} aria-hidden="true" />
-        <input bind:value={query} type="search" placeholder="Search downloads" aria-label="Search download history" />
+        <input bind:value={query} type="search" placeholder="Search downloads" aria-label="Search downloads" />
       </label>
-      <select class="select-field" bind:value={filter} aria-label="Filter download history">
+      <select class="select-field" bind:value={filter} aria-label="Filter downloads">
         <option value="all">All downloads</option>
         <option value="active">Active</option>
-        <option value="completed">Completed</option>
+        <option value="completed">Downloaded</option>
         <option value="issues">Needs attention</option>
       </select>
     </div>
     <ResultsBar
       label={`${visibleJobs.length} of ${jobs.length} download${jobs.length === 1 ? "" : "s"}`}
-      detail={controlsChanged ? "Current search and history filter are applied." : "Showing the complete retained download history."}
+      detail={null}
       showReset={controlsChanged}
-      resetLabel="Reset history view"
+      resetLabel="Reset"
       onReset={resetControls}
     />
   {/if}
 
   {#if snapshot?.schedulerError}
-    <Notice tone="warning" title="Download queue needs attention." message={snapshot.schedulerError.message} />
+    <Notice tone="warning" title="Downloads paused" message="SearchNow could not continue the download queue automatically. Refresh to try again." />
   {/if}
 
   {#if error}
     <Notice
       tone="error"
-      title="Download action failed."
+      title="Something went wrong"
       message={error}
       actionLabel="Refresh"
       actionDisabled={loading}
@@ -168,17 +168,17 @@
   {/if}
 
   {#if !runtimeReady}
-    <PageState marker="03" title="Downloads unavailable" message="SearchNow could not connect to the desktop runtime needed to manage transfers." />
+    <PageState marker="03" title="Downloads unavailable" message="SearchNow cannot manage downloads right now." />
   {:else if !snapshot && !error}
-    <PageState kind="loading" title="Loading downloads" message="Reading your current queue and recent download history." />
+    <PageState kind="loading" title="Loading downloads" message="Reading your current downloads." />
   {:else if snapshot && jobs.length === 0}
-    <PageState marker="03" title="No downloads yet" message="Downloads started from Discover will appear here with their current state and progress." />
+    <PageState marker="03" title="No downloads yet" message="Downloads started from Discover will appear here." />
   {:else if snapshot && visibleJobs.length === 0}
     <PageState
       marker="03"
       title="No matching downloads"
-      message="Reset or change the current search and history filter to see other download jobs."
-      actionLabel={controlsChanged ? "Reset history view" : null}
+      message="Change the search or filter to see other downloads."
+      actionLabel={controlsChanged ? "Reset" : null}
       onAction={controlsChanged ? resetControls : null}
     />
   {:else if snapshot}
@@ -210,16 +210,23 @@
 
             <div class="download-card__meta">
               <span>{formatBytes(job.progress.downloadedBytes)}{job.progress.totalBytes !== null ? ` / ${formatBytes(job.progress.totalBytes)}` : ""}</span>
-              <span>{percent !== null ? `${percent}%` : `Attempt ${job.attempt}`}</span>
+              {#if percent !== null}<span>{percent}%</span>{/if}
             </div>
 
+            {#if job.destinationDirectory}
+              <div class="download-card__destination">
+                <span>{job.state === "completed" ? "Saved to" : "Save to"}</span>
+                <strong>{job.destinationDirectory}</strong>
+              </div>
+            {/if}
+
             {#if job.lastError}
-              <Notice tone="warning" title={job.lastError.code} message={job.lastError.message} />
+              <Notice tone="warning" title="Download failed" message={job.lastError.message} />
             {/if}
 
             <TechnicalDetails
               items={[
-                { label: "Output", value: job.destinationFileName },
+                { label: "File", value: job.destinationFileName },
                 { label: "Job", value: job.id },
                 { label: "Transport", value: job.source.transport },
               ]}
@@ -228,17 +235,17 @@
 
           <div class="download-card__actions">
             {#if canCancel(job)}
-              <button class="icon-button" type="button" title="Cancel download" aria-label={`Cancel ${job.displayName}`} onclick={() => cancel(job)} disabled={actionJobId === job.id}>
+              <button class="icon-button" type="button" title="Cancel" aria-label={`Cancel ${job.displayName}`} onclick={() => cancel(job)} disabled={actionJobId === job.id}>
                 <X size={16} aria-hidden="true" />
               </button>
             {/if}
             {#if canRetry(job)}
-              <button class="icon-button" type="button" title="Retry download" aria-label={`Retry ${job.displayName}`} onclick={() => retry(job)} disabled={actionJobId === job.id}>
+              <button class="icon-button" type="button" title="Retry" aria-label={`Retry ${job.displayName}`} onclick={() => retry(job)} disabled={actionJobId === job.id}>
                 <RotateCcw size={16} aria-hidden="true" />
               </button>
             {/if}
             {#if canRemove(job)}
-              <button class="icon-button" type="button" title="Remove from history" aria-label={`Remove ${job.displayName} from history`} onclick={() => remove(job)} disabled={actionJobId === job.id}>
+              <button class="icon-button" type="button" title="Remove from list" aria-label={`Remove ${job.displayName} from list`} onclick={() => remove(job)} disabled={actionJobId === job.id}>
                 <Trash2 size={16} aria-hidden="true" />
               </button>
             {/if}

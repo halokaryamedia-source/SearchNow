@@ -102,6 +102,7 @@ pub struct DownloadManagerSnapshot {
     pub jobs: Vec<DownloadJob>,
     pub active_jobs: usize,
     pub queued_jobs: usize,
+    pub scheduler_error: Option<DownloadFailure>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

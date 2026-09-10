@@ -2,10 +2,12 @@ use super::{
     CatalogError, CatalogItem, CatalogPage, CatalogProviderFailure, CatalogProviderItem,
     CatalogProviderPage, CatalogQuery, CatalogRequest,
 };
-use crate::error::{BackendError, BackendResult};
+use crate::{
+    error::{BackendError, BackendResult},
+    provider_identity::valid_provider_key,
+};
 use std::{collections::HashMap, collections::HashSet, sync::Arc};
 
-const MAX_PROVIDER_KEY_BYTES: usize = 64;
 const MAX_QUERY_TEXT_BYTES: usize = 256;
 const MAX_QUERY_TAGS: usize = 32;
 const MAX_CONTENT_TYPE_FILTERS: usize = 16;
@@ -36,7 +38,7 @@ impl CatalogProviderRegistry {
 
     pub fn register(&mut self, provider: Arc<dyn CatalogProvider>) -> BackendResult<()> {
         let key = provider.key().trim();
-        if !valid_key(key) {
+        if !valid_provider_key(key) {
             return Err(BackendError::new(
                 "catalog_provider_key_invalid",
                 "Catalog provider key is empty or unsupported.",
@@ -83,7 +85,7 @@ impl CatalogService {
 }
 
 fn validate_request(request: &CatalogRequest) -> Result<(), CatalogError> {
-    if !valid_key(&request.provider) {
+    if !valid_provider_key(&request.provider) {
         return Err(invalid_request("Catalog provider identity is invalid."));
     }
     if let Some(text) = &request.query.text {
@@ -223,16 +225,8 @@ fn valid_description(value: &str) -> bool {
             .any(|character| character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
 }
 
-fn valid_key(key: &str) -> bool {
-    !key.is_empty()
-        && key.len() <= MAX_PROVIDER_KEY_BYTES
-        && key
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
-}
-
 fn map_provider_failure(failure: CatalogProviderFailure) -> CatalogError {
-    let code = if valid_key(&failure.code) {
+    let code = if valid_provider_key(&failure.code) {
         failure.code
     } else {
         "catalog_provider_query_failed".to_string()

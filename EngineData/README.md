@@ -5,13 +5,15 @@
 ## Current architecture
 
 ```text
-Frontend/RustApp
-→ Tauri 2 desktop application
-→ Svelte 5 + Vite + TypeScript presentation/application layer
-→ Rust Tauri commands + reusable Rust engine
+EngineData/
+├── Backend/RustCore/
+│   └── reusable application/runtime truth
+└── Frontend/RustApp/
+    ├── src/             Svelte presentation + product bridge
+    └── src-tauri/src/   Tauri bootstrap + thin native IPC
 ```
 
-SearchNow intentionally starts without a Python/local-worker backend. Filesystem, Minecraft discovery, catalog communication, download management, package inspection, validation, settings, and local persistence should stay in Rust unless a future requirement proves that a separate runtime is necessary.
+`RustCore` is linked in-process by the Tauri crate. There is no Python/local-worker backend or second application runtime.
 
 ## Ownership rule
 
@@ -19,14 +21,21 @@ SearchNow intentionally starts without a Python/local-worker backend. Filesystem
 Svelte pages/components
 → presentation and transient UI state
 
-src/app/bridge
+Frontend/RustApp/src/app/bridge
 → product-facing facade + thin Tauri command API
 
-src-tauri/src/commands
+Frontend/RustApp/src-tauri/src/commands
 → native IPC boundary only
 
-src-tauri/src/engine
-→ reusable application/runtime truth
+Backend/RustCore/src/app_runtime.rs
+→ one application composition root
+
+Backend/RustCore domain modules
+→ Minecraft discovery, library/package inspection,
+  provider/catalog/session/resolver behavior,
+  downloads, persistence/recovery, diagnostics
 ```
 
-Do not create parallel APIs, duplicate runtime state, or a second backend process merely for convenience.
+Settings and download state share one internal atomic persistence implementation. Provider identities share one internal validation contract. Production download transport selection remains inside RustCore; the `local-file` transport is a deterministic test fixture, not a product IPC surface.
+
+Do not create parallel APIs, duplicate runtime state, duplicate storage replacement logic, or a second backend process merely for convenience.

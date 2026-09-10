@@ -10,7 +10,7 @@ All notable SearchNow repository/product changes will be recorded here.
 - PRD-Creator-style development routing and branch model adapted for SearchNow.
 - Tauri 2 + Svelte 5 + TypeScript/Vite + Rust desktop scaffold.
 - In-process `EngineData/Backend/RustCore` backend library separated from Tauri IPC.
-- Typed/versioned settings with staged persistence.
+- Typed/versioned settings with bounded persistence.
 - Minecraft Bedrock GDK/account-scoped storage discovery with Preview opt-in and legacy UWP fallback.
 - Bounded read-only indexing for local behavior packs, resource packs, skin packs, and worlds.
 - Read-only folder / `.mcpack` / `.mcaddon` package inspection with typed manifest classification.
@@ -19,7 +19,7 @@ All notable SearchNow repository/product changes will be recorded here.
 - Transport-agnostic persistent download manager with typed job states, bounded concurrency, cancellation/retry semantics, progress validation, restart recovery, and terminal-job cleanup.
 - Download workspace planning with safe destination file names and destination-local staged atomic no-overwrite publication.
 - Provider-neutral download transport registry and execution runtime.
-- Deterministic `local-file` transport for end-to-end queue → transfer → progress → final publication testing.
+- Deterministic `local-file` transport for RustCore end-to-end queue → transfer → progress → final publication testing.
 - Native bounded worker scheduling with cooperative cancellation and queued-job pumping.
 - Progress persistence checkpointing at 1 MiB plus lifecycle boundaries to reduce state-write overhead.
 - Provider-neutral `https-public` transport using pinned `ureq`/rustls with explicit timeout, redirect, HTTPS-only, response-size, and content-length safeguards.
@@ -45,4 +45,22 @@ All notable SearchNow repository/product changes will be recorded here.
 - Consolidated `SearchNowBackendRuntime` composing local settings/platform context, provider adapters/resolvers, and persistent download execution as one application backend state.
 - Safe aggregate `BackendRuntimeSnapshot` plus deterministic startup/fail-closed/provider-resolver-to-download application-runtime fixtures.
 - Tauri state consolidation: one managed `SearchNowBackendRuntime`; feature commands delegate to it instead of constructing separate backend engines.
-- Backend unit-test, clippy, architecture, source-size, and legacy-protected-content guards.
+- Bounded backend diagnostics with safe stable codes, timing, retained-event limits, and current component health.
+- Shared `AtomicJsonStore` persistence primitive with staged writes, backup recovery, stale-temp cleanup, bounded JSON size, and non-symlink file checks.
+- Download startup validation/reconciliation for persisted job state, duplicate-id rejection, stale staging cleanup, and recovery of already-published `Finalizing` jobs.
+- Windows-safe download destination validation including reserved device names, invalid filename characters, and trailing-space/dot protections.
+- Download scheduler fault visibility through the safe runtime snapshot rather than silently dropping worker pump failures.
+- Canonical internal provider-key/stable-resource-id validation shared by catalog/session/adapter/resolver boundaries.
+- Provider session proactive refresh skew and retry cooldown to reduce near-expiry use and repeated refresh storms.
+- Root Rust workspace plus committed Cargo/npm lockfiles for deterministic dependency resolution.
+- Hosted Windows RustCore/Tauri compile gate and a non-destructive Windows readiness script covering current GDK plus legacy UWP candidate paths.
+- Repository/architecture guards for shared persistence ownership, production transport isolation, recovery contracts, deterministic lockfiles, and product-safe Tauri download boundaries.
+
+### Changed
+
+- Production `SearchNowBackendRuntime` now registers only production HTTP/provider-resolved transports; `local-file` remains a deterministic RustCore fixture.
+- Raw `DownloadRequest` / `queue_download` transport selection was removed from Tauri IPC. A future product enqueue API must express product intent and let RustCore choose transport.
+- Diagnostics health now reflects current component degradation independently from retained historical error events.
+- Settings and download state stores now delegate to one crash-recoverable persistence implementation instead of duplicating file replacement logic.
+- CI uses `npm ci` and Cargo `--locked`; RustCore verification remains the Linux backend gate while Tauri target compilation is verified on Windows.
+- Backend unit-test, clippy, architecture, source-size, deterministic-build, Windows-readiness, and legacy-protected-content guards are enforced together.

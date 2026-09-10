@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "EngineData/Backend/RustCore",
+    "EngineData/Frontend/RustApp/src-tauri",
+]
+resolver = "2"

@@ -1,5 +1,8 @@
 use super::{ProviderSessionError, ProviderSessionState, ProviderSessionStatus};
-use crate::error::{BackendError, BackendResult};
+use crate::{
+    error::{BackendError, BackendResult},
+    provider_identity::valid_provider_key,
+};
 use std::{
     any::Any,
     collections::HashMap,
@@ -7,7 +10,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-const MAX_PROVIDER_KEY_BYTES: usize = 64;
+const REFRESH_SKEW_MS: u64 = 30_000;
+const RETRY_BACKOFF_MS: u64 = 1_000;
 
 pub struct ProviderSessionFailure {
     pub code: String,
@@ -46,6 +50,11 @@ impl ProviderSessionMaterial {
     fn is_expired_at(&self, now_ms: u64) -> bool {
         self.expires_at_ms
             .is_some_and(|expires_at_ms| expires_at_ms <= now_ms)
+    }
+
+    fn needs_refresh_at(&self, now_ms: u64) -> bool {
+        self.expires_at_ms
+            .is_some_and(|expires_at_ms| expires_at_ms <= now_ms.saturating_add(REFRESH_SKEW_MS))
     }
 }
 
@@ -168,8 +177,9 @@ impl ProviderSessionEntry {
         let mut waited_for_refresh = false;
         loop {
             let mut state = self.lock_state();
+            let now = now_ms();
             if let Some(material) = state.material.as_ref() {
-                if !material.is_expired_at(now_ms()) {
+                if !material.needs_refresh_at(now) {
                     return Ok(ProviderSessionLease {
                         material: material.clone(),
                     });
@@ -187,7 +197,8 @@ impl ProviderSessionEntry {
             }
 
             if let ProviderSessionPhase::Failed(error) = &state.phase {
-                if waited_for_refresh || !error.retryable {
+                let cooling_down = state.retry_after_ms.is_some_and(|retry_at| now < retry_at);
+                if waited_for_refresh || !error.retryable || cooling_down {
                     return Err(error.clone());
                 }
             }
@@ -210,7 +221,6 @@ impl ProviderSessionEntry {
             match result {
                 Ok(material) => {
                     let material = Arc::new(material);
-                    state.material = Some(material.clone());
                     if material.is_expired_at(now_ms()) {
                         let error = ProviderSessionError::new(
                             "provider_session_material_expired",
@@ -218,15 +228,21 @@ impl ProviderSessionEntry {
                             true,
                         );
                         state.phase = ProviderSessionPhase::Failed(error.clone());
+                        state.retry_after_ms = Some(now_ms().saturating_add(RETRY_BACKOFF_MS));
                         self.changed.notify_all();
                         return Err(error);
                     }
+                    state.material = Some(material.clone());
                     state.phase = ProviderSessionPhase::Idle;
+                    state.retry_after_ms = None;
                     self.changed.notify_all();
                     return Ok(ProviderSessionLease { material });
                 }
                 Err(failure) => {
                     let error = sanitize_failure(failure);
+                    state.retry_after_ms = error
+                        .retryable
+                        .then(|| now_ms().saturating_add(RETRY_BACKOFF_MS));
                     state.phase = ProviderSessionPhase::Failed(error.clone());
                     self.changed.notify_all();
                     return Err(error);
@@ -286,6 +302,7 @@ impl ProviderSessionEntry {
 struct ProviderSessionEntryState {
     material: Option<Arc<ProviderSessionMaterial>>,
     phase: ProviderSessionPhase,
+    retry_after_ms: Option<u64>,
 }
 
 #[derive(Default)]
@@ -307,14 +324,6 @@ fn sanitize_failure(failure: ProviderSessionFailure) -> ProviderSessionError {
         "Provider session could not be acquired or refreshed.",
         failure.retryable,
     )
-}
-
-fn valid_provider_key(key: &str) -> bool {
-    !key.is_empty()
-        && key.len() <= MAX_PROVIDER_KEY_BYTES
-        && key
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 fn now_ms() -> u64 {

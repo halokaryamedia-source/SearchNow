@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED = [
     "README.md", "AGENTS.md", "CONTEXT.md", "GITHUB_RULES.md", "CONTRIBUTING.md", "SECURITY.md",
+    "Cargo.toml", "Cargo.lock",
     ".agents/skills/development-brief/SKILL.md",
     "docs/README.md",
     "docs/foundation/00-product-boundaries.md",
@@ -25,8 +26,10 @@ REQUIRED = [
     "docs/legacy/05-recovered-symbol-map.md", "docs/legacy/06-runtime-data-contracts.md", "docs/legacy/07-reconstruction-evidence.md",
     "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/src/lib.rs",
     "EngineData/Backend/RustCore/src/app_runtime.rs", "EngineData/Backend/RustCore/src/diagnostics.rs",
+    "EngineData/Backend/RustCore/src/persistence.rs", "EngineData/Backend/RustCore/src/provider_identity.rs",
     "EngineData/Backend/RustCore/src/settings.rs", "EngineData/Backend/RustCore/src/minecraft.rs",
-    "EngineData/Backend/RustCore/src/library.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
+    "EngineData/Backend/RustCore/src/library.rs", "EngineData/Backend/RustCore/src/download/recovery.rs",
+    "EngineData/Backend/RustCore/src/download/resolver.rs",
     "EngineData/Backend/RustCore/src/catalog/mod.rs", "EngineData/Backend/RustCore/src/catalog/model.rs",
     "EngineData/Backend/RustCore/src/catalog/provider.rs",
     "EngineData/Backend/RustCore/src/provider_session/mod.rs",
@@ -35,6 +38,8 @@ REQUIRED = [
     "EngineData/Backend/RustCore/src/provider_adapter/mod.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/model.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/runtime.rs",
+    "EngineData/Frontend/RustApp/package-lock.json",
+    "EngineData/Frontend/RustApp/src-tauri/icons/icon.png",
     "EngineData/Frontend/RustApp/src-tauri/build.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/app_bootstrap.rs",
     "EngineData/Frontend/RustApp/src-tauri/src/commands/registry.rs",
@@ -55,7 +60,7 @@ checks = {
     "docs/foundation/08-provider-session-architecture.md": ["ProviderSessionSource", "ProviderSessionManager", "non-serializable", "refresh storm"],
     "docs/foundation/09-provider-adapter-architecture.md": ["IntegratedProvider", "ProviderAdapterRuntime", "CatalogProvider", "ResourceResolver"],
     "docs/foundation/10-application-runtime-architecture.md": ["SearchNowBackendRuntime", "one managed state", "ProviderResolvedTransport", "BackendRuntimeSnapshot"],
-    "docs/foundation/11-observability-windows-readiness.md": ["DiagnosticsBuffer", "bounded", "Windows RustCore + Tauri compile gate", "OUT_DIR"],
+    "docs/foundation/11-observability-windows-readiness.md": ["DiagnosticsBuffer", "bounded", "Windows RustCore + Tauri compile gate"],
 }
 
 for rel, needles in checks.items():
@@ -94,6 +99,9 @@ if session_runtime.exists():
     for forbidden in ["Serialize", "Deserialize", "#[derive(Debug", "impl std::fmt::Debug for ProviderSessionMaterial", "impl std::fmt::Debug for ProviderSessionLease"]:
         if forbidden in text:
             errors.append(f"{session_runtime.relative_to(ROOT)}: runtime session material must remain non-serializable/non-debug: {forbidden!r}")
+    for needle in ["valid_provider_key", "REFRESH_SKEW_MS", "RETRY_BACKOFF_MS", "retry_after_ms"]:
+        if needle not in text:
+            errors.append(f"{session_runtime.relative_to(ROOT)}: missing provider session hardening contract {needle!r}")
 
 provider_boundary_names = ["IntegratedProvider", "ProviderSessionSource", "CatalogProvider", "ResourceResolver", "ProviderAdapterRuntime"]
 commands_root = ROOT / "EngineData" / "Frontend" / "RustApp" / "src-tauri" / "src" / "commands"
@@ -113,6 +121,17 @@ commands_mod = commands_root / "mod.rs"
 if commands_mod.exists() and "mod context" in commands_mod.read_text(encoding="utf-8", errors="replace"):
     errors.append("Tauri commands must not reactivate the obsolete per-command backend context helper")
 
+download_command = commands_root / "download.rs"
+if download_command.exists():
+    text = download_command.read_text(encoding="utf-8", errors="replace")
+    for forbidden in ["DownloadRequest", "queue_download"]:
+        if forbidden in text:
+            errors.append(f"{download_command.relative_to(ROOT)}: raw transport-selecting enqueue must stay outside Tauri IPC: {forbidden!r}")
+
+registry = commands_root / "registry.rs"
+if registry.exists() and "queue_download" in registry.read_text(encoding="utf-8", errors="replace"):
+    errors.append("Tauri command registry must not expose raw queue_download before a product-intent enqueue API exists")
+
 bootstrap = ROOT / "EngineData" / "Frontend" / "RustApp" / "src-tauri" / "src" / "app_bootstrap.rs"
 if bootstrap.exists():
     text = bootstrap.read_text(encoding="utf-8", errors="replace")
@@ -126,18 +145,64 @@ if bootstrap.exists():
 app_runtime = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "app_runtime.rs"
 if app_runtime.exists():
     text = app_runtime.read_text(encoding="utf-8", errors="replace")
-    for needle in ["SearchNowBackendRuntime", "ProviderAdapterRuntime::compose", "providers.resolvers()", "ProviderResolvedTransport::new", "DownloadExecutionRuntime::new", "SettingsStore::new", "BackendRuntimeSnapshot", "DiagnosticsBuffer"]:
+    for needle in ["SearchNowBackendRuntime", "ProviderAdapterRuntime::compose", "providers.resolvers()", "ProviderResolvedTransport::new", "DownloadExecutionRuntime::new", "SettingsStore::new", "BackendRuntimeSnapshot", "DiagnosticsBuffer", "DownloadTransportRegistry::new"]:
         if needle not in text:
             errors.append(f"{app_runtime.relative_to(ROOT)}: missing application composition/observability contract {needle!r}")
+    if "DownloadTransportRegistry::with_local_file" in text:
+        errors.append(f"{app_runtime.relative_to(ROOT)}: deterministic local-file transport is test-only and must not be registered in production")
+
+persistence = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "persistence.rs"
+if persistence.exists():
+    text = persistence.read_text(encoding="utf-8", errors="replace")
+    for needle in ["AtomicJsonStore", "backup_path", "cleanup_stale_temps", "sync_all"]:
+        if needle not in text:
+            errors.append(f"{persistence.relative_to(ROOT)}: missing crash-recoverable persistence contract {needle!r}")
+
+settings = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "settings.rs"
+download_store = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "store.rs"
+for path in [settings, download_store]:
+    if path.exists() and "AtomicJsonStore" not in path.read_text(encoding="utf-8", errors="replace"):
+        errors.append(f"{path.relative_to(ROOT)}: state persistence must delegate to the shared AtomicJsonStore")
+
+recovery = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "recovery.rs"
+if recovery.exists():
+    text = recovery.read_text(encoding="utf-8", errors="replace")
+    for needle in ["validate_and_reconcile_persisted_state", "duplicate job ids", "DownloadJobState::Finalizing"]:
+        if needle not in text:
+            errors.append(f"{recovery.relative_to(ROOT)}: missing download recovery/reconciliation contract {needle!r}")
+
+executor = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "executor.rs"
+if executor.exists():
+    text = executor.read_text(encoding="utf-8", errors="replace")
+    for needle in ["validate_and_reconcile_persisted_state", "scheduler_error", "set_scheduler_error", "clear_scheduler_error"]:
+        if needle not in text:
+            errors.append(f"{executor.relative_to(ROOT)}: missing scheduler/recovery visibility contract {needle!r}")
+
+provider_identity = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "provider_identity.rs"
+if provider_identity.exists():
+    text = provider_identity.read_text(encoding="utf-8", errors="replace")
+    for needle in ["MAX_PROVIDER_KEY_BYTES", "MAX_STABLE_RESOURCE_ID_BYTES", "valid_provider_key", "valid_stable_resource_id"]:
+        if needle not in text:
+            errors.append(f"{provider_identity.relative_to(ROOT)}: missing canonical provider identity contract {needle!r}")
+
+for rel in [
+    "EngineData/Backend/RustCore/src/catalog/provider.rs",
+    "EngineData/Backend/RustCore/src/download/resolver.rs",
+    "EngineData/Backend/RustCore/src/provider_adapter/runtime.rs",
+    "EngineData/Backend/RustCore/src/provider_session/runtime.rs",
+]:
+    path = ROOT / rel
+    if path.exists() and "valid_provider_key" not in path.read_text(encoding="utf-8", errors="replace"):
+        errors.append(f"{rel}: provider key validation must use the canonical provider identity contract")
 
 # Diagnostics are intentionally bounded and static-message only. Guard ownership patterns,
 # not anti-leak assertion literals used by tests.
 diagnostics = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "diagnostics.rs"
 if diagnostics.exists():
     text = diagnostics.read_text(encoding="utf-8", errors="replace")
-    for needle in ["DEFAULT_DIAGNOSTIC_CAPACITY", "MAX_DIAGNOSTIC_CAPACITY", "VecDeque", "pub message: &'static str", "BackendHealthSnapshot"]:
+    for needle in ["DEFAULT_DIAGNOSTIC_CAPACITY", "MAX_DIAGNOSTIC_CAPACITY", "VecDeque", "pub message: &'static str", "BackendHealthSnapshot", "degraded_components", "HashSet<DiagnosticComponent>"]:
         if needle not in text:
-            errors.append(f"{diagnostics.relative_to(ROOT)}: missing bounded/static diagnostic contract {needle!r}")
+            errors.append(f"{diagnostics.relative_to(ROOT)}: missing bounded/static/current-health diagnostic contract {needle!r}")
     lowered = text.lower()
     for forbidden in [
         "pub authorization:", "authorization: string", "pub bearer_token:", "bearer_token: string",
@@ -166,11 +231,15 @@ for workflow_rel in [
         for needle in [
             "windows-latest",
             'node-version: "22"',
-            "npm run build:frontend",
-            "cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml",
+            "npm ci --no-audit --no-fund",
+            "cargo test -p searchnow-core --locked",
+            "cargo check -p searchnow --locked",
         ]:
             if needle not in text:
-                errors.append(f"{workflow_rel}: missing hosted Windows Tauri compile prerequisite/gate {needle!r}")
+                errors.append(f"{workflow_rel}: missing deterministic hosted Windows/Linux prerequisite/gate {needle!r}")
+
+if (ROOT / ".github/workflows/bootstrap-lockfiles.yml").exists():
+    errors.append("one-shot bootstrap-lockfiles workflow must be removed after lockfiles are committed")
 
 public_http = ROOT / "EngineData" / "Backend" / "RustCore" / "src" / "download" / "http.rs"
 if public_http.exists():

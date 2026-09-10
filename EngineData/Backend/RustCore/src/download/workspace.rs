@@ -19,6 +19,9 @@ pub struct DownloadWorkspacePlan {
 }
 
 pub fn validate_destination_file_name(value: &str) -> BackendResult<()> {
+    let invalid_windows_character = value
+        .chars()
+        .any(|character| matches!(character, '<' | '>' | ':' | '"' | '|' | '?' | '*'));
     if value.is_empty()
         || value == "."
         || value == ".."
@@ -26,16 +29,20 @@ pub fn validate_destination_file_name(value: &str) -> BackendResult<()> {
         || value.contains('/')
         || value.contains('\\')
         || value.chars().any(char::is_control)
+        || invalid_windows_character
+        || value.trim() != value
+        || value.ends_with('.')
+        || is_reserved_windows_name(value)
     {
         return Err(BackendError::new(
             "download_destination_name_invalid",
-            "Download destination must be one safe file name without path separators.",
+            "Download destination must be one Windows-safe file name without reserved characters or paths.",
         ));
     }
     Ok(())
 }
 
-fn validate_job_id(value: &str) -> BackendResult<()> {
+pub(crate) fn validate_job_id(value: &str) -> BackendResult<()> {
     if value.is_empty()
         || value.len() > MAX_JOB_ID_BYTES
         || !value
@@ -161,6 +168,33 @@ pub fn cleanup_workspace(plan: &DownloadWorkspacePlan) -> BackendResult<()> {
     })
 }
 
+pub(crate) fn cleanup_destination_stage(plan: &DownloadWorkspacePlan) -> BackendResult<()> {
+    let stage_path = destination_stage_path(plan)?;
+    if !stage_path.exists() {
+        return Ok(());
+    }
+    let metadata = fs::symlink_metadata(&stage_path).map_err(|error| {
+        BackendError::from_io(
+            "download_finalize_stage_metadata_failed",
+            "SearchNow could not inspect a stale download staging file.",
+            error,
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.file_type().is_file() {
+        return Err(BackendError::new(
+            "download_finalize_stage_invalid",
+            "Download staging path must be a regular non-symlink file.",
+        ));
+    }
+    fs::remove_file(stage_path).map_err(|error| {
+        BackendError::from_io(
+            "download_finalize_stage_cleanup_failed",
+            "SearchNow could not clean a stale download staging file.",
+            error,
+        )
+    })
+}
+
 pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> {
     validate_destination_file_name(
         plan.final_path
@@ -202,7 +236,10 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
         ));
     }
 
-    let stage_path = destination_dir.join(format!(".searchnow-{}.part", plan.job_id));
+    let stage_path = destination_stage_path(plan)?;
+    if stage_path.exists() {
+        cleanup_destination_stage(plan)?;
+    }
     let mut source = File::open(&plan.payload_path).map_err(|error| {
         BackendError::from_io(
             "download_payload_open_failed",
@@ -242,4 +279,32 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
     }
     let _ = fs::remove_file(&stage_path);
     Ok(plan.final_path.clone())
+}
+
+fn destination_stage_path(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> {
+    let destination_dir = plan.final_path.parent().ok_or_else(|| {
+        BackendError::new(
+            "download_destination_path_invalid",
+            "Download destination has no parent directory.",
+        )
+    })?;
+    Ok(destination_dir.join(format!(".searchnow-{}.part", plan.job_id)))
+}
+
+fn is_reserved_windows_name(value: &str) -> bool {
+    let stem = value
+        .split('.')
+        .next()
+        .unwrap_or(value)
+        .trim_end_matches([' ', '.'])
+        .to_ascii_uppercase();
+    if matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL") {
+        return true;
+    }
+    if stem.len() == 4 {
+        let (prefix, digit) = stem.split_at(3);
+        return matches!(prefix, "COM" | "LPT")
+            && matches!(digit, "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9");
+    }
+    false
 }

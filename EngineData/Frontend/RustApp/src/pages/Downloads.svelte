@@ -1,6 +1,5 @@
 <script lang="ts">
   import { FolderOpen, RefreshCw, RotateCcw, Search, Trash2, X } from "@lucide/svelte";
-  import { desktopInteractionApi } from "../app/bridge/desktopInteractionApi";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { downloadStateLabel, formatBytes, formatDateTime, progressPercent } from "../app/shared/format";
   import type { DownloadJob, DownloadManagerSnapshot } from "../app/shared/types";
@@ -98,14 +97,9 @@
   async function openFolder(job: DownloadJob): Promise<void> {
     if (job.state !== "completed" || !job.destinationDirectory) return;
     actionJobId = job.id;
-    try {
-      await desktopInteractionApi.openDownloadDirectory(job.destinationDirectory);
-      error = "";
-    } catch {
-      error = "The download folder could not be opened.";
-    } finally {
-      actionJobId = null;
-    }
+    const result = await runtimeProductFacade.openDownloadDirectory(job.destinationDirectory);
+    error = result.ok ? "" : result.error.message;
+    actionJobId = null;
   }
 
   $effect(() => {

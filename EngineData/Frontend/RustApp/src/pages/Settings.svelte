@@ -13,7 +13,7 @@
   let includePreview = $state(false);
   let includeLegacyUwp = $state(true);
   let includeDevelopmentContent = $state(false);
-  let discovery = $state<MinecraftDiscoverySnapshot | null>(snapshot?.backend?.minecraft ?? null);
+  let discovery = $state<MinecraftDiscoverySnapshot | null>(null);
   let baselineSettings = $state<AppSettings | null>(null);
   let loading = $state(false);
   let loaded = $state(false);
@@ -93,6 +93,10 @@
     else error = result.error.message;
     scanning = false;
   }
+
+  $effect(() => {
+    if (!discovery && snapshot?.backend?.minecraft) discovery = snapshot.backend.minecraft;
+  });
 
   $effect(() => {
     if (!active || !snapshot?.ready) return;

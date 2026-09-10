@@ -1,9 +1,9 @@
+use super::recovery::validate_and_reconcile_persisted_state;
 use super::{
     cleanup_workspace, ensure_workspace, finalize_payload, plan_workspace, prepare_payload_file,
-    DownloadJob, DownloadJobState, DownloadManager, DownloadManagerSnapshot, DownloadPolicy,
-    DownloadRequest, DownloadStore, DownloadTransportRegistry,
+    DownloadFailure, DownloadJob, DownloadJobState, DownloadManager, DownloadManagerSnapshot,
+    DownloadPolicy, DownloadRequest, DownloadStore, DownloadTransportRegistry,
 };
-use super::recovery::validate_and_reconcile_persisted_state;
 use crate::error::{BackendError, BackendResult};
 use std::{
     io::{ErrorKind, Read, Write},
@@ -22,6 +22,7 @@ pub struct DownloadExecutionRuntime {
 
 struct DownloadExecutionInner {
     manager: Mutex<DownloadManager>,
+    scheduler_error: Mutex<Option<DownloadFailure>>,
     store: DownloadStore,
     workspace_root: PathBuf,
     destination_root: PathBuf,
@@ -50,6 +51,7 @@ impl DownloadExecutionRuntime {
         let runtime = Self {
             inner: Arc::new(DownloadExecutionInner {
                 manager: Mutex::new(manager),
+                scheduler_error: Mutex::new(None),
                 store,
                 workspace_root,
                 destination_root,
@@ -62,7 +64,20 @@ impl DownloadExecutionRuntime {
 
     pub fn snapshot(&self) -> BackendResult<DownloadManagerSnapshot> {
         let manager = self.lock_manager()?;
-        Ok(manager.snapshot())
+        let mut snapshot = manager.snapshot();
+        drop(manager);
+        snapshot.scheduler_error = self
+            .inner
+            .scheduler_error
+            .lock()
+            .map_err(|_| {
+                BackendError::new(
+                    "download_scheduler_state_lock_failed",
+                    "Download scheduler health is unavailable.",
+                )
+            })?
+            .clone();
+        Ok(snapshot)
     }
 
     pub fn queue(&self, request: DownloadRequest) -> BackendResult<DownloadJob> {
@@ -86,9 +101,23 @@ impl DownloadExecutionRuntime {
             manager.remove_terminal(job_id)?;
             Ok(manager.snapshot())
         })
+        .and_then(|_| self.snapshot())
     }
 
     pub fn pump(&self) -> BackendResult<usize> {
+        match self.pump_inner() {
+            Ok(count) => {
+                self.clear_scheduler_error();
+                Ok(count)
+            }
+            Err(error) => {
+                self.set_scheduler_error(&error);
+                Err(error)
+            }
+        }
+    }
+
+    fn pump_inner(&self) -> BackendResult<usize> {
         let claimed = {
             let mut manager = self.lock_manager()?;
             let mut candidate = manager.clone();
@@ -108,10 +137,7 @@ impl DownloadExecutionRuntime {
                 if let Err(error) = runtime.execute_claimed_job(&job.id) {
                     runtime.fail_from_backend_error(&job.id, error);
                 }
-                if runtime.pump().is_err() {
-                    thread::yield_now();
-                    let _ = runtime.pump();
-                }
+                let _ = runtime.pump();
             });
         }
         Ok(count)
@@ -336,6 +362,24 @@ impl DownloadExecutionRuntime {
         self.inner.store.save(&candidate.persisted_state())?;
         *manager = candidate;
         Ok(output)
+    }
+
+    fn set_scheduler_error(&self, error: &BackendError) {
+        let Ok(mut state) = self.inner.scheduler_error.lock() else {
+            return;
+        };
+        *state = Some(DownloadFailure {
+            code: error.code().to_string(),
+            message: error.message().to_string(),
+            retryable: true,
+        });
+    }
+
+    fn clear_scheduler_error(&self) {
+        let Ok(mut state) = self.inner.scheduler_error.lock() else {
+            return;
+        };
+        *state = None;
     }
 
     fn lock_manager(&self) -> BackendResult<std::sync::MutexGuard<'_, DownloadManager>> {

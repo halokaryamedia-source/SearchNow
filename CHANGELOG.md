@@ -29,10 +29,13 @@ All notable SearchNow repository/product changes will be recorded here.
 - Runtime-connected frontend workspace for Library, Downloads, Settings, runtime health, and safe diagnostics.
 - Provider-neutral Discover search/filter/sort/pagination UI plus a thin Tauri `query_catalog` adapter over the existing Rust application runtime.
 - Shared frontend DTO/format helpers and a single normalized `runtimeProductFacade` over the raw Tauri bridge.
-- Shared `PageState` and `Notice` frontend primitives for consistent loading, empty, warning, error, and success states.
-- Responsive narrow-window layout behavior, keyboard focus visibility, and reduced-motion support.
+- Shared frontend UI primitives for loading/empty/error states, notices, metrics, results summaries, content-type marks, user-facing details, technical details, and state pills.
+- Responsive narrow-window layout behavior, keyboard focus visibility, reduced-motion support, and semantic download progress.
 - Local Library sorting and Download-history search/filter controls.
 - Typed frontend `queue_catalog_download` bridge/facade support without exposing raw transport selection.
+- Centralized route metadata used by Sidebar and the route-aware topbar.
+- Session-only restoration of the last active route.
+- User-facing Minecraft channel/storage-kind labels in Settings.
 
 ### Changed
 
@@ -43,21 +46,21 @@ All notable SearchNow repository/product changes will be recorded here.
 - Diagnostics current component health is independent from retained historical failure events.
 - Download scheduler continuation errors are retained instead of silently discarded.
 - Windows build readiness no longer depends on generated `OUT_DIR` placeholder icons or `window_icon_path` build-script injection.
-- Repository, Local-promotion, and stable-release verification now use current GitHub Actions v7 releases, `npm ci`, Cargo `--locked`, and read-only repository permissions.
-- Repository validation now requires committed dependency locks and guards the product-intent/production-transport boundary.
-- README, context, implementation roadmap, next-action, validation, backlog, and observability documentation describe the closed remote foundation rather than the initial scaffold state.
-- Library, Downloads, and Settings react when runtime availability changes instead of depending only on their first mount.
-- Downloads refreshes adaptively while mounted and stops polling when the page/runtime is unavailable.
-- Settings tracks unsaved changes, disables redundant saves, clears stale `Saved` feedback after edits, and requires saved discovery preferences before rescan.
-- Product-facing loading/empty/unavailable copy no longer exposes implementation details that belong in technical/diagnostic surfaces.
-- Product pages remain mounted across sidebar navigation so search/filter/sort state is preserved; filesystem scans, catalog queries, download polling, and diagnostics reads run only for the active page.
-- Sidebar navigation now exposes current-page semantics while the existing desktop visual language remains intact.
+- Repository, Local-promotion, and stable-release verification use current GitHub Actions releases, `npm ci`, Cargo `--locked`, and read-only repository permissions.
+- Repository validation requires committed dependency locks and guards the product-intent/production-transport boundary.
+- Product pages remain mounted across sidebar navigation so page-local search/filter/sort state is preserved; filesystem scans, catalog queries, download polling, settings loads, and diagnostics reads run only for the active page.
+- Library and Discover separate user-facing content details from lower-level technical metadata.
+- Discover pagination suppresses duplicate `provider:itemId` entries and exposes retry/reset flows without fabricating provider behavior.
+- Downloads exposes search/filter/reset, accessible progress semantics, shared state presentation, and recovery refresh behavior.
+- Settings tracks unsaved changes, supports form-only revert, keeps rescan behind saved preferences, and replaces internal Minecraft storage enum values with readable labels.
+- Sidebar and topbar now share one navigation metadata source to prevent route-label drift.
+- Product-facing loading/empty/unavailable copy stays separate from implementation and credential details.
 
 ### Verified
 
-- Remote backend foundation verification passes 71 RustCore tests with strict Clippy, frontend architecture/size/typecheck/build checks, and native hosted-Windows RustCore/Tauri locked compilation.
-- Provider-independent frontend code through `c2ffdad5fef9b03df13d61335ee929ffe43f92be` passes Repository Verify **#168** on Linux.
-- The first Windows attempt for that same commit hit a transient local HTTP fixture timeout; a rerun of the identical SHA passed the 71-test RustCore suite, frontend build, and native Tauri compile gate without any Rust/source change.
+- Remote backend foundation verification passes 71 RustCore tests with strict Clippy, frontend architecture/size/typecheck/build checks, and native hosted-Windows RustCore/Tauri locked compilation on established baselines.
+- Frontend information-hierarchy code endpoint `fbbf1c247869a4ac95038d3e1c135f883a34dbac` passes Repository Verify **#234** on the Linux/static/frontend gate, including repository contracts, 71 RustCore tests, Tauri formatting, locked dependency installation, architecture/source-size validation, Svelte/TypeScript checking, and production frontend build.
+- Native hosted-Windows verification for that exact endpoint had not completed at the time this changelog entry was recorded; superseded Windows runs may be cancelled by the workflow's `cancel-in-progress` policy and are not treated as code failures by themselves.
 
 ### Safety / Architecture
 

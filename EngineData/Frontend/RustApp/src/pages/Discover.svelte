@@ -17,9 +17,11 @@
   let {
     runtimeReady,
     providers,
+    active,
   }: {
     runtimeReady: boolean;
     providers: ProviderRuntimeStatus[];
+    active: boolean;
   } = $props();
 
   let query = $state("");
@@ -71,7 +73,7 @@
     cursor: string | null = null,
     append = false,
   ): Promise<void> {
-    if (!runtimeReady || !provider) return;
+    if (!runtimeReady || !active || !provider) return;
     const sequence = ++requestSequence;
     if (append) loadingMore = true;
     else loading = true;
@@ -109,10 +111,7 @@
     const text = query;
     const filter = contentFilter;
     const selectedSort = sort;
-    if (!runtimeReady || !provider) {
-      page = null;
-      return;
-    }
+    if (!active || !runtimeReady || !provider) return;
     const timer = setTimeout(() => {
       void queryCatalog(provider, text, filter, selectedSort);
     }, 320);
@@ -120,7 +119,7 @@
   });
 </script>
 
-<section class="page">
+<section class="page" hidden={!active}>
   <div class="page-heading">
     <div>
       <span class="eyebrow">Catalog</span>

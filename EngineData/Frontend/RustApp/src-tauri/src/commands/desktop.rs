@@ -8,9 +8,11 @@ pub async fn choose_download_directory(app: AppHandle) -> Result<Option<String>,
     let Some(selected) = selected else {
         return Ok(None);
     };
-    let path = selected.into_path().map_err(|_| CommandError {
-        code: "dialog_path_invalid".into(),
-        message: "The selected folder could not be used.".into(),
+    let path = selected.into_path().map_err(|_| {
+        CommandError::new(
+            "dialog_path_invalid",
+            "The selected folder could not be used.",
+        )
     })?;
     Ok(Some(path.to_string_lossy().into_owned()))
 }

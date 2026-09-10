@@ -30,7 +30,7 @@
         includeDevelopmentContent !== baselineSettings.minecraft.includeDevelopmentContent),
   );
   let discoveryLabel = $derived(
-    discovery?.state === "found" ? "Detected" : discovery?.state === "unsupportedPlatform" ? "Unsupported" : "Not detected",
+    discovery?.state === "found" ? "Found" : discovery?.state === "unsupportedPlatform" ? "Unsupported" : "Not found",
   );
   let discoveryTone = $derived(discovery?.state === "found" ? "completed" : "interrupted");
 
@@ -109,61 +109,61 @@
     <div>
       <span class="eyebrow">Application</span>
       <h1>Settings</h1>
-      <p>Manage Minecraft discovery preferences and review the local desktop runtime.</p>
+      <p>Choose where SearchNow looks for Minecraft content.</p>
     </div>
     <button class="button button--primary" type="button" onclick={save} disabled={!active || !snapshot?.ready || loading || saving || !dirty}>
       {#if saved && !saving}<Check size={15} aria-hidden="true" />{:else}<Save size={15} aria-hidden="true" />{/if}
-      {saving ? "Saving" : saved ? "Saved" : "Save settings"}
+      {saving ? "Saving" : saved ? "Saved" : "Save changes"}
     </button>
   </div>
 
   {#if error}
-    <Notice tone="error" title="Settings action failed." message={error} />
+    <Notice tone="error" title="Could not update settings." message={error} />
   {:else if dirty}
     <Notice
       tone="info"
-      title="Unsaved settings"
-      message="Changes are local to this form until you save them. Rescan stays disabled to avoid mixing saved and unsaved discovery settings."
-      actionLabel="Revert changes"
+      title="Unsaved changes"
+      message="Save or revert your changes before scanning again."
+      actionLabel="Revert"
       onAction={revertChanges}
     />
   {:else if saved}
-    <Notice tone="success" title="Settings saved." message="Minecraft discovery preferences are stored locally." />
+    <Notice tone="success" title="Changes saved." message="Your Minecraft locations are up to date." />
   {/if}
 
   <div class="settings-layout">
     <div class="settings-stack">
       <article class="settings-section">
         <div class="settings-section__heading">
-          <div><span class="eyebrow">Minecraft</span><h2>Content discovery</h2></div>
+          <div><span class="eyebrow">Minecraft</span><h2>Minecraft locations</h2></div>
           <button
             class="button button--secondary button--compact"
             type="button"
-            title={dirty ? "Save settings before rescanning" : "Rescan Minecraft locations"}
+            title={dirty ? "Save changes before scanning again" : "Scan Minecraft locations again"}
             onclick={rescan}
             disabled={!active || !snapshot?.ready || scanning || dirty}
           >
-            <RefreshCw size={14} class={scanning ? "spin" : ""} aria-hidden="true" />Rescan
+            <RefreshCw size={14} class={scanning ? "spin" : ""} aria-hidden="true" />{scanning ? "Scanning" : "Scan again"}
           </button>
         </div>
 
         <label class="field">
-          <span>Manual Minecraft data location</span>
-          <input bind:value={rootOverride} type="text" placeholder="Leave empty to use automatic detection" disabled={!active || !snapshot?.ready || loading} />
-          <small>Optional override. Leave empty to use automatic Minecraft Bedrock discovery.</small>
+          <span>Minecraft data folder (optional)</span>
+          <input bind:value={rootOverride} type="text" placeholder="Leave empty for automatic detection" disabled={!active || !snapshot?.ready || loading} />
+          <small>Use this only if SearchNow cannot find your Minecraft data automatically.</small>
         </label>
 
         <div class="toggle-list">
           <label class="toggle-row">
-            <div><strong>Include Minecraft Preview</strong><span>Scan Preview storage in addition to the stable installation.</span></div>
+            <div><strong>Include Minecraft Preview</strong><span>Also check Minecraft Preview content.</span></div>
             <input bind:checked={includePreview} type="checkbox" disabled={!active || !snapshot?.ready || loading} />
           </label>
           <label class="toggle-row">
-            <div><strong>Include legacy UWP locations</strong><span>Keep legacy Windows Bedrock locations as fallback candidates.</span></div>
+            <div><strong>Check older Minecraft locations</strong><span>Also look in legacy Windows storage locations.</span></div>
             <input bind:checked={includeLegacyUwp} type="checkbox" disabled={!active || !snapshot?.ready || loading} />
           </label>
           <label class="toggle-row">
-            <div><strong>Include development content</strong><span>Index development behavior, resource, and skin-pack folders.</span></div>
+            <div><strong>Include development folders</strong><span>Also include development behavior, resource, and skin-pack folders.</span></div>
             <input bind:checked={includeDevelopmentContent} type="checkbox" disabled={!active || !snapshot?.ready || loading} />
           </label>
         </div>
@@ -171,10 +171,10 @@
 
       <article class="settings-section">
         <div class="settings-section__heading">
-          <div><span class="eyebrow">Detected storage</span><h2>Minecraft Bedrock</h2></div>
+          <div><span class="eyebrow">Detected storage</span><h2>Detected Minecraft locations</h2></div>
           <StatePill state={discoveryTone} label={discoveryLabel} />
         </div>
-        <p class="section-copy">{discovery?.message ?? "Minecraft discovery information is not available yet."}</p>
+        <p class="section-copy">{discovery?.message ?? "Minecraft locations have not been checked yet."}</p>
 
         {#if discovery?.roots.length}
           <div class="root-list">
@@ -193,19 +193,14 @@
 
     <aside class="settings-stack">
       <article class="settings-card settings-card--large">
-        <span class="settings-card__label">Desktop runtime</span>
+        <span class="settings-card__label">App connection</span>
         <strong>{snapshot?.ready ? "Connected" : "Unavailable"}</strong>
-        <p>{snapshot?.summary ?? "Checking runtime..."}</p>
+        <p>{snapshot?.summary ?? "Checking app status..."}</p>
       </article>
       <article class="settings-card settings-card--large">
-        <span class="settings-card__label">Backend</span>
-        <strong>{snapshot?.runtime?.backend ?? "Rust"}</strong>
-        <p>{snapshot?.runtime ? `${snapshot.runtime.platform} · ${snapshot.runtime.architecture} · app ${snapshot.runtime.appVersion}` : "Runtime details appear when Tauri is connected."}</p>
-      </article>
-      <article class="settings-card settings-card--large">
-        <span class="settings-card__label">Runtime health</span>
+        <span class="settings-card__label">App health</span>
         <strong>{snapshot?.backend?.diagnostics.health.state ?? "Unknown"}</strong>
-        <p>{snapshot?.backend ? `${snapshot.backend.diagnostics.health.errorEvents} retained errors · ${snapshot.backend.diagnostics.health.warningEvents} warnings` : "Diagnostics are runtime-owned and remain local."}</p>
+        <p>{snapshot?.backend ? `${snapshot.backend.diagnostics.health.errorEvents} errors · ${snapshot.backend.diagnostics.health.warningEvents} warnings` : "Health information is not available yet."}</p>
       </article>
     </aside>
   </div>

@@ -24,7 +24,7 @@ Local    → verified integration baseline; one squash commit per approved promo
 main     → stable repository history
 ```
 
-Routine work happens on `develop`.
+Routine work happens on `develop`. `Local` and `main` move only through their documented promotion gates.
 
 ## Application Architecture
 
@@ -34,12 +34,19 @@ Tauri 2 desktop shell
 │  ├─ pages/components
 │  ├─ product facade
 │  └─ thin Tauri API bridge
-└─ Rust backend/runtime
-   ├─ commands/  thin IPC boundary
-   └─ engine/    application/runtime truth
+└─ Rust
+   ├─ src-tauri/                     desktop bootstrap + thin IPC commands
+   └─ EngineData/Backend/RustCore/  reusable application/runtime truth
+      ├─ app runtime composition
+      ├─ Minecraft discovery + local library
+      ├─ package inspection
+      ├─ catalog/provider/session/resolver boundaries
+      ├─ persistent download execution
+      ├─ atomic persistence + crash recovery
+      └─ bounded diagnostics/current health
 ```
 
-No Python worker or second backend process exists in the current architecture.
+There is one in-process application backend owner (`SearchNowBackendRuntime`). No Python worker, local HTTP server, or second backend process exists in the current architecture.
 
 Current product surfaces:
 
@@ -50,35 +57,39 @@ Downloads
 Settings
 ```
 
+## Current Backend Foundation
+
+Implemented backend capabilities include:
+
+- typed local settings with bounded, crash-recoverable atomic JSON persistence;
+- Windows Minecraft Bedrock GDK/account discovery with Preview opt-in and legacy UWP fallback;
+- bounded read-only indexing of local packs and worlds;
+- read-only folder / `.mcpack` / `.mcaddon` inspection with archive traversal, symlink, duplicate-path, size, and compression-ratio safeguards;
+- provider-neutral catalog, shared runtime-only provider sessions, integrated provider composition, and runtime resource resolution;
+- persistent bounded download execution with cancellation/retry, safe staging/finalization, restart validation, and crash reconciliation;
+- production HTTPS and provider-resolved transports; the deterministic `local-file` transport is test-only and is not exposed through production Tauri IPC;
+- bounded structured diagnostics with current component health separated from retained event history;
+- hosted Linux verification plus a Windows RustCore/Tauri compile gate.
+
+Real provider login/endpoints, production credentials, and frontend Discover/provider wiring are intentionally outside this foundation slice.
+
 ## Source Map
 
 ```text
+Cargo.toml / Cargo.lock                one Rust workspace + deterministic lock
 EngineData/
+├── Backend/RustCore/                  reusable backend/runtime core
 └── Frontend/RustApp/
-    ├── src/                 Svelte product UI + bridge
-    └── src-tauri/src/       Rust commands + engine
+    ├── package-lock.json              deterministic frontend dependency lock
+    ├── src/                           Svelte product UI + bridge
+    └── src-tauri/                     Tauri bootstrap + thin commands
 
-UserData/                    runtime-data ownership contract
-docs/foundation/             durable product/architecture policy
-docs/knowledge/              continuation, ownership, decisions, evidence
-docs/legacy/                 recovered BlueCoin 2.4 evidence
+UserData/                              runtime-data ownership contract
+docs/foundation/                       durable product/architecture policy
+docs/knowledge/                        continuation, ownership, decisions, evidence
+docs/legacy/                           recovered BlueCoin 2.4 evidence
+tools/                                 repository + Windows readiness verification
 ```
-
-## Current Executable Slice
-
-The first implemented vertical slice proves the architecture itself:
-
-```text
-Svelte App
-→ runtimeProductFacade
-→ runtimeApi
-→ Tauri get_runtime_status
-→ Rust command
-→ Rust engine
-→ runtime status returned to UI
-```
-
-Minecraft discovery/catalog/download logic is intentionally not implemented yet.
 
 ## Developer Quick Start
 
@@ -86,15 +97,24 @@ Prerequisites: Node.js 22+, Rust toolchain, and Tauri Windows prerequisites for 
 
 ```bash
 cd EngineData/Frontend/RustApp
-npm install
+npm ci
 npm run validate:quick
 npm run dev:app
 ```
 
-Repository contract check:
+Repository checks from the repository root:
 
 ```bash
 python tools/verify_repository.py
+cargo fmt --all -- --check
+cargo test -p searchnow-core --locked
+cargo clippy -p searchnow-core --all-targets --locked -- -D warnings
 ```
 
-Repository/static checks do not prove installed Windows runtime behavior. See `docs/knowledge/reviews/current-validation.md`.
+Optional non-destructive Windows readiness check:
+
+```powershell
+./tools/windows_smoke_readiness.ps1 -CompileChecks
+```
+
+Hosted/static checks prove repository and compile contracts only. They do not prove installed Windows behavior, representative production-network behavior, or future real-provider compatibility. See `docs/knowledge/reviews/current-validation.md`.

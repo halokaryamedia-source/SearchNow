@@ -90,6 +90,15 @@
   overflow: clip;
 }
 
+.empty-panel--loading {
+  border-style: solid;
+  background: linear-gradient(145deg, var(--sn-surface), var(--sn-surface-soft));
+}
+
+.empty-panel--loading .empty-panel__icon {
+  border-color: var(--sn-border-strong);
+}
+
 .toolbar {
   flex-wrap: wrap;
 }

@@ -1,4 +1,5 @@
 pub mod catalog;
+pub mod desktop;
 pub mod download;
 mod error;
 pub mod library;

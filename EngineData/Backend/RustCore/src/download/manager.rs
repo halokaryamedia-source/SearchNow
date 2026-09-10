@@ -78,6 +78,7 @@ impl DownloadManager {
                 .filter(|job| job.state == DownloadJobState::Queued)
                 .count(),
             jobs: self.jobs.clone(),
+            scheduler_error: None,
         }
     }
 

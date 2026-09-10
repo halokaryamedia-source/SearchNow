@@ -7,10 +7,16 @@
     title,
     message,
     tone = "info",
+    actionLabel = null,
+    actionDisabled = false,
+    onAction = null,
   }: {
     title: string;
     message: string;
     tone?: NoticeTone;
+    actionLabel?: string | null;
+    actionDisabled?: boolean;
+    onAction?: (() => void) | null;
   } = $props();
 </script>
 
@@ -22,8 +28,13 @@
   {:else}
     <AlertTriangle size={16} aria-hidden="true" />
   {/if}
-  <div>
+  <div class="notice__body">
     <strong>{title}</strong>
     <span>{message}</span>
   </div>
+  {#if actionLabel && onAction}
+    <button class="button button--ghost button--compact notice__action" type="button" onclick={onAction} disabled={actionDisabled}>
+      {actionLabel}
+    </button>
+  {/if}
 </article>

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "SearchNow Rust/Tauri desktop runtime"
 authors = ["Halo Karya Media"]
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.77.2"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -13,6 +13,7 @@ tauri-build = { version = "2", features = [] }
 searchnow-core = { path = "../../../Backend/RustCore" }
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 
 [features]
 default = ["custom-protocol"]

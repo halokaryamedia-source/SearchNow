@@ -88,7 +88,12 @@ impl CatalogService {
         let raw_page = provider
             .query(&request.query)
             .map_err(map_provider_failure)?;
-        normalize_page(&request.provider, &request.query, raw_page, provider.as_ref())
+        normalize_page(
+            &request.provider,
+            &request.query,
+            raw_page,
+            provider.as_ref(),
+        )
     }
 }
 
@@ -181,7 +186,9 @@ fn normalize_page(
             tags: item.tags,
             published_at_ms: item.published_at_ms,
             updated_at_ms: item.updated_at_ms,
-            file_name: download_metadata.as_ref().map(|value| value.file_name.clone()),
+            file_name: download_metadata
+                .as_ref()
+                .map(|value| value.file_name.clone()),
             expected_bytes: download_metadata.and_then(|value| value.expected_bytes),
             download: item.download,
         });

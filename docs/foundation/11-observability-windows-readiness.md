@@ -18,7 +18,7 @@ SearchNowBackendRuntime
 GitHub Actions
 ├── committed npm/Rust dependency locks
 ├── Linux repository/backend/frontend locked gates
-└── Windows RustCore + Tauri locked compile gate
+└── Windows RustCore + Tauri compile gate (locked)
 ```
 
 ## Diagnostic ownership

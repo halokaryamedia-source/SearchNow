@@ -36,6 +36,7 @@ All notable SearchNow repository/product changes will be recorded here.
 - Centralized route metadata used by Sidebar and the route-aware topbar.
 - Session-only restoration of the last active route.
 - User-facing Minecraft channel/storage-kind labels in Settings.
+- Dedicated final visual-polish layer for card rhythm, density, metric readability, hover/focus feedback, form affordance, mobile spacing, and loading-state presentation.
 
 ### Changed
 
@@ -53,14 +54,15 @@ All notable SearchNow repository/product changes will be recorded here.
 - Discover pagination suppresses duplicate `provider:itemId` entries and exposes retry/reset flows without fabricating provider behavior.
 - Downloads exposes search/filter/reset, accessible progress semantics, shared state presentation, and recovery refresh behavior.
 - Settings tracks unsaved changes, supports form-only revert, keeps rescan behind saved preferences, and replaces internal Minecraft storage enum values with readable labels.
-- Sidebar and topbar now share one navigation metadata source to prevent route-label drift.
+- Sidebar and topbar share one navigation metadata source to prevent route-label drift.
 - Product-facing loading/empty/unavailable copy stays separate from implementation and credential details.
+- Card, metric, form, loading, and narrow-window presentation now share a final visual density/polish layer without introducing another runtime or state system.
 
 ### Verified
 
 - Remote backend foundation verification passes 71 RustCore tests with strict Clippy, frontend architecture/size/typecheck/build checks, and native hosted-Windows RustCore/Tauri locked compilation on established baselines.
-- Frontend information-hierarchy code endpoint `fbbf1c247869a4ac95038d3e1c135f883a34dbac` passes Repository Verify **#234** on the Linux/static/frontend gate, including repository contracts, 71 RustCore tests, Tauri formatting, locked dependency installation, architecture/source-size validation, Svelte/TypeScript checking, and production frontend build.
-- Native hosted-Windows verification for that exact endpoint had not completed at the time this changelog entry was recorded; superseded Windows runs may be cancelled by the workflow's `cancel-in-progress` policy and are not treated as code failures by themselves.
+- Frontend visual-refinement code endpoint `bd4f8426a77638fc3da54103876560390932fd9d` passes Repository Verify **#241** on the Linux/static/frontend gate, including repository contracts, 71 RustCore tests, Tauri formatting, locked dependency installation, architecture/source-size validation, Svelte/TypeScript checking, and production frontend build.
+- The immediately preceding information-hierarchy documentation baseline passes the full hosted-Windows RustCore/frontend/Tauri compile gate. Native hosted-Windows verification for `bd4f842` was queued when this entry was recorded; installed target-Windows runtime behavior remains unproven until owner smoke testing.
 
 ### Safety / Architecture
 

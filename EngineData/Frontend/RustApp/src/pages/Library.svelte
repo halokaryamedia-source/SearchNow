@@ -3,13 +3,12 @@
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { localContentTypeLabel } from "../app/shared/format";
   import type { LocalBackendSnapshot, LocalContentItem, LocalContentType } from "../app/shared/types";
-  import ContentDetails from "../components/ui/ContentDetails.svelte";
   import ContentTypeMark from "../components/ui/ContentTypeMark.svelte";
+  import LocalContentDetailModal from "../components/ui/LocalContentDetailModal.svelte";
   import MetricCard from "../components/ui/MetricCard.svelte";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
   import ResultsBar from "../components/ui/ResultsBar.svelte";
-  import TechnicalDetails from "../components/ui/TechnicalDetails.svelte";
 
   type LibraryFilter = "all" | LocalContentType | "issues";
   type LibrarySort = "nameAsc" | "nameDesc" | "type" | "status";
@@ -18,6 +17,8 @@
   let loading = $state(false);
   let loaded = $state(false);
   let snapshot = $state<LocalBackendSnapshot | null>(null);
+  let selectedItem = $state<LocalContentItem | null>(null);
+  let actionBusy = $state(false);
   let error = $state("");
   let query = $state("");
   let filter = $state<LibraryFilter>("all");
@@ -50,7 +51,9 @@
       return localContentTypeLabel(left.contentType).localeCompare(localContentTypeLabel(right.contentType)) || left.title.localeCompare(right.title);
     }
     if (sort === "status") {
-      return left.status.localeCompare(right.status) || left.title.localeCompare(right.title);
+      const leftNeedsReview = left.status === "invalidMetadata" ? 0 : 1;
+      const rightNeedsReview = right.status === "invalidMetadata" ? 0 : 1;
+      return leftNeedsReview - rightNeedsReview || left.title.localeCompare(right.title);
     }
     return left.title.localeCompare(right.title);
   }
@@ -59,6 +62,24 @@
     query = "";
     filter = "all";
     sort = "nameAsc";
+  }
+
+  function openDetails(item: LocalContentItem): void {
+    selectedItem = item;
+  }
+
+  function closeDetails(): void {
+    if (!actionBusy) selectedItem = null;
+  }
+
+  async function openSelectedFolder(): Promise<void> {
+    const item = selectedItem;
+    if (!item || actionBusy) return;
+    actionBusy = true;
+    const result = await runtimeProductFacade.openDownloadDirectory(item.path);
+    if (!result.ok) error = result.error.message;
+    else error = "";
+    actionBusy = false;
   }
 
   async function refresh(): Promise<void> {
@@ -81,32 +102,27 @@
 <section class="page" hidden={!active}>
   <div class="page-heading page-heading--actions">
     <div>
-      <span class="eyebrow">My content</span>
       <h1>Library</h1>
       <p>Browse Minecraft Bedrock worlds and packs detected on this device.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={refresh} disabled={!runtimeReady || loading}>
       <RefreshCw size={15} class={loading ? "spin" : ""} aria-hidden="true" />
-      {loading ? "Scanning" : "Rescan"}
+      {loading ? "Scanning" : "Scan again"}
     </button>
   </div>
 
   <div class="metric-grid metric-grid--four">
-    <MetricCard
-      label="Total content"
-      value={snapshot?.library.summary.total ?? "—"}
-      detail={snapshot ? `${snapshot.library.scannedRoots} storage root${snapshot.library.scannedRoots === 1 ? "" : "s"} scanned` : "Awaiting scan"}
-    />
-    <MetricCard label="Worlds" value={snapshot?.library.summary.worlds ?? "—"} detail="Local Minecraft worlds" />
+    <MetricCard label="Total" value={snapshot?.library.summary.total ?? "—"} detail="Detected content" />
+    <MetricCard label="Worlds" value={snapshot?.library.summary.worlds ?? "—"} detail="Minecraft worlds" />
     <MetricCard label="Packs" value={packCount} detail="Behavior, resource, and skin packs" />
-    <MetricCard label="Needs review" value={snapshot?.library.summary.invalidItems ?? "—"} detail="Items with invalid metadata" />
+    <MetricCard label="Needs review" value={snapshot?.library.summary.invalidItems ?? "—"} detail="Content with metadata issues" />
   </div>
 
   {#if snapshot}
     <div class="toolbar">
       <label class="search-field">
         <Search size={15} aria-hidden="true" />
-        <input bind:value={query} type="search" placeholder="Search your library" aria-label="Search local library" />
+        <input bind:value={query} type="search" placeholder="Search your library" aria-label="Search your library" />
       </label>
       <select class="select-field" bind:value={filter} aria-label="Filter content type">
         <option value="all">All content</option>
@@ -116,18 +132,18 @@
         <option value="skinPack">Skin packs</option>
         <option value="issues">Needs review</option>
       </select>
-      <select class="select-field" bind:value={sort} aria-label="Sort local library">
+      <select class="select-field" bind:value={sort} aria-label="Sort library">
         <option value="nameAsc">Name A–Z</option>
         <option value="nameDesc">Name Z–A</option>
         <option value="type">Content type</option>
-        <option value="status">Review status</option>
+        <option value="status">Needs review first</option>
       </select>
     </div>
     <ResultsBar
       label={`${filteredItems.length} of ${snapshot.library.items.length} item${snapshot.library.items.length === 1 ? "" : "s"}`}
-      detail={controlsChanged ? "Current search, filter, and sort are applied." : "Showing the full detected local library."}
+      detail={null}
       showReset={controlsChanged}
-      resetLabel="Reset view"
+      resetLabel="Reset"
       onReset={resetControls}
     />
   {/if}
@@ -135,21 +151,23 @@
   {#if snapshot?.library.warnings.length}
     <Notice
       tone="warning"
-      title={`Library scan completed with ${snapshot.library.warnings.length} warning${snapshot.library.warnings.length === 1 ? "" : "s"}.`}
+      title="Some content could not be read"
       message={snapshot.library.warnings[0].message}
     />
   {/if}
 
+  {#if error}
+    <Notice tone="error" title="Library needs attention" message={error} actionLabel="Try again" onAction={refresh} />
+  {/if}
+
   {#if !runtimeReady}
-    <PageState marker="01" title="Local library unavailable" message="SearchNow could not connect to the desktop runtime needed to read content from this device." />
+    <PageState marker="01" title="Library unavailable" message="SearchNow cannot read your Minecraft content right now." />
   {:else if loading && !loaded}
-    <PageState kind="loading" title="Scanning local content" message="Checking the Minecraft locations configured for this device." />
-  {:else if error}
-    <PageState kind="error" title="Library scan unavailable" message={error} actionLabel="Try again" onAction={refresh} />
+    <PageState kind="loading" title="Scanning content" message="Checking your Minecraft locations." />
   {:else if snapshot && filteredItems.length > 0}
     <div class="content-grid">
       {#each filteredItems as item (item.id)}
-        <article class="content-card">
+        <article class="content-card content-card--interactive" tabindex="0" role="button" onclick={() => openDetails(item)} onkeydown={(event) => event.key === "Enter" && openDetails(item)}>
           <div class="content-card__preview">
             <ContentTypeMark kind={item.contentType} />
           </div>
@@ -159,30 +177,12 @@
               {#if item.isDevelopment}<span class="chip">Development</span>{/if}
             </div>
             <h2 title={item.title}>{item.title}</h2>
-            <p>{item.description ?? "No description is available for this local item."}</p>
             <div class="content-card__footer">
               <span class:state-text--warning={item.status === "invalidMetadata"} class="state-text">
                 {item.status === "ready" ? "Ready" : "Needs review"}
               </span>
               {#if item.version.length}<span>v{item.version.join(".")}</span>{/if}
             </div>
-            <ContentDetails
-              description={item.description}
-              items={[
-                { label: "Content type", value: localContentTypeLabel(item.contentType) },
-                { label: "Version", value: item.version.length ? item.version.join(".") : null },
-                { label: "Status", value: item.status === "ready" ? "Ready" : "Needs review" },
-                { label: "Development", value: item.isDevelopment ? "Yes" : "No" },
-              ]}
-            />
-            <TechnicalDetails
-              items={[
-                { label: "Location", value: item.path },
-                { label: "Storage root", value: item.rootId },
-                { label: "Manifest UUID", value: item.manifestUuid },
-                { label: "Issue", value: item.issue },
-              ]}
-            />
           </div>
         </article>
       {/each}
@@ -190,10 +190,18 @@
   {:else if snapshot}
     <PageState
       marker="01"
-      title={snapshot.library.items.length ? "No matching content" : "No local content found"}
-      message={snapshot.library.items.length ? "Reset or change the current search and filters to see other items." : snapshot.minecraft.message}
-      actionLabel={snapshot.library.items.length && controlsChanged ? "Reset view" : null}
+      title={snapshot.library.items.length ? "No matching content" : "No Minecraft content found"}
+      message={snapshot.library.items.length ? "Change the search or filters to see other content." : snapshot.minecraft.message}
+      actionLabel={snapshot.library.items.length && controlsChanged ? "Reset" : null}
       onAction={snapshot.library.items.length && controlsChanged ? resetControls : null}
     />
   {/if}
 </section>
+
+<LocalContentDetailModal
+  item={selectedItem}
+  open={selectedItem !== null}
+  onClose={closeDetails}
+  onOpenFolder={openSelectedFolder}
+  {actionBusy}
+/>

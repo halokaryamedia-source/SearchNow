@@ -5,7 +5,7 @@
   import type { BackendDiagnosticsSnapshot } from "../../app/shared/types";
   import Notice from "../ui/Notice.svelte";
 
-  let { runtimeReady }: { runtimeReady: boolean } = $props();
+  let { runtimeReady, active }: { runtimeReady: boolean; active: boolean } = $props();
   let diagnostics = $state<BackendDiagnosticsSnapshot | null>(null);
   let loading = $state(false);
   let loaded = $state(false);
@@ -14,7 +14,7 @@
   let recentEvents = $derived((diagnostics?.events ?? []).slice(-8).reverse());
 
   async function refresh(): Promise<void> {
-    if (!runtimeReady || loading) return;
+    if (!runtimeReady || !active || loading) return;
     loading = true;
     error = "";
     const result = await runtimeProductFacade.loadDiagnostics();
@@ -25,10 +25,7 @@
   }
 
   $effect(() => {
-    if (!runtimeReady) {
-      loaded = false;
-      return;
-    }
+    if (!active || !runtimeReady) return;
     if (!loaded && !loading) void refresh();
   });
 </script>
@@ -36,7 +33,7 @@
 <article class="settings-section">
   <div class="settings-section__heading">
     <div><span class="eyebrow">Advanced</span><h2>Runtime diagnostics</h2></div>
-    <button class="button button--secondary button--compact" type="button" onclick={refresh} disabled={!runtimeReady || loading}>
+    <button class="button button--secondary button--compact" type="button" onclick={refresh} disabled={!active || !runtimeReady || loading}>
       <RefreshCw size={14} class={loading ? "spin" : ""} />Refresh
     </button>
   </div>

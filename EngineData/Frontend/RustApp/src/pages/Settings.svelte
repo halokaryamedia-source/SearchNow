@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { AlertTriangle, Check, RefreshCw, Save } from "@lucide/svelte";
+  import { Check, RefreshCw, Save } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import type { AppSettings, MinecraftDiscoverySnapshot, ProductRuntimeSnapshot } from "../app/shared/types";
   import DiagnosticsPanel from "../components/settings/DiagnosticsPanel.svelte";
+  import Notice from "../components/ui/Notice.svelte";
 
   let { snapshot }: { snapshot: ProductRuntimeSnapshot | null } = $props();
   let schemaVersion = $state(1);
@@ -107,10 +108,9 @@
   </div>
 
   {#if error}
-    <article class="notice notice--error">
-      <AlertTriangle size={16} />
-      <div><strong>Settings action failed.</strong><span>{error}</span></div>
-    </article>
+    <Notice tone="error" title="Settings action failed." message={error} />
+  {:else if saved}
+    <Notice tone="success" title="Settings saved." message="Minecraft discovery preferences are stored locally." />
   {/if}
 
   <div class="settings-layout">

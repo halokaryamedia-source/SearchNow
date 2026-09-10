@@ -6,6 +6,7 @@ on:
       - develop
     paths:
       - EngineData/Frontend/RustApp/src-tauri/Cargo.toml
+      - .github/workflows/refresh-tauri-dialog-lock.yml
 
 permissions:
   contents: write
@@ -18,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Resolve Tauri dialog dependency
-        run: cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml
+        run: cargo generate-lockfile --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml
       - name: Commit lockfile only when changed
         run: |
           if git diff --quiet -- EngineData/Frontend/RustApp/src-tauri/Cargo.lock; then

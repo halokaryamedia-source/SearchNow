@@ -5,7 +5,7 @@
   import DiagnosticsPanel from "../components/settings/DiagnosticsPanel.svelte";
   import Notice from "../components/ui/Notice.svelte";
 
-  let { snapshot }: { snapshot: ProductRuntimeSnapshot | null } = $props();
+  let { snapshot, active }: { snapshot: ProductRuntimeSnapshot | null; active: boolean } = $props();
   let schemaVersion = $state(1);
   let rootOverride = $state("");
   let includePreview = $state(false);
@@ -38,7 +38,7 @@
   }
 
   async function load(): Promise<void> {
-    if (!snapshot?.ready || loading) return;
+    if (!active || !snapshot?.ready || loading) return;
     loading = true;
     error = "";
     const result = await runtimeProductFacade.loadSettings();
@@ -49,7 +49,7 @@
   }
 
   async function save(): Promise<void> {
-    if (!snapshot?.ready || saving || !dirty) return;
+    if (!active || !snapshot?.ready || saving || !dirty) return;
     saving = true;
     saved = false;
     error = "";
@@ -72,7 +72,7 @@
   }
 
   async function rescan(): Promise<void> {
-    if (!snapshot?.ready || scanning || dirty) return;
+    if (!active || !snapshot?.ready || scanning || dirty) return;
     scanning = true;
     error = "";
     const result = await runtimeProductFacade.discoverMinecraft();
@@ -82,10 +82,7 @@
   }
 
   $effect(() => {
-    if (!snapshot?.ready) {
-      loaded = false;
-      return;
-    }
+    if (!active || !snapshot?.ready) return;
     if (!loaded && !loading) void load();
   });
 
@@ -94,14 +91,14 @@
   });
 </script>
 
-<section class="page">
+<section class="page" hidden={!active}>
   <div class="page-heading page-heading--actions">
     <div>
       <span class="eyebrow">Application</span>
       <h1>Settings</h1>
       <p>Manage Minecraft discovery preferences and review the local desktop runtime.</p>
     </div>
-    <button class="button button--primary" type="button" onclick={save} disabled={!snapshot?.ready || loading || saving || !dirty}>
+    <button class="button button--primary" type="button" onclick={save} disabled={!active || !snapshot?.ready || loading || saving || !dirty}>
       {#if saved && !saving}<Check size={15} />{:else}<Save size={15} />{/if}
       {saving ? "Saving" : saved ? "Saved" : "Save settings"}
     </button>
@@ -123,7 +120,7 @@
             type="button"
             title={dirty ? "Save settings before rescanning" : "Rescan Minecraft locations"}
             onclick={rescan}
-            disabled={!snapshot?.ready || scanning || dirty}
+            disabled={!active || !snapshot?.ready || scanning || dirty}
           >
             <RefreshCw size={14} class={scanning ? "spin" : ""} />Rescan
           </button>
@@ -131,22 +128,22 @@
 
         <label class="field">
           <span>Manual Minecraft data location</span>
-          <input bind:value={rootOverride} type="text" placeholder="Leave empty to use automatic detection" disabled={!snapshot?.ready || loading} />
+          <input bind:value={rootOverride} type="text" placeholder="Leave empty to use automatic detection" disabled={!active || !snapshot?.ready || loading} />
           <small>Optional override. Leave empty to use automatic Minecraft Bedrock discovery.</small>
         </label>
 
         <div class="toggle-list">
           <label class="toggle-row">
             <div><strong>Include Minecraft Preview</strong><span>Scan Preview storage in addition to the stable installation.</span></div>
-            <input bind:checked={includePreview} type="checkbox" disabled={!snapshot?.ready || loading} />
+            <input bind:checked={includePreview} type="checkbox" disabled={!active || !snapshot?.ready || loading} />
           </label>
           <label class="toggle-row">
             <div><strong>Include legacy UWP locations</strong><span>Keep legacy Windows Bedrock locations as fallback candidates.</span></div>
-            <input bind:checked={includeLegacyUwp} type="checkbox" disabled={!snapshot?.ready || loading} />
+            <input bind:checked={includeLegacyUwp} type="checkbox" disabled={!active || !snapshot?.ready || loading} />
           </label>
           <label class="toggle-row">
             <div><strong>Include development content</strong><span>Index development behavior, resource, and skin-pack folders.</span></div>
-            <input bind:checked={includeDevelopmentContent} type="checkbox" disabled={!snapshot?.ready || loading} />
+            <input bind:checked={includeDevelopmentContent} type="checkbox" disabled={!active || !snapshot?.ready || loading} />
           </label>
         </div>
       </article>
@@ -172,7 +169,7 @@
         {/if}
       </article>
 
-      <DiagnosticsPanel runtimeReady={snapshot?.ready ?? false} />
+      <DiagnosticsPanel runtimeReady={snapshot?.ready ?? false} {active} />
     </div>
 
     <aside class="settings-stack">

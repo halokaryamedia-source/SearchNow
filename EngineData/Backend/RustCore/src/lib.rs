@@ -6,6 +6,7 @@ pub mod error;
 pub mod library;
 pub mod minecraft;
 pub mod package;
+mod persistence;
 pub mod platform;
 pub mod provider_adapter;
 pub mod provider_session;

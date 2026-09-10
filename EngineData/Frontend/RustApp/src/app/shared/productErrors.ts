@@ -35,6 +35,6 @@ export function toProductError(error: unknown, fallbackMessage: string): Product
 
   return {
     code,
-    message: FRIENDLY_MESSAGES[code] ?? rawMessage || fallbackMessage,
+    message: FRIENDLY_MESSAGES[code] ?? (rawMessage || fallbackMessage),
   };
 }

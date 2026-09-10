@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { Activity, AlertTriangle, RefreshCw } from "@lucide/svelte";
+  import { Activity, RefreshCw } from "@lucide/svelte";
   import { runtimeProductFacade } from "../../app/bridge/runtimeProductFacade";
   import { formatDateTime } from "../../app/shared/format";
   import type { BackendDiagnosticsSnapshot } from "../../app/shared/types";
+  import Notice from "../ui/Notice.svelte";
 
   let { runtimeReady }: { runtimeReady: boolean } = $props();
   let diagnostics = $state<BackendDiagnosticsSnapshot | null>(null);
@@ -43,11 +44,11 @@
   <p class="section-copy">Safe runtime health and recent diagnostic events. Credentials, provider payloads, and sensitive paths are excluded by the backend contract.</p>
 
   {#if error}
-    <div class="diagnostic-empty diagnostic-empty--error"><AlertTriangle size={15} /><span>{error}</span></div>
+    <Notice tone="error" title="Diagnostics unavailable." message={error} />
   {:else if !runtimeReady}
     <div class="diagnostic-empty"><Activity size={15} /><span>Diagnostics require the desktop runtime.</span></div>
   {:else if !diagnostics}
-    <div class="diagnostic-empty"><RefreshCw size={15} class="spin" /><span>Reading runtime diagnostics.</span></div>
+    <div class="diagnostic-empty" aria-live="polite"><RefreshCw size={15} class="spin" /><span>Reading runtime diagnostics.</span></div>
   {:else}
     <div class="diagnostic-summary">
       <div><span>Health</span><strong>{diagnostics.health.state}</strong></div>

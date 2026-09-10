@@ -1,0 +1,21 @@
+.topbar > div:first-child {
+  min-width: 0;
+}
+
+.topbar__description {
+  display: block;
+  max-width: 520px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--sn-text-soft);
+  font-size: 9px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 820px) {
+  .topbar__description {
+    display: none;
+  }
+}

@@ -1,4 +1,5 @@
 use super::error::CommandError;
+use std::{path::PathBuf, process::Command};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
@@ -15,4 +16,45 @@ pub async fn choose_download_directory(app: AppHandle) -> Result<Option<String>,
         )
     })?;
     Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+pub async fn open_download_directory(directory: String) -> Result<(), CommandError> {
+    let path = PathBuf::from(directory);
+    if !path.is_absolute() || !path.is_dir() {
+        return Err(CommandError::new(
+            "download_directory_unavailable",
+            "The download folder is no longer available.",
+        ));
+    }
+
+    let mut command = platform_open_command(&path);
+    command.spawn().map_err(|_| {
+        CommandError::new(
+            "download_directory_open_failed",
+            "The download folder could not be opened.",
+        )
+    })?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn platform_open_command(path: &std::path::Path) -> Command {
+    let mut command = Command::new("explorer.exe");
+    command.arg(path);
+    command
+}
+
+#[cfg(target_os = "macos")]
+fn platform_open_command(path: &std::path::Path) -> Command {
+    let mut command = Command::new("open");
+    command.arg(path);
+    command
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn platform_open_command(path: &std::path::Path) -> Command {
+    let mut command = Command::new("xdg-open");
+    command.arg(path);
+    command
 }

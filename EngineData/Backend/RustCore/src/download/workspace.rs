@@ -8,6 +8,7 @@ use std::{
 
 const MAX_DESTINATION_FILE_NAME_BYTES: usize = 240;
 const MAX_JOB_ID_BYTES: usize = 128;
+const MAX_KEEP_BOTH_ATTEMPTS: u32 = 9_999;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -252,12 +253,6 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
             error,
         )
     })?;
-    if plan.final_path.exists() {
-        return Err(BackendError::new(
-            "download_destination_exists",
-            "Download destination already exists; automatic overwrite is disabled.",
-        ));
-    }
 
     cleanup_finalization_stage(plan)?;
     let stage_path = finalization_stage_path(plan)?;
@@ -290,16 +285,59 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
     }
     drop(stage);
 
-    if let Err(error) = fs::hard_link(&stage_path, &plan.final_path) {
-        let _ = fs::remove_file(&stage_path);
-        return Err(BackendError::from_io(
-            "download_finalize_commit_failed",
-            "SearchNow could not atomically publish the downloaded file.",
-            error,
-        ));
-    }
+    let published = publish_keep_both(&stage_path, &plan.final_path)?;
     let _ = fs::remove_file(&stage_path);
-    Ok(plan.final_path.clone())
+    Ok(published)
+}
+
+fn publish_keep_both(stage_path: &Path, requested_path: &Path) -> BackendResult<PathBuf> {
+    for attempt in 0..=MAX_KEEP_BOTH_ATTEMPTS {
+        let candidate = if attempt == 0 {
+            requested_path.to_path_buf()
+        } else {
+            keep_both_path(requested_path, attempt + 1)?
+        };
+        match fs::hard_link(stage_path, &candidate) {
+            Ok(()) => return Ok(candidate),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => {
+                return Err(BackendError::from_io(
+                    "download_finalize_commit_failed",
+                    "SearchNow could not atomically publish the downloaded file.",
+                    error,
+                ));
+            }
+        }
+    }
+
+    Err(BackendError::new(
+        "download_destination_name_exhausted",
+        "SearchNow could not create a unique file name in the selected folder.",
+    ))
+}
+
+fn keep_both_path(requested_path: &Path, copy_number: u32) -> BackendResult<PathBuf> {
+    let file_name = requested_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| {
+            BackendError::new(
+                "download_destination_path_invalid",
+                "Download destination file name is invalid.",
+            )
+        })?;
+    let file_path = Path::new(file_name);
+    let stem = file_path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(file_name);
+    let extension = file_path.extension().and_then(|value| value.to_str());
+    let unique_name = match extension {
+        Some(extension) if !extension.is_empty() => format!("{stem} ({copy_number}).{extension}"),
+        _ => format!("{stem} ({copy_number})"),
+    };
+    validate_destination_file_name(&unique_name)?;
+    Ok(requested_path.with_file_name(unique_name))
 }
 
 fn windows_reserved_name(value: &str) -> bool {

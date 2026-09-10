@@ -1,8 +1,63 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { RuntimeStatus } from "../shared/types";
+import type {
+  AppSettings,
+  BackendDiagnosticsSnapshot,
+  BackendRuntimeSnapshot,
+  CatalogPage,
+  CatalogRequest,
+  DownloadJob,
+  DownloadManagerSnapshot,
+  LocalBackendSnapshot,
+  MinecraftDiscoverySnapshot,
+  RuntimeStatus,
+} from "../shared/types";
 
 export const runtimeApi = {
   getRuntimeStatus(): Promise<RuntimeStatus> {
     return invoke<RuntimeStatus>("get_runtime_status");
+  },
+
+  getBackendSnapshot(): Promise<BackendRuntimeSnapshot> {
+    return invoke<BackendRuntimeSnapshot>("get_backend_snapshot");
+  },
+
+  getBackendDiagnostics(): Promise<BackendDiagnosticsSnapshot> {
+    return invoke<BackendDiagnosticsSnapshot>("get_backend_diagnostics");
+  },
+
+  loadAppSettings(): Promise<AppSettings> {
+    return invoke<AppSettings>("load_app_settings");
+  },
+
+  saveAppSettings(settings: AppSettings): Promise<AppSettings> {
+    return invoke<AppSettings>("save_app_settings", { settings });
+  },
+
+  discoverMinecraft(): Promise<MinecraftDiscoverySnapshot> {
+    return invoke<MinecraftDiscoverySnapshot>("discover_minecraft_storage_command");
+  },
+
+  scanLocalLibrary(): Promise<LocalBackendSnapshot> {
+    return invoke<LocalBackendSnapshot>("scan_local_library");
+  },
+
+  getDownloadSnapshot(): Promise<DownloadManagerSnapshot> {
+    return invoke<DownloadManagerSnapshot>("get_download_snapshot");
+  },
+
+  cancelDownload(jobId: string): Promise<DownloadJob> {
+    return invoke<DownloadJob>("cancel_download", { jobId });
+  },
+
+  retryDownload(jobId: string): Promise<DownloadJob> {
+    return invoke<DownloadJob>("retry_download", { jobId });
+  },
+
+  removeDownload(jobId: string): Promise<DownloadManagerSnapshot> {
+    return invoke<DownloadManagerSnapshot>("remove_download", { jobId });
+  },
+
+  queryCatalog(request: CatalogRequest): Promise<CatalogPage> {
+    return invoke<CatalogPage>("query_catalog", { request });
   },
 };

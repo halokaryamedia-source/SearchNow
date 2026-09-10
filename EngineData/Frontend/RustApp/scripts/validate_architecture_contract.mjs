@@ -8,6 +8,7 @@ const required = [
   "src/App.svelte",
   "src/app/bridge/runtimeApi.ts",
   "src/app/bridge/runtimeProductFacade.ts",
+  "src/app/shared/format.ts",
   "src/pages/Library.svelte",
   "src/pages/Discover.svelte",
   "src/pages/Downloads.svelte",
@@ -20,6 +21,7 @@ const required = [
   "src-tauri/src/commands/minecraft.rs",
   "src-tauri/src/commands/library.rs",
   "src-tauri/src/commands/package.rs",
+  "src-tauri/src/commands/catalog.rs",
   "src-tauri/src/commands/download.rs",
 ];
 const backendRequired = [
@@ -90,6 +92,7 @@ const commandPaths = [
   "minecraft.rs",
   "library.rs",
   "package.rs",
+  "catalog.rs",
   "download.rs",
 ];
 const forbiddenCommandOwners = [
@@ -114,8 +117,12 @@ const downloadCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/
 if (/\bDownloadRequest\b/.test(downloadCommand)) errors.push("download.rs: raw DownloadRequest/transport selection must not cross the Tauri IPC boundary");
 if (!downloadCommand.includes("QueueCatalogDownloadRequest")) errors.push("download.rs: download IPC must accept provider-neutral catalog download intent");
 
+const catalogCommand = await readFile(resolve(appRoot, "src-tauri/src/commands/catalog.rs"), "utf8");
+if (!catalogCommand.includes("CatalogRequest") || !catalogCommand.includes("query_catalog")) errors.push("catalog.rs: catalog IPC must remain provider-neutral and delegate to the application runtime");
+
 const registry = await readFile(resolve(appRoot, "src-tauri/src/commands/registry.rs"), "utf8");
 if (!registry.includes("queue_catalog_download")) errors.push("Tauri registry must expose queue_catalog_download instead of raw transport queuing");
+if (!registry.includes("query_catalog")) errors.push("Tauri registry must expose the provider-neutral catalog query command");
 
 const bootstrap = await readFile(resolve(appRoot, "src-tauri/src/app_bootstrap.rs"), "utf8");
 if (!bootstrap.includes("SearchNowBackendRuntime::new")) errors.push("Tauri bootstrap must construct the consolidated SearchNowBackendRuntime");

@@ -3,6 +3,7 @@
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { localContentTypeLabel } from "../app/shared/format";
   import type { LocalBackendSnapshot, LocalContentItem, LocalContentType } from "../app/shared/types";
+  import ContentDetails from "../components/ui/ContentDetails.svelte";
   import ContentTypeMark from "../components/ui/ContentTypeMark.svelte";
   import MetricCard from "../components/ui/MetricCard.svelte";
   import Notice from "../components/ui/Notice.svelte";
@@ -165,6 +166,15 @@
               </span>
               {#if item.version.length}<span>v{item.version.join(".")}</span>{/if}
             </div>
+            <ContentDetails
+              description={item.description}
+              items={[
+                { label: "Content type", value: localContentTypeLabel(item.contentType) },
+                { label: "Version", value: item.version.length ? item.version.join(".") : null },
+                { label: "Status", value: item.status === "ready" ? "Ready" : "Needs review" },
+                { label: "Development", value: item.isDevelopment ? "Yes" : "No" },
+              ]}
+            />
             <TechnicalDetails
               items={[
                 { label: "Location", value: item.path },

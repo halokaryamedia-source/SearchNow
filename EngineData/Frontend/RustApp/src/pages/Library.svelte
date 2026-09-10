@@ -8,6 +8,7 @@
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
   import ResultsBar from "../components/ui/ResultsBar.svelte";
+  import TechnicalDetails from "../components/ui/TechnicalDetails.svelte";
 
   type LibraryFilter = "all" | LocalContentType | "issues";
   type LibrarySort = "nameAsc" | "nameDesc" | "type" | "status";
@@ -164,15 +165,14 @@
               </span>
               {#if item.version.length}<span>v{item.version.join(".")}</span>{/if}
             </div>
-            <details class="technical-details">
-              <summary>Technical details</summary>
-              <dl>
-                <div><dt>Location</dt><dd>{item.path}</dd></div>
-                <div><dt>Storage root</dt><dd>{item.rootId}</dd></div>
-                {#if item.manifestUuid}<div><dt>Manifest UUID</dt><dd>{item.manifestUuid}</dd></div>{/if}
-                {#if item.issue}<div><dt>Issue</dt><dd>{item.issue}</dd></div>{/if}
-              </dl>
-            </details>
+            <TechnicalDetails
+              items={[
+                { label: "Location", value: item.path },
+                { label: "Storage root", value: item.rootId },
+                { label: "Manifest UUID", value: item.manifestUuid },
+                { label: "Issue", value: item.issue },
+              ]}
+            />
           </div>
         </article>
       {/each}

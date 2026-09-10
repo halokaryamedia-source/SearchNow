@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AlertTriangle, Search } from "@lucide/svelte";
+  import { Search } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { catalogContentTypeLabel } from "../app/shared/format";
   import type {
@@ -9,6 +9,8 @@
     CatalogSort,
     ProviderRuntimeStatus,
   } from "../app/shared/types";
+  import Notice from "../components/ui/Notice.svelte";
+  import PageState from "../components/ui/PageState.svelte";
 
   type ContentFilter = "all" | CatalogContentType;
 
@@ -130,7 +132,7 @@
   {#if catalogProviders.length > 0}
     <div class="toolbar toolbar--catalog">
       <label class="search-field search-field--wide">
-        <Search size={15} />
+        <Search size={15} aria-hidden="true" />
         <input bind:value={query} type="search" placeholder="Search catalog" aria-label="Search catalog" />
       </label>
       {#if catalogProviders.length > 1}
@@ -158,44 +160,29 @@
     </div>
   {:else}
     <div class="search-shell" aria-disabled="true">
-      <span><Search size={14} /> Search catalog</span>
+      <span><Search size={14} aria-hidden="true" /> Search catalog</span>
       <kbd>Source unavailable</kbd>
     </div>
   {/if}
 
   {#if error}
-    <article class="notice notice--warning">
-      <AlertTriangle size={16} />
-      <div><strong>Catalog unavailable.</strong><span>{error}</span></div>
-    </article>
+    <Notice tone="warning" title="Catalog unavailable." message={error} />
   {/if}
 
   {#if !runtimeReady}
-    <article class="empty-panel">
-      <div class="empty-panel__icon">02</div>
-      <div><h2>Discover unavailable</h2><p>SearchNow could not connect to the desktop runtime needed to browse catalog sources.</p></div>
-    </article>
+    <PageState marker="02" title="Discover unavailable" message="SearchNow could not connect to the desktop runtime needed to browse catalog sources." />
   {:else if catalogProviders.length === 0}
-    <article class="empty-panel">
-      <div class="empty-panel__icon">02</div>
-      <div>
-        <h2>No catalog source connected</h2>
-        <p>You can continue using your local Library and Downloads. Catalog browsing will become available when a source is connected.</p>
-      </div>
-    </article>
+    <PageState marker="02" title="No catalog source connected" message="You can continue using your local Library and Downloads. Catalog browsing will become available when a source is connected." />
   {:else if loading && !page}
-    <article class="empty-panel">
-      <div class="empty-panel__icon"><Search size={18} /></div>
-      <div><h2>Searching catalog</h2><p>Waiting for results from the selected catalog source.</p></div>
-    </article>
+    <PageState kind="loading" title="Searching catalog" message="Waiting for results from the selected catalog source." />
   {:else if page && page.items.length > 0}
-    <div class="content-grid content-grid--catalog">
+    <div class="content-grid content-grid--catalog" aria-busy={loading}>
       {#each page.items as item (`${item.provider}:${item.itemId}`)}
         <article class="content-card content-card--catalog">
-          <div class="content-card__preview"><span>{item.contentType === "world" ? "W" : item.contentType === "addon" ? "A" : "C"}</span></div>
+          <div class="content-card__preview" aria-hidden="true"><span>{item.contentType === "world" ? "W" : item.contentType === "addon" ? "A" : "C"}</span></div>
           <div class="content-card__body">
             <div class="content-card__meta"><span>{catalogContentTypeLabel(item.contentType)}</span><span class="chip">{item.provider}</span></div>
-            <h2>{item.title}</h2>
+            <h2 title={item.title}>{item.title}</h2>
             <p>{item.description ?? "No catalog description is available for this item."}</p>
             {#if item.tags.length}
               <div class="chip-row">{#each item.tags.slice(0, 4) as tag}<span class="chip">{tag}</span>{/each}</div>
@@ -213,9 +200,6 @@
       </div>
     {/if}
   {:else if page}
-    <article class="empty-panel">
-      <div class="empty-panel__icon">02</div>
-      <div><h2>No matching catalog content</h2><p>Try a broader search or another content type.</p></div>
-    </article>
+    <PageState marker="02" title="No matching catalog content" message="Try a broader search or another content type." />
   {/if}
 </section>

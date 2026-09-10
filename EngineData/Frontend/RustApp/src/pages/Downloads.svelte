@@ -7,6 +7,7 @@
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
   import ResultsBar from "../components/ui/ResultsBar.svelte";
+  import TechnicalDetails from "../components/ui/TechnicalDetails.svelte";
 
   type DownloadFilter = "all" | "active" | "completed" | "issues";
 
@@ -199,14 +200,13 @@
               <Notice tone="warning" title={job.lastError.code} message={job.lastError.message} />
             {/if}
 
-            <details class="technical-details">
-              <summary>Technical details</summary>
-              <dl>
-                <div><dt>Output</dt><dd>{job.destinationFileName}</dd></div>
-                <div><dt>Job</dt><dd>{job.id}</dd></div>
-                <div><dt>Transport</dt><dd>{job.source.transport}</dd></div>
-              </dl>
-            </details>
+            <TechnicalDetails
+              items={[
+                { label: "Output", value: job.destinationFileName },
+                { label: "Job", value: job.id },
+                { label: "Transport", value: job.source.transport },
+              ]}
+            />
           </div>
 
           <div class="download-card__actions">

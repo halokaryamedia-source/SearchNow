@@ -112,10 +112,14 @@ Fix the first wrong canonical owner and regenerate/rebuild downstream state.
 - `CONTEXT.md` → stable product/repository orientation.
 - `docs/knowledge/next-action.md` → active continuation only.
 - `docs/knowledge/decisions/` → durable rationale.
-- `docs/foundation/` → durable product/development policy.
-- `docs/legacy/` → recovered BlueCoin 2.4 evidence only.
+- `docs/foundation/` → durable current product/development policy.
+- `docs/legacy/` → cold recovered BlueCoin 2.4 evidence only; do not load during normal development, maintenance, or verification unless the task explicitly requires legacy behavior/evidence.
 - source/tests → implementation and executable proof.
 - reviews/history → supporting evidence only when needed.
+
+### Context budget rule
+
+Normal work should not preload whole documentation trees. Start from the boot route above, then open only the exact current owner needed to settle the task. Treat `docs/legacy/`, old reviews, historical commits, and reconstruction evidence as cold context. They are consulted only when current source/contract is insufficient or the user explicitly asks about history, recovery, or legacy parity.
 
 ## Branches
 

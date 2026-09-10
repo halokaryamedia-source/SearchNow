@@ -6,13 +6,68 @@
   gap: 22px;
 }
 
+.page-heading {
+  padding-bottom: 4px;
+}
+
 .page-heading h1 {
-  line-height: 1.06;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
 }
 
 .page-heading p,
 .section-copy {
   max-width: 720px;
+}
+
+/* Navigation: calm by default, obvious when selected. */
+.nav-item {
+  position: relative;
+  min-height: 42px;
+}
+
+.nav-item--active {
+  border-color: #345172;
+  background: linear-gradient(90deg, var(--sn-accent-surface), var(--sn-surface-raised));
+  color: var(--sn-text);
+}
+
+.nav-item--active::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: -7px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--sn-accent);
+  content: "";
+}
+
+.topbar {
+  min-height: 66px;
+  background: rgb(13 17 23 / 0.9);
+}
+
+.topbar strong {
+  color: var(--sn-text);
+  font-weight: 650;
+}
+
+/* Primary action should be visible without becoming loud. */
+.button--primary {
+  border-color: #80adf6;
+  background: linear-gradient(180deg, var(--sn-accent-strong), var(--sn-accent));
+  color: var(--sn-accent-contrast);
+  box-shadow: 0 7px 20px rgb(77 137 230 / 0.16);
+}
+
+.button--primary:not(:disabled):hover {
+  border-color: #a4c7ff;
+  box-shadow: 0 9px 24px rgb(77 137 230 / 0.23);
+}
+
+.button--secondary {
+  background: var(--sn-surface);
 }
 
 .metric-card,
@@ -23,12 +78,21 @@
   transition:
     border-color 140ms ease,
     background-color 140ms ease,
-    box-shadow 140ms ease;
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+/* Metrics are supporting information, so keep them compact and scannable. */
+.metric-card {
+  min-height: 116px;
+  padding: 16px 17px;
 }
 
 .metric-card strong {
+  margin: 9px 0 6px;
+  font-size: 27px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.035em;
 }
 
 .metric-card small,
@@ -37,31 +101,97 @@
   margin: 0;
 }
 
+/* Controls should read as one working surface, not many separate boxes. */
+.toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-lg);
+  background: rgb(17 24 33 / 0.62);
+  padding: 8px;
+}
+
+.search-field,
+.select-field {
+  border-color: transparent;
+  background: var(--sn-surface);
+}
+
+.search-field:focus-within,
+.select-field:focus,
+.search-field:hover,
+.select-field:not(:disabled):hover {
+  border-color: var(--sn-border-strong);
+  background: var(--sn-surface-raised);
+}
+
+.search-field,
+.select-field,
+.field input {
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.search-field:focus-within,
+.field input:focus {
+  box-shadow: 0 0 0 3px rgb(114 167 255 / 0.1);
+}
+
+.select-field:not(:disabled),
+.toggle-row:not(:has(input:disabled)) {
+  cursor: pointer;
+}
+
+.field input:not(:disabled):hover {
+  border-color: var(--sn-border-strong);
+}
+
+/* Cards prioritize title/status, with secondary metadata visually quieter. */
 .content-grid {
   gap: 14px;
+}
+
+.content-card {
+  border-color: #293647;
+  background: linear-gradient(150deg, #192330, #131a23 68%);
+}
+
+.content-card__preview {
+  background: radial-gradient(circle at 35% 24%, #2b3a4f 0, #18222e 52%, #121922 100%);
 }
 
 .content-card__body {
   display: flex;
   min-height: 0;
   flex-direction: column;
+  padding: 17px;
+}
+
+.content-card__meta {
+  color: var(--sn-text-soft);
 }
 
 .content-card h2 {
+  margin-top: 7px;
+  color: var(--sn-text);
+  font-size: 15px;
   line-height: 1.3;
+}
+
+.content-card p {
+  color: #a9b4c1;
+  line-height: 1.58;
 }
 
 .content-card__footer {
   margin-top: auto;
-  padding-top: 13px;
+  border-top: 1px solid rgb(58 74 95 / 0.45);
+  padding-top: 12px;
 }
 
-.content-card__meta > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+.content-card__meta > span:first-child,
 .chip {
   max-width: 100%;
   overflow: hidden;
@@ -69,11 +199,29 @@
   white-space: nowrap;
 }
 
+.chip {
+  border-color: #314154;
+  background: #17202b;
+  padding-inline: 7px;
+}
+
+.state-text {
+  font-weight: 650;
+}
+
+/* Downloads are task rows, not content cards: flatter and easier to follow. */
 .download-list {
-  gap: 12px;
+  gap: 10px;
+}
+
+.download-card {
+  border-color: #293647;
+  background: #151d27;
+  padding: 16px 17px;
 }
 
 .download-card__heading h2 {
+  margin-top: 7px;
   line-height: 1.35;
 }
 
@@ -87,7 +235,43 @@
 }
 
 .progress-track {
+  height: 6px;
   overflow: clip;
+  background: #0b1118;
+}
+
+.progress-track > span {
+  background: var(--sn-accent);
+}
+
+/* Settings sections feel grouped rather than like a wall of cards. */
+.settings-section {
+  border-color: #293647;
+  background: #151d27;
+}
+
+.toggle-row {
+  min-height: 56px;
+}
+
+.toggle-row:hover {
+  background: rgb(32 43 57 / 0.34);
+}
+
+.root-row {
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.root-row:hover {
+  border-color: var(--sn-border-strong);
+  background: var(--sn-surface);
+}
+
+/* Empty/loading/error states remain distinct and centered on one next action. */
+.empty-panel {
+  min-height: 200px;
+  border-color: #334257;
+  background: rgb(20 27 36 / 0.72);
 }
 
 .empty-panel--loading {
@@ -96,35 +280,12 @@
 }
 
 .empty-panel--loading .empty-panel__icon {
-  border-color: var(--sn-border-strong);
+  border-color: #426083;
+  color: var(--sn-accent);
 }
 
-.toolbar {
-  flex-wrap: wrap;
-}
-
-.search-field,
-.select-field,
-.field input {
-  transition:
-    border-color 120ms ease,
-    background-color 120ms ease;
-}
-
-.select-field:not(:disabled),
-.toggle-row:not(:has(input:disabled)) {
-  cursor: pointer;
-}
-
-.search-field:hover,
-.select-field:not(:disabled):hover,
-.field input:not(:disabled):hover {
-  border-color: var(--sn-border-strong);
-}
-
-.button:not(:disabled):active,
-.icon-button:not(:disabled):active {
-  transform: translateY(0);
+.notice {
+  border-radius: var(--sn-radius-lg);
 }
 
 .notice strong {
@@ -133,6 +294,11 @@
 
 .notice__body span {
   line-height: 1.55;
+}
+
+.button:not(:disabled):active,
+.icon-button:not(:disabled):active {
+  transform: translateY(0);
 }
 
 .technical-details summary,
@@ -144,29 +310,24 @@
 .technical-details summary:hover,
 .content-details summary:hover,
 .diagnostics-details summary:hover {
-  color: var(--sn-text);
-}
-
-.root-row {
-  transition: border-color 120ms ease, background-color 120ms ease;
-}
-
-.root-row:hover {
-  border-color: var(--sn-border-strong);
+  color: var(--sn-accent-strong);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .metric-card:hover,
-  .settings-card:hover,
-  .settings-section:hover,
-  .content-card:hover,
-  .download-card:hover {
+  .settings-card:hover {
     border-color: var(--sn-border-strong);
   }
 
-  .content-card:hover,
-  .download-card:hover {
-    box-shadow: 0 20px 52px rgb(0 0 0 / 0.18);
+  .content-card:hover {
+    border-color: #426083;
+    box-shadow: var(--sn-shadow-raised);
+    transform: translateY(-1px);
+  }
+
+  .download-card:hover,
+  .settings-section:hover {
+    border-color: #35465b;
   }
 }
 
@@ -181,6 +342,10 @@
 
   .content-grid {
     gap: 12px;
+  }
+
+  .toolbar {
+    padding: 7px;
   }
 
   .content-card__body,
@@ -208,9 +373,13 @@
     padding: 14px;
   }
 
+  .metric-card {
+    min-height: 0;
+  }
+
   .metric-card strong {
-    margin-block: 9px 6px;
-    font-size: 27px;
+    margin-block: 8px 5px;
+    font-size: 25px;
   }
 
   .content-card__body {
@@ -225,7 +394,8 @@
   }
 
   .toolbar {
-    gap: 8px;
+    gap: 6px;
+    padding: 6px;
   }
 
   .select-field {

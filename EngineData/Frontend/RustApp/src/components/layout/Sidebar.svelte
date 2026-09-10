@@ -23,10 +23,7 @@
 <aside class="sidebar">
   <div class="brand">
     <div class="brand__mark" aria-hidden="true">S</div>
-    <div>
-      <strong>SearchNow</strong>
-      <span>Bedrock content manager</span>
-    </div>
+    <strong>SearchNow</strong>
   </div>
 
   <nav class="sidebar__nav" aria-label="Primary navigation">
@@ -45,9 +42,4 @@
       </button>
     {/each}
   </nav>
-
-  <div class="sidebar__footer">
-    <span>Local-first architecture</span>
-    <small>v0.1 foundation</small>
-  </div>
 </aside>

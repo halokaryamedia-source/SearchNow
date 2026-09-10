@@ -241,7 +241,7 @@ fn stalled_response_body_times_out_as_retryable() {
     }]);
     let mut policy = test_policy();
     policy.read_timeout = Duration::from_millis(50);
-    policy.overall_timeout = Duration::from_secs(1);
+    policy.overall_timeout = Duration::from_millis(100);
     let directory = tempfile::tempdir().expect("tempdir");
     let mut registry = DownloadTransportRegistry::new();
     registry

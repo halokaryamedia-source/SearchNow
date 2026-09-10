@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
-  import { catalogContentTypeLabel, formatDate, formatDateTime } from "../app/shared/format";
+  import { catalogContentTypeLabel, formatDate } from "../app/shared/format";
   import type {
     CatalogContentType,
     CatalogItem,
@@ -10,7 +10,7 @@
     CatalogSort,
     ProviderRuntimeStatus,
   } from "../app/shared/types";
-  import ContentDetails from "../components/ui/ContentDetails.svelte";
+  import CatalogDetailModal from "../components/ui/CatalogDetailModal.svelte";
   import ContentTypeMark from "../components/ui/ContentTypeMark.svelte";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
@@ -32,6 +32,7 @@
   let contentFilter = $state<ContentFilter>("all");
   let sort = $state<CatalogSort>("relevance");
   let selectedProvider = $state("");
+  let selectedItem = $state<CatalogItem | null>(null);
   let page = $state<CatalogPage | null>(null);
   let loading = $state(false);
   let loadingMore = $state(false);
@@ -86,6 +87,14 @@
     query = "";
     contentFilter = "all";
     sort = "relevance";
+  }
+
+  function openDetails(item: CatalogItem): void {
+    selectedItem = item;
+  }
+
+  function closeDetails(): void {
+    selectedItem = null;
   }
 
   async function queryCatalog(
@@ -237,19 +246,9 @@
               {#if item.updatedAtMs && item.updatedAtMs !== item.publishedAtMs}<span>Updated {formatDate(item.updatedAtMs)}</span>{/if}
             </div>
             <div class="content-card__footer">
-              <span class="state-text">{item.download ? "Download available" : "View only"}</span>
+              <span class="state-text">{item.download && item.fileName ? "Download available" : "View details"}</span>
+              <button class="button button--secondary button--compact" type="button" onclick={() => openDetails(item)}>View details</button>
             </div>
-            <ContentDetails
-              description={item.description}
-              items={[
-                { label: "Creator", value: item.creatorName },
-                { label: "Source", value: item.provider },
-                { label: "Type", value: catalogContentTypeLabel(item.contentType) },
-                { label: "Tags", value: item.tags.length ? item.tags.join(", ") : null },
-                { label: "Release date", value: item.publishedAtMs ? formatDateTime(item.publishedAtMs) : null },
-                { label: "Last updated", value: item.updatedAtMs ? formatDateTime(item.updatedAtMs) : null },
-              ]}
-            />
           </div>
         </article>
       {/each}
@@ -269,3 +268,5 @@
     />
   {/if}
 </section>
+
+<CatalogDetailModal item={selectedItem} open={selectedItem !== null} onClose={closeDetails} />

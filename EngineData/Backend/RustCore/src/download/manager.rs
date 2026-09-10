@@ -495,10 +495,10 @@ fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
                 return Err(invalid_persisted_job());
             }
         }
-        DownloadJobState::Interrupted => {
-            if !job.last_error.as_ref().is_some_and(|error| error.retryable) {
-                return Err(invalid_persisted_job());
-            }
+        DownloadJobState::Interrupted
+            if !job.last_error.as_ref().is_some_and(|error| error.retryable) =>
+        {
+            return Err(invalid_persisted_job());
         }
         _ => {}
     }

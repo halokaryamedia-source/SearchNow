@@ -101,7 +101,7 @@ impl SearchNowBackendRuntime {
             Some(provider_started.elapsed()),
         );
 
-        let mut transports = DownloadTransportRegistry::with_local_file()?;
+        let mut transports = DownloadTransportRegistry::new();
         transports.register(Arc::new(http.clone()))?;
         transports.register(Arc::new(ProviderResolvedTransport::new(
             providers.resolvers(),
@@ -271,7 +271,10 @@ impl SearchNowBackendRuntime {
             "Backend runtime snapshot could not complete.",
             DiagnosticSeverity::Error,
         );
-        result
+        result.map(|mut snapshot| {
+            snapshot.diagnostics = self.diagnostics_snapshot();
+            snapshot
+        })
     }
 
     pub fn download_snapshot(&self) -> BackendResult<DownloadManagerSnapshot> {

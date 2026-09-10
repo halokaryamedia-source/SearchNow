@@ -7,6 +7,7 @@ use crate::{
     identity::valid_provider_key,
 };
 use std::{collections::HashMap, collections::HashSet, sync::Arc};
+use url::Url;
 
 const MAX_QUERY_TEXT_BYTES: usize = 256;
 const MAX_QUERY_TAGS: usize = 32;
@@ -15,6 +16,8 @@ const MAX_PAGE_SIZE: u16 = 100;
 const MAX_CURSOR_BYTES: usize = 512;
 const MAX_ITEM_ID_BYTES: usize = 256;
 const MAX_TITLE_BYTES: usize = 256;
+const MAX_CREATOR_NAME_BYTES: usize = 256;
+const MAX_THUMBNAIL_URL_BYTES: usize = 2048;
 const MAX_DESCRIPTION_BYTES: usize = 4 * 1024;
 const MAX_ITEM_TAGS: usize = 32;
 const MAX_TAG_BYTES: usize = 64;
@@ -161,6 +164,8 @@ fn normalize_page(
             provider: provider.to_string(),
             item_id: item.item_id,
             title: item.title,
+            creator_name: item.creator_name,
+            thumbnail_url: item.thumbnail_url,
             description: item.description,
             content_type: item.content_type,
             tags: item.tags,
@@ -191,14 +196,23 @@ fn validate_provider_item(item: &CatalogProviderItem) -> Result<(), CatalogError
     }
 
     if item
-        .description
+        .creator_name
         .as_ref()
-        .is_some_and(|value| !valid_description(value))
+        .is_some_and(|value| !valid_compact_text(value, MAX_CREATOR_NAME_BYTES))
+        || item
+            .description
+            .as_ref()
+            .is_some_and(|value| !valid_description(value))
+        || item
+            .thumbnail_url
+            .as_ref()
+            .is_some_and(|value| !valid_public_thumbnail_url(value))
     {
         return Err(invalid_provider_data());
     }
 
     let descriptive_bytes = item.title.len()
+        + item.creator_name.as_ref().map_or(0, String::len)
         + item.description.as_ref().map_or(0, String::len)
         + item.tags.iter().map(String::len).sum::<usize>();
     if descriptive_bytes > MAX_ITEM_TEXT_BYTES {
@@ -223,6 +237,22 @@ fn valid_description(value: &str) -> bool {
         && !value
             .chars()
             .any(|character| character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
+}
+
+fn valid_public_thumbnail_url(value: &str) -> bool {
+    if value.is_empty()
+        || value.len() > MAX_THUMBNAIL_URL_BYTES
+        || value.chars().any(char::is_control)
+    {
+        return false;
+    }
+    let Ok(url) = Url::parse(value) else {
+        return false;
+    };
+    url.scheme() == "https"
+        && url.host_str().is_some()
+        && url.username().is_empty()
+        && url.password().is_none()
 }
 
 fn map_provider_failure(failure: CatalogProviderFailure) -> CatalogError {

@@ -62,8 +62,6 @@ pub struct QueueCatalogDownloadRequest {
     pub download: CatalogDownloadRef,
     pub display_name: String,
     pub destination_file_name: String,
-    #[serde(default)]
-    pub destination_directory: Option<PathBuf>,
     pub expected_bytes: Option<u64>,
 }
 
@@ -293,6 +291,14 @@ impl SearchNowBackendRuntime {
         &self,
         request: QueueCatalogDownloadRequest,
     ) -> BackendResult<DownloadJob> {
+        self.queue_catalog_download_to(request, None)
+    }
+
+    pub fn queue_catalog_download_to(
+        &self,
+        request: QueueCatalogDownloadRequest,
+        destination_directory: Option<PathBuf>,
+    ) -> BackendResult<DownloadJob> {
         let started = Instant::now();
         let result = (|| {
             let source = request.download.to_download_source()?;
@@ -303,7 +309,7 @@ impl SearchNowBackendRuntime {
                     destination_file_name: request.destination_file_name,
                     expected_bytes: request.expected_bytes,
                 },
-                request.destination_directory,
+                destination_directory,
             )
         })();
         self.diagnostics.record_outcome(

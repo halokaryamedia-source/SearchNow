@@ -4,6 +4,7 @@
   import type { AppSettings, MinecraftDiscoverySnapshot, ProductRuntimeSnapshot } from "../app/shared/types";
   import DiagnosticsPanel from "../components/settings/DiagnosticsPanel.svelte";
   import Notice from "../components/ui/Notice.svelte";
+  import StatePill from "../components/ui/StatePill.svelte";
 
   let { snapshot, active }: { snapshot: ProductRuntimeSnapshot | null; active: boolean } = $props();
   let schemaVersion = $state(1);
@@ -27,6 +28,10 @@
         includeLegacyUwp !== baselineSettings.minecraft.includeLegacyUwp ||
         includeDevelopmentContent !== baselineSettings.minecraft.includeDevelopmentContent),
   );
+  let discoveryLabel = $derived(
+    discovery?.state === "found" ? "Detected" : discovery?.state === "unsupportedPlatform" ? "Unsupported" : "Not detected",
+  );
+  let discoveryTone = $derived(discovery?.state === "found" ? "completed" : "interrupted");
 
   function applySettings(settings: AppSettings): void {
     schemaVersion = settings.schemaVersion;
@@ -166,9 +171,7 @@
       <article class="settings-section">
         <div class="settings-section__heading">
           <div><span class="eyebrow">Detected storage</span><h2>Minecraft Bedrock</h2></div>
-          <span class={`state-pill state-pill--${discovery?.state === "found" ? "completed" : "interrupted"}`}>
-            {discovery?.state === "found" ? "Detected" : discovery?.state === "unsupportedPlatform" ? "Unsupported" : "Not detected"}
-          </span>
+          <StatePill state={discoveryTone} label={discoveryLabel} />
         </div>
         <p class="section-copy">{discovery?.message ?? "Minecraft discovery information is not available yet."}</p>
 

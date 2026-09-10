@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { AlertTriangle, RefreshCw, Search } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { localContentTypeLabel } from "../app/shared/format";
@@ -38,9 +37,12 @@
     loading = false;
   }
 
-  onMount(() => {
-    if (runtimeReady) void refresh();
-    else loaded = true;
+  $effect(() => {
+    if (!runtimeReady) {
+      loaded = false;
+      return;
+    }
+    if (!loaded && !loading) void refresh();
   });
 </script>
 

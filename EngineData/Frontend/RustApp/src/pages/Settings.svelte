@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { AlertTriangle, Check, RefreshCw, Save } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import type { AppSettings, MinecraftDiscoverySnapshot, ProductRuntimeSnapshot } from "../app/shared/types";
+  import DiagnosticsPanel from "../components/settings/DiagnosticsPanel.svelte";
 
   let { snapshot }: { snapshot: ProductRuntimeSnapshot | null } = $props();
   let schemaVersion = $state(1);
@@ -12,6 +12,7 @@
   let includeDevelopmentContent = $state(false);
   let discovery = $state<MinecraftDiscoverySnapshot | null>(snapshot?.backend?.minecraft ?? null);
   let loading = $state(false);
+  let loaded = $state(false);
   let saving = $state(false);
   let scanning = $state(false);
   let error = $state("");
@@ -32,6 +33,7 @@
     const result = await runtimeProductFacade.loadSettings();
     if (result.ok) applySettings(result.data);
     else error = result.error.message;
+    loaded = true;
     loading = false;
   }
 
@@ -68,8 +70,12 @@
     scanning = false;
   }
 
-  onMount(() => {
-    if (snapshot?.ready) void load();
+  $effect(() => {
+    if (!snapshot?.ready) {
+      loaded = false;
+      return;
+    }
+    if (!loaded && !loading) void load();
   });
 </script>
 
@@ -145,6 +151,8 @@
           </div>
         {/if}
       </article>
+
+      <DiagnosticsPanel runtimeReady={snapshot?.ready ?? false} />
     </div>
 
     <aside class="settings-stack">

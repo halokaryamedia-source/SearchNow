@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { AlertTriangle, RefreshCw, RotateCcw, Trash2, X } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { downloadStateLabel, formatBytes, formatDateTime, progressPercent } from "../app/shared/format";
@@ -68,7 +67,7 @@
     actionJobId = null;
   }
 
-  onMount(() => {
+  $effect(() => {
     if (!runtimeReady) return;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;

@@ -11,6 +11,9 @@
   import Library from "./pages/Library.svelte";
   import Settings from "./pages/Settings.svelte";
 
+  const ROUTE_STORAGE_KEY = "searchnow:last-route";
+  const routes: AppRoute[] = ["library", "discover", "downloads", "settings"];
+
   let route = $state<AppRoute>("library");
   let booting = $state(true);
   let refreshing = $state(false);
@@ -30,6 +33,10 @@
     booting ? "muted" : snapshot?.ready && health !== "degraded" ? "ready" : "warning",
   );
 
+  function isAppRoute(value: string | null): value is AppRoute {
+    return value !== null && routes.includes(value as AppRoute);
+  }
+
   async function refreshRuntime(): Promise<void> {
     if (refreshing) return;
     refreshing = true;
@@ -40,9 +47,12 @@
 
   function navigate(next: AppRoute): void {
     route = next;
+    sessionStorage.setItem(ROUTE_STORAGE_KEY, next);
   }
 
   onMount(() => {
+    const storedRoute = sessionStorage.getItem(ROUTE_STORAGE_KEY);
+    if (isAppRoute(storedRoute)) route = storedRoute;
     void refreshRuntime();
   });
 </script>

@@ -62,6 +62,8 @@ pub struct QueueCatalogDownloadRequest {
     pub download: CatalogDownloadRef,
     pub display_name: String,
     pub destination_file_name: String,
+    #[serde(default)]
+    pub destination_directory: Option<PathBuf>,
     pub expected_bytes: Option<u64>,
 }
 
@@ -298,6 +300,7 @@ impl SearchNowBackendRuntime {
                 source,
                 display_name: request.display_name,
                 destination_file_name: request.destination_file_name,
+                destination_directory: request.destination_directory,
                 expected_bytes: request.expected_bytes,
             })
         })();

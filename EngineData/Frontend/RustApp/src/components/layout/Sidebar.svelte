@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Download, Library, Search, Settings } from "@lucide/svelte";
   import type { Component } from "svelte";
+  import { APP_ROUTES } from "../../app/shared/navigation";
   import type { AppRoute } from "../../app/shared/types";
 
   let {
@@ -11,12 +12,12 @@
     onNavigate: (route: AppRoute) => void;
   } = $props();
 
-  const items: { id: AppRoute; label: string; icon: Component }[] = [
-    { id: "library", label: "Library", icon: Library },
-    { id: "discover", label: "Discover", icon: Search },
-    { id: "downloads", label: "Downloads", icon: Download },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
+  const icons: Record<AppRoute, Component> = {
+    library: Library,
+    discover: Search,
+    downloads: Download,
+    settings: Settings,
+  };
 </script>
 
 <aside class="sidebar">
@@ -29,7 +30,8 @@
   </div>
 
   <nav class="sidebar__nav" aria-label="Primary navigation">
-    {#each items as item}
+    {#each APP_ROUTES as item}
+      {@const Icon = icons[item.id]}
       <button
         class:nav-item--active={route === item.id}
         class="nav-item"
@@ -38,7 +40,7 @@
         title={item.label}
         onclick={() => onNavigate(item.id)}
       >
-        <item.icon size={18} strokeWidth={1.8} aria-hidden="true" />
+        <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
         <span>{item.label}</span>
       </button>
     {/each}

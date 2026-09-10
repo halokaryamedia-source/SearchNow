@@ -3,6 +3,7 @@ use super::{
     CatalogProviderPage, CatalogQuery, CatalogRequest,
 };
 use crate::{
+    download::validate_destination_file_name,
     error::{BackendError, BackendResult},
     identity::valid_provider_key,
 };
@@ -171,6 +172,8 @@ fn normalize_page(
             tags: item.tags,
             published_at_ms: item.published_at_ms,
             updated_at_ms: item.updated_at_ms,
+            file_name: item.file_name,
+            expected_bytes: item.expected_bytes,
             download: item.download,
         });
     }
@@ -207,7 +210,16 @@ fn validate_provider_item(item: &CatalogProviderItem) -> Result<(), CatalogError
             .thumbnail_url
             .as_ref()
             .is_some_and(|value| !valid_public_thumbnail_url(value))
+        || item
+            .file_name
+            .as_ref()
+            .is_some_and(|value| validate_destination_file_name(value).is_err())
+        || item.expected_bytes == Some(0)
     {
+        return Err(invalid_provider_data());
+    }
+
+    if item.download.is_some() != item.file_name.is_some() {
         return Err(invalid_provider_data());
     }
 

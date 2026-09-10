@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -112,7 +113,7 @@ for name in ["runtime.rs", "settings.rs", "minecraft.rs", "library.rs", "package
 download_command = commands_root / "download.rs"
 if download_command.exists():
     text = download_command.read_text(encoding="utf-8", errors="replace")
-    if "DownloadRequest" in text:
+    if re.search(r"\bDownloadRequest\b", text):
         errors.append("download command must not expose raw DownloadRequest transport selection")
     if "QueueCatalogDownloadRequest" not in text:
         errors.append("download command must accept provider-neutral QueueCatalogDownloadRequest")

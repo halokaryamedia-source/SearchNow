@@ -24,9 +24,9 @@ REQUIRED = [
     "docs/knowledge/work-routing.md", "docs/knowledge/work-modes/development.md", "docs/knowledge/work-modes/maintenance.md",
     "docs/legacy/01-current-state.md", "docs/legacy/04-recovered-source-architecture.md",
     "docs/legacy/05-recovered-symbol-map.md", "docs/legacy/06-runtime-data-contracts.md", "docs/legacy/07-reconstruction-evidence.md",
-    "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/src/lib.rs",
-    "EngineData/Backend/RustCore/src/app_runtime.rs", "EngineData/Backend/RustCore/src/diagnostics.rs",
-    "EngineData/Backend/RustCore/src/identity.rs",
+    "EngineData/Backend/RustCore/Cargo.toml", "EngineData/Backend/RustCore/Cargo.lock",
+    "EngineData/Backend/RustCore/src/lib.rs", "EngineData/Backend/RustCore/src/app_runtime.rs",
+    "EngineData/Backend/RustCore/src/diagnostics.rs", "EngineData/Backend/RustCore/src/identity.rs",
     "EngineData/Backend/RustCore/src/settings.rs", "EngineData/Backend/RustCore/src/storage.rs",
     "EngineData/Backend/RustCore/src/minecraft.rs", "EngineData/Backend/RustCore/src/library.rs",
     "EngineData/Backend/RustCore/src/download/store.rs", "EngineData/Backend/RustCore/src/download/resolver.rs",
@@ -36,6 +36,8 @@ REQUIRED = [
     "EngineData/Backend/RustCore/src/provider_session/runtime.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/mod.rs", "EngineData/Backend/RustCore/src/provider_adapter/model.rs",
     "EngineData/Backend/RustCore/src/provider_adapter/runtime.rs",
+    "EngineData/Frontend/RustApp/package-lock.json",
+    "EngineData/Frontend/RustApp/src-tauri/Cargo.lock",
     "EngineData/Frontend/RustApp/src-tauri/build.rs",
     "EngineData/Frontend/RustApp/src-tauri/icons/icon.png",
     "EngineData/Frontend/RustApp/src-tauri/icons/icon.ico",
@@ -156,11 +158,25 @@ for workflow_rel in [
     ".github/workflows/release-verify.yml",
 ]:
     workflow = ROOT / workflow_rel
-    if workflow.exists():
-        text = workflow.read_text(encoding="utf-8", errors="replace")
-        for needle in ["windows-latest", 'node-version: "22"', "npm run build:frontend", "cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml"]:
-            if needle not in text:
-                errors.append(f"{workflow_rel}: missing hosted Windows Tauri compile prerequisite/gate {needle!r}")
+    if not workflow.exists():
+        continue
+    text = workflow.read_text(encoding="utf-8", errors="replace")
+    for needle in [
+        "windows-latest",
+        'node-version: "22"',
+        "actions/checkout@v7.0.1",
+        "actions/setup-node@v7.0.0",
+        "npm ci --no-audit --no-fund",
+        "cargo test --locked --manifest-path EngineData/Backend/RustCore/Cargo.toml",
+        "cargo clippy --locked --manifest-path EngineData/Backend/RustCore/Cargo.toml",
+        "cargo check --locked --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml",
+    ]:
+        if needle not in text:
+            errors.append(f"{workflow_rel}: missing deterministic verification contract {needle!r}")
+    if "npm install" in text:
+        errors.append(f"{workflow_rel}: npm install must not replace the committed package-lock baseline")
+    if "contents: write" in text:
+        errors.append(f"{workflow_rel}: verification workflow must not retain repository write permission")
 
 for legacy_old in [
     "docs/01-current-state.md", "docs/04-recovered-source-architecture.md", "docs/05-recovered-symbol-map.md",

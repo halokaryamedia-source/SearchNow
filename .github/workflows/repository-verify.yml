@@ -14,14 +14,14 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.11"
       - name: Verify repository contracts
@@ -29,31 +29,19 @@ jobs:
       - name: Verify backend core
         run: |
           cargo fmt --manifest-path EngineData/Backend/RustCore/Cargo.toml -- --check
-          cargo test --manifest-path EngineData/Backend/RustCore/Cargo.toml
-          cargo clippy --manifest-path EngineData/Backend/RustCore/Cargo.toml --all-targets -- -D warnings
+          cargo test --locked --manifest-path EngineData/Backend/RustCore/Cargo.toml
+          cargo clippy --locked --manifest-path EngineData/Backend/RustCore/Cargo.toml --all-targets -- -D warnings
       - name: Verify Tauri adapter formatting
         run: cargo fmt --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml -- --check
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: "22"
       - name: Install frontend dependencies
         working-directory: EngineData/Frontend/RustApp
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Verify frontend architecture and build
         working-directory: EngineData/Frontend/RustApp
         run: npm run validate:quick
-      - name: Generate Tauri dependency lock
-        run: cargo generate-lockfile --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml
-      - name: Persist resolved dependency locks
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add EngineData/Backend/RustCore/Cargo.lock EngineData/Frontend/RustApp/src-tauri/Cargo.lock EngineData/Frontend/RustApp/package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(deps): lock verified dependency graph"
-            git push origin HEAD:develop
-          fi
 
   windows-readiness:
     name: Windows Rust/Tauri compile gate
@@ -61,17 +49,17 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - name: Verify RustCore on Windows
-        run: cargo test --manifest-path EngineData/Backend/RustCore/Cargo.toml
-      - uses: actions/setup-node@v7
+        run: cargo test --locked --manifest-path EngineData/Backend/RustCore/Cargo.toml
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: "22"
       - name: Install frontend dependencies on Windows
         working-directory: EngineData/Frontend/RustApp
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Build frontend for Tauri context
         working-directory: EngineData/Frontend/RustApp
         run: npm run build:frontend
       - name: Verify Tauri crate compiles on Windows
-        run: cargo check --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml
+        run: cargo check --locked --manifest-path EngineData/Frontend/RustApp/src-tauri/Cargo.toml

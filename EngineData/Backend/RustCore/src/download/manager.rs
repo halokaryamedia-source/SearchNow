@@ -137,6 +137,7 @@ impl DownloadManager {
             source: request.source,
             display_name: request.display_name.trim().to_string(),
             destination_file_name: request.destination_file_name,
+            destination_directory: request.destination_directory,
             state: DownloadJobState::Queued,
             progress: DownloadProgress {
                 downloaded_bytes: 0,
@@ -242,6 +243,23 @@ impl DownloadManager {
             ));
         }
         job.state = DownloadJobState::Finalizing;
+        job.updated_at_ms = now_ms();
+        Ok(job.clone())
+    }
+
+    pub fn set_destination_file_name(
+        &mut self,
+        job_id: &str,
+        destination_file_name: String,
+    ) -> BackendResult<DownloadJob> {
+        validate_destination_file_name(&destination_file_name)?;
+        let job = self.job_mut(job_id)?;
+        require_state(
+            job,
+            &[DownloadJobState::Finalizing],
+            "download_destination_update_invalid",
+        )?;
+        job.destination_file_name = destination_file_name;
         job.updated_at_ms = now_ms();
         Ok(job.clone())
     }
@@ -442,6 +460,16 @@ fn validate_request(request: &DownloadRequest) -> BackendResult<()> {
             "Download resource id is empty or unsupported.",
         ));
     }
+    if request
+        .destination_directory
+        .as_ref()
+        .is_some_and(|path| path.as_os_str().is_empty() || !path.is_absolute())
+    {
+        return Err(BackendError::new(
+            "download_destination_directory_invalid",
+            "Download destination folder must be an absolute path.",
+        ));
+    }
     validate_destination_file_name(&request.destination_file_name)
 }
 
@@ -452,6 +480,7 @@ fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
         source: job.source.clone(),
         display_name: job.display_name.clone(),
         destination_file_name: job.destination_file_name.clone(),
+        destination_directory: job.destination_directory.clone(),
         expected_bytes: job.progress.total_bytes,
     })?;
 

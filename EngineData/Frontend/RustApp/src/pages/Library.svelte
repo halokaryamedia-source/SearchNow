@@ -3,6 +3,7 @@
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { localContentTypeLabel } from "../app/shared/format";
   import type { LocalBackendSnapshot, LocalContentItem, LocalContentType } from "../app/shared/types";
+  import ContentTypeMark from "../components/ui/ContentTypeMark.svelte";
   import MetricCard from "../components/ui/MetricCard.svelte";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
@@ -147,8 +148,8 @@
     <div class="content-grid">
       {#each filteredItems as item (item.id)}
         <article class="content-card">
-          <div class="content-card__preview" aria-hidden="true">
-            <span>{item.contentType === "world" ? "W" : "P"}</span>
+          <div class="content-card__preview">
+            <ContentTypeMark kind={item.contentType} />
           </div>
           <div class="content-card__body">
             <div class="content-card__meta">

@@ -167,7 +167,7 @@
   {:else if snapshot && filteredItems.length > 0}
     <div class="content-grid">
       {#each filteredItems as item (item.id)}
-        <button class="content-card content-card--interactive" type="button" onclick={() => openDetails(item)}>
+        <button class="content-card content-card--interactive w-full p-0 text-left" type="button" onclick={() => openDetails(item)}>
           <div class="content-card__preview">
             <ContentTypeMark kind={item.contentType} />
           </div>

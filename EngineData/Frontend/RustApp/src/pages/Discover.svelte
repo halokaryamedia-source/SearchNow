@@ -123,6 +123,10 @@
     loadingMore = false;
   }
 
+  function retryCurrentQuery(): void {
+    void queryCatalog(selectedProvider, query, contentFilter, sort);
+  }
+
   async function loadMore(): Promise<void> {
     if (!page?.nextCursor || loadingMore) return;
     await queryCatalog(selectedProvider, query, contentFilter, sort, page.nextCursor, true);
@@ -196,7 +200,14 @@
   {/if}
 
   {#if error}
-    <Notice tone="warning" title="Catalog unavailable." message={error} />
+    <Notice
+      tone="warning"
+      title="Catalog unavailable."
+      message={error}
+      actionLabel="Retry"
+      actionDisabled={loading}
+      onAction={retryCurrentQuery}
+    />
   {/if}
 
   {#if !runtimeReady}

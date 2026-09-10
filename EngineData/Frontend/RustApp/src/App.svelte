@@ -22,12 +22,12 @@
   let health = $derived(snapshot?.backend?.diagnostics.health.state ?? "unknown");
   let runtimeLabel = $derived(
     booting
-      ? "Checking runtime"
+      ? "Checking"
       : !snapshot?.ready
-        ? "Runtime unavailable"
+        ? "Not ready"
         : health === "degraded"
-          ? "Runtime degraded"
-          : "Runtime ready",
+          ? "Needs attention"
+          : "Ready",
   );
   let runtimeTone = $derived<"ready" | "warning" | "muted">(
     booting ? "muted" : snapshot?.ready && health !== "degraded" ? "ready" : "warning",
@@ -59,7 +59,7 @@
   <main class="app-main">
     <header class="topbar">
       <div class="topbar__actions topbar__actions--end">
-        <button class="icon-button icon-button--quiet" type="button" title="Refresh runtime" aria-label="Refresh runtime" onclick={refreshRuntime} disabled={booting || refreshing}>
+        <button class="icon-button icon-button--quiet" type="button" title="Refresh app status" aria-label="Refresh app status" onclick={refreshRuntime} disabled={booting || refreshing}>
           <RefreshCw size={15} class={refreshing ? "spin" : ""} aria-hidden="true" />
         </button>
         <StatusBadge label={runtimeLabel} tone={runtimeTone} />
@@ -69,7 +69,7 @@
     <div class="content-frame">
       {#if booting}
         <section class="page">
-          <PageState kind="loading" title="Starting SearchNow" message="Loading your Minecraft Bedrock workspace." />
+          <PageState kind="loading" title="Starting SearchNow" message="Loading your Minecraft content." />
         </section>
       {:else}
         <Library runtimeReady={snapshot?.ready ?? false} active={route === "library"} />

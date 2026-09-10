@@ -80,7 +80,8 @@ impl DownloadExecutionRuntime {
         request: DownloadRequest,
         destination_directory: Option<PathBuf>,
     ) -> BackendResult<DownloadJob> {
-        let job = self.mutate_persist(|manager| manager.enqueue_to(request, destination_directory))?;
+        let job =
+            self.mutate_persist(|manager| manager.enqueue_to(request, destination_directory))?;
         self.pump_best_effort();
         Ok(job)
     }

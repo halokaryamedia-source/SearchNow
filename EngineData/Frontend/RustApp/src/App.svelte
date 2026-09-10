@@ -59,11 +59,7 @@
 
   <main class="app-main">
     <header class="topbar">
-      <div>
-        <span class="topbar__kicker">{currentRoute.kicker}</span>
-        <strong>{currentRoute.label}</strong>
-        <small class="topbar__description">{currentRoute.description}</small>
-      </div>
+      <strong>{currentRoute.label}</strong>
       <div class="topbar__actions">
         <button class="icon-button icon-button--quiet" type="button" title="Refresh runtime" aria-label="Refresh runtime" onclick={refreshRuntime} disabled={booting || refreshing}>
           <RefreshCw size={15} class={refreshing ? "spin" : ""} aria-hidden="true" />
@@ -75,7 +71,7 @@
     <div class="content-frame">
       {#if booting}
         <section class="page">
-          <PageState kind="loading" title="Starting SearchNow" message="Loading your local Minecraft Bedrock workspace." />
+          <PageState kind="loading" title="Starting SearchNow" message="Loading your Minecraft Bedrock workspace." />
         </section>
       {:else}
         <Library runtimeReady={snapshot?.ready ?? false} active={route === "library"} />

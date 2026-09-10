@@ -3,6 +3,7 @@
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
   import { localContentTypeLabel } from "../app/shared/format";
   import type { LocalBackendSnapshot, LocalContentItem, LocalContentType } from "../app/shared/types";
+  import MetricCard from "../components/ui/MetricCard.svelte";
   import Notice from "../components/ui/Notice.svelte";
   import PageState from "../components/ui/PageState.svelte";
   import ResultsBar from "../components/ui/ResultsBar.svelte";
@@ -26,6 +27,11 @@
       .sort(compareItems),
   );
   let controlsChanged = $derived(query.trim().length > 0 || filter !== "all" || sort !== "nameAsc");
+  let packCount = $derived(
+    snapshot
+      ? snapshot.library.summary.behaviorPacks + snapshot.library.summary.resourcePacks + snapshot.library.summary.skinPacks
+      : "—",
+  );
 
   function matchesCurrentFilter(item: LocalContentItem): boolean {
     if (filter === "issues" && item.status !== "invalidMetadata") return false;
@@ -77,32 +83,20 @@
       <p>Browse Minecraft Bedrock worlds and packs detected on this device.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={refresh} disabled={!runtimeReady || loading}>
-      <RefreshCw size={15} class={loading ? "spin" : ""} />
+      <RefreshCw size={15} class={loading ? "spin" : ""} aria-hidden="true" />
       {loading ? "Scanning" : "Rescan"}
     </button>
   </div>
 
   <div class="metric-grid metric-grid--four">
-    <article class="metric-card">
-      <span>Total content</span>
-      <strong>{snapshot?.library.summary.total ?? "—"}</strong>
-      <small>{snapshot ? `${snapshot.library.scannedRoots} storage root${snapshot.library.scannedRoots === 1 ? "" : "s"} scanned` : "Awaiting scan"}</small>
-    </article>
-    <article class="metric-card">
-      <span>Worlds</span>
-      <strong>{snapshot?.library.summary.worlds ?? "—"}</strong>
-      <small>Local Minecraft worlds</small>
-    </article>
-    <article class="metric-card">
-      <span>Packs</span>
-      <strong>{snapshot ? snapshot.library.summary.behaviorPacks + snapshot.library.summary.resourcePacks + snapshot.library.summary.skinPacks : "—"}</strong>
-      <small>Behavior, resource, and skin packs</small>
-    </article>
-    <article class="metric-card">
-      <span>Needs review</span>
-      <strong>{snapshot?.library.summary.invalidItems ?? "—"}</strong>
-      <small>Items with invalid metadata</small>
-    </article>
+    <MetricCard
+      label="Total content"
+      value={snapshot?.library.summary.total ?? "—"}
+      detail={snapshot ? `${snapshot.library.scannedRoots} storage root${snapshot.library.scannedRoots === 1 ? "" : "s"} scanned` : "Awaiting scan"}
+    />
+    <MetricCard label="Worlds" value={snapshot?.library.summary.worlds ?? "—"} detail="Local Minecraft worlds" />
+    <MetricCard label="Packs" value={packCount} detail="Behavior, resource, and skin packs" />
+    <MetricCard label="Needs review" value={snapshot?.library.summary.invalidItems ?? "—"} detail="Items with invalid metadata" />
   </div>
 
   {#if snapshot}

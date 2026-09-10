@@ -167,7 +167,7 @@
   {:else if snapshot && filteredItems.length > 0}
     <div class="content-grid">
       {#each filteredItems as item (item.id)}
-        <article class="content-card content-card--interactive" tabindex="0" role="button" onclick={() => openDetails(item)} onkeydown={(event) => event.key === "Enter" && openDetails(item)}>
+        <button class="content-card content-card--interactive" type="button" onclick={() => openDetails(item)}>
           <div class="content-card__preview">
             <ContentTypeMark kind={item.contentType} />
           </div>
@@ -184,7 +184,7 @@
               {#if item.version.length}<span>v{item.version.join(".")}</span>{/if}
             </div>
           </div>
-        </article>
+        </button>
       {/each}
     </div>
   {:else if snapshot}

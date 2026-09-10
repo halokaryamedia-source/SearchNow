@@ -1,7 +1,5 @@
 use crate::{
-    app_runtime::{
-        QueueCatalogDownloadRequest, SearchNowBackendPaths, SearchNowBackendRuntime,
-    },
+    app_runtime::{QueueCatalogDownloadRequest, SearchNowBackendPaths, SearchNowBackendRuntime},
     catalog::CatalogDownloadRef,
     diagnostics::{BackendStartupPhase, DiagnosticSeverity},
     download::{

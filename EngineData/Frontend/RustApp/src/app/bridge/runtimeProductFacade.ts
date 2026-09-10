@@ -7,34 +7,18 @@ import type {
   DownloadManagerSnapshot,
   LocalBackendSnapshot,
   MinecraftDiscoverySnapshot,
-  ProductError,
   ProductResult,
   ProductRuntimeSnapshot,
   QueueCatalogDownloadRequest,
 } from "../shared/types";
+import { toProductError } from "../shared/productErrors";
 import { runtimeApi } from "./runtimeApi";
-
-function normalizeProductError(error: unknown, fallbackMessage: string): ProductError {
-  if (typeof error === "object" && error !== null) {
-    const candidate = error as { code?: unknown; message?: unknown };
-    if (typeof candidate.message === "string") {
-      return {
-        code: typeof candidate.code === "string" ? candidate.code : "runtime_command_failed",
-        message: candidate.message,
-      };
-    }
-  }
-  if (typeof error === "string" && error.trim()) {
-    return { code: "runtime_command_failed", message: error };
-  }
-  return { code: "runtime_command_failed", message: fallbackMessage };
-}
 
 async function productCall<T>(operation: () => Promise<T>, fallbackMessage: string): Promise<ProductResult<T>> {
   try {
     return { ok: true, data: await operation() };
   } catch (error) {
-    return { ok: false, error: normalizeProductError(error, fallbackMessage) };
+    return { ok: false, error: toProductError(error, fallbackMessage) };
   }
 }
 
@@ -89,7 +73,7 @@ export const runtimeProductFacade = {
   loadLibrary(): Promise<ProductResult<LocalBackendSnapshot>> {
     return productCall(
       () => runtimeApi.scanLocalLibrary(),
-      "SearchNow could not scan the local Minecraft library.",
+      "SearchNow could not scan your Minecraft content.",
     );
   },
 
@@ -103,14 +87,14 @@ export const runtimeProductFacade = {
   loadSettings(): Promise<ProductResult<AppSettings>> {
     return productCall(
       () => runtimeApi.loadAppSettings(),
-      "SearchNow could not load application settings.",
+      "SearchNow could not load your settings.",
     );
   },
 
   saveSettings(settings: AppSettings): Promise<ProductResult<AppSettings>> {
     return productCall(
       () => runtimeApi.saveAppSettings(settings),
-      "SearchNow could not save application settings.",
+      "SearchNow could not save your settings.",
     );
   },
 
@@ -124,21 +108,21 @@ export const runtimeProductFacade = {
   openDownloadDirectory(directory: string): Promise<ProductResult<void>> {
     return productCall(
       () => runtimeApi.openDownloadDirectory(directory),
-      "SearchNow could not open the download folder.",
+      "SearchNow could not open this folder.",
     );
   },
 
   loadDownloads(): Promise<ProductResult<DownloadManagerSnapshot>> {
     return productCall(
       () => runtimeApi.getDownloadSnapshot(),
-      "SearchNow could not read the download queue.",
+      "SearchNow could not read your downloads.",
     );
   },
 
   queueCatalogDownload(request: QueueCatalogDownloadRequest): Promise<ProductResult<DownloadJob>> {
     return productCall(
       () => runtimeApi.queueCatalogDownload(request),
-      "SearchNow could not queue this catalog download.",
+      "SearchNow could not start this download.",
     );
   },
 
@@ -159,21 +143,21 @@ export const runtimeProductFacade = {
   removeDownload(jobId: string): Promise<ProductResult<DownloadManagerSnapshot>> {
     return productCall(
       () => runtimeApi.removeDownload(jobId),
-      "SearchNow could not remove this download from history.",
+      "SearchNow could not remove this download from the list.",
     );
   },
 
   loadDiagnostics(): Promise<ProductResult<BackendDiagnosticsSnapshot>> {
     return productCall(
       () => runtimeApi.getBackendDiagnostics(),
-      "SearchNow could not read runtime diagnostics.",
+      "SearchNow could not read diagnostics.",
     );
   },
 
   queryCatalog(request: CatalogRequest): Promise<ProductResult<CatalogPage>> {
     return productCall(
       () => runtimeApi.queryCatalog(request),
-      "SearchNow could not query the selected catalog provider.",
+      "SearchNow could not search this content source.",
     );
   },
 };

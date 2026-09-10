@@ -195,14 +195,26 @@ fn finalization_keeps_existing_file_and_uses_next_available_name() {
     fs::write(&plan.payload_path, b"complete payload").expect("payload");
 
     let first_path = finalize_payload(&plan).expect("first finalize");
-    assert_eq!(first_path.file_name().and_then(|value| value.to_str()), Some("pack.mcpack"));
-    assert_eq!(fs::read(&first_path).expect("first final file"), b"complete payload");
+    assert_eq!(
+        first_path.file_name().and_then(|value| value.to_str()),
+        Some("pack.mcpack")
+    );
+    assert_eq!(
+        fs::read(&first_path).expect("first final file"),
+        b"complete payload"
+    );
 
     let second_path = finalize_payload(&plan).expect("keep both finalize");
     assert_eq!(
         second_path.file_name().and_then(|value| value.to_str()),
         Some("pack (2).mcpack")
     );
-    assert_eq!(fs::read(&first_path).expect("original final file"), b"complete payload");
-    assert_eq!(fs::read(&second_path).expect("second final file"), b"complete payload");
+    assert_eq!(
+        fs::read(&first_path).expect("original final file"),
+        b"complete payload"
+    );
+    assert_eq!(
+        fs::read(&second_path).expect("second final file"),
+        b"complete payload"
+    );
 }

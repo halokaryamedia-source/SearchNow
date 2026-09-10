@@ -168,10 +168,17 @@ impl AtomicFileStore {
         let Ok(entries) = fs::read_dir(parent) else {
             return;
         };
+        let expected_prefix = format!("{}.", self.temp_prefix);
         for entry in entries.filter_map(Result::ok) {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if !file_type.is_file() || file_type.is_symlink() {
+                continue;
+            }
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if name.starts_with(self.temp_prefix) && name.ends_with(".tmp") {
+            if name.starts_with(&expected_prefix) && name.ends_with(".tmp") {
                 let _ = fs::remove_file(entry.path());
             }
         }

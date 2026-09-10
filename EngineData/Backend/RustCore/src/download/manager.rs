@@ -9,7 +9,10 @@ use crate::{
     error::{BackendError, BackendResult},
     identity::MAX_DOWNLOAD_RESOURCE_ID_BYTES,
 };
-use std::{collections::HashSet, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    collections::HashSet,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 const MAX_TRANSPORT_KEY_BYTES: usize = 64;
 const MAX_DISPLAY_NAME_BYTES: usize = 256;
@@ -493,11 +496,7 @@ fn validate_persisted_job(job: &DownloadJob) -> BackendResult<()> {
             }
         }
         DownloadJobState::Interrupted => {
-            if !job
-                .last_error
-                .as_ref()
-                .is_some_and(|error| error.retryable)
-            {
+            if !job.last_error.as_ref().is_some_and(|error| error.retryable) {
                 return Err(invalid_persisted_job());
             }
         }

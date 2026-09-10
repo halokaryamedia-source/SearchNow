@@ -10,6 +10,7 @@ import type {
   ProductError,
   ProductResult,
   ProductRuntimeSnapshot,
+  QueueCatalogDownloadRequest,
 } from "../shared/types";
 import { runtimeApi } from "./runtimeApi";
 
@@ -117,6 +118,13 @@ export const runtimeProductFacade = {
     return productCall(
       () => runtimeApi.getDownloadSnapshot(),
       "SearchNow could not read the download queue.",
+    );
+  },
+
+  queueCatalogDownload(request: QueueCatalogDownloadRequest): Promise<ProductResult<DownloadJob>> {
+    return productCall(
+      () => runtimeApi.queueCatalogDownload(request),
+      "SearchNow could not queue this catalog download.",
     );
   },
 

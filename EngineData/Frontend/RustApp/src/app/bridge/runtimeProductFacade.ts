@@ -114,6 +114,20 @@ export const runtimeProductFacade = {
     );
   },
 
+  chooseDownloadDirectory(): Promise<ProductResult<string | null>> {
+    return productCall(
+      () => runtimeApi.chooseDownloadDirectory(),
+      "SearchNow could not open the folder picker.",
+    );
+  },
+
+  openDownloadDirectory(directory: string): Promise<ProductResult<void>> {
+    return productCall(
+      () => runtimeApi.openDownloadDirectory(directory),
+      "SearchNow could not open the download folder.",
+    );
+  },
+
   loadDownloads(): Promise<ProductResult<DownloadManagerSnapshot>> {
     return productCall(
       () => runtimeApi.getDownloadSnapshot(),

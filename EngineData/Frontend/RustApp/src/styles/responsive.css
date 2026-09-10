@@ -35,12 +35,10 @@ summary:focus-visible {
 
   .sidebar { padding-inline: 10px; }
   .brand { justify-content: center; padding-inline: 0; }
-  .brand > div:last-child,
-  .nav-item span,
-  .sidebar__footer { display: none; }
+  .brand > strong,
+  .nav-item span { display: none; }
   .nav-item { justify-content: center; padding-inline: 0; }
-  .topbar { min-height: 62px; }
-  .topbar > div:first-child strong { display: none; }
+  .topbar { min-height: 58px; }
   .content-grid,
   .content-grid--catalog,
   .settings-layout { grid-template-columns: 1fr; }

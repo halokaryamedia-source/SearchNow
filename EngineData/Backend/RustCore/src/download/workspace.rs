@@ -303,7 +303,11 @@ pub fn finalize_payload(plan: &DownloadWorkspacePlan) -> BackendResult<PathBuf> 
 }
 
 fn windows_reserved_name(value: &str) -> bool {
-    let base = value.split('.').next().unwrap_or(value).to_ascii_uppercase();
+    let base = value
+        .split('.')
+        .next()
+        .unwrap_or(value)
+        .to_ascii_uppercase();
     matches!(base.as_str(), "CON" | "PRN" | "AUX" | "NUL")
         || matches!(
             base.as_str(),

@@ -22,7 +22,13 @@
   } = $props();
 </script>
 
-<article class:empty-panel--error={kind === "error"} class="empty-panel" aria-live={kind === "loading" ? "polite" : undefined}>
+<article
+  class:empty-panel--error={kind === "error"}
+  class:empty-panel--loading={kind === "loading"}
+  class="empty-panel"
+  aria-live={kind === "loading" ? "polite" : undefined}
+  aria-busy={kind === "loading"}
+>
   <div class="empty-panel__icon" aria-hidden="true">
     {#if kind === "loading"}
       <RefreshCw size={18} class="spin" />

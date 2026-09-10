@@ -4,6 +4,7 @@
   import { runtimeProductFacade } from "./app/bridge/runtimeProductFacade";
   import type { AppRoute, ProductRuntimeSnapshot } from "./app/shared/types";
   import Sidebar from "./components/layout/Sidebar.svelte";
+  import PageState from "./components/ui/PageState.svelte";
   import StatusBadge from "./components/ui/StatusBadge.svelte";
   import Discover from "./pages/Discover.svelte";
   import Downloads from "./pages/Downloads.svelte";
@@ -46,7 +47,7 @@
   });
 </script>
 
-<div class="app-shell">
+<div class="app-shell" aria-busy={booting || refreshing}>
   <Sidebar {route} onNavigate={navigate} />
 
   <main class="app-main">
@@ -57,7 +58,7 @@
       </div>
       <div class="topbar__actions">
         <button class="icon-button icon-button--quiet" type="button" title="Refresh runtime" aria-label="Refresh runtime" onclick={refreshRuntime} disabled={booting || refreshing}>
-          <RefreshCw size={15} class={refreshing ? "spin" : ""} />
+          <RefreshCw size={15} class={refreshing ? "spin" : ""} aria-hidden="true" />
         </button>
         <StatusBadge label={runtimeLabel} tone={runtimeTone} />
       </div>
@@ -66,10 +67,7 @@
     <div class="content-frame">
       {#if booting}
         <section class="page">
-          <article class="empty-panel empty-panel--boot">
-            <div class="empty-panel__icon"><RefreshCw size={18} class="spin" /></div>
-            <div><h2>Starting SearchNow</h2><p>Loading your local Minecraft Bedrock workspace.</p></div>
-          </article>
+          <PageState kind="loading" title="Starting SearchNow" message="Loading your local Minecraft Bedrock workspace." />
         </section>
       {:else if route === "library"}
         <Library runtimeReady={snapshot?.ready ?? false} />

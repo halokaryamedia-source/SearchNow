@@ -6,6 +6,7 @@ import "./styles/diagnostics.css";
 import "./styles/results.css";
 import "./styles/content-details.css";
 import "./styles/navigation.css";
+import "./styles/visual-polish.css";
 import "./styles/responsive.css";
 
 const target = document.getElementById("app");

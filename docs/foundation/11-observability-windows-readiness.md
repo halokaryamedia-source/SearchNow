@@ -4,21 +4,26 @@ Status: **current observability/readiness contract**
 
 ## Goal
 
-SearchNow must be diagnosable without turning diagnostics into a second logging system, a credential leak surface, or a reason core operations fail.
+SearchNow must be diagnosable without turning diagnostics into a second logging system, a credential leak surface, or a reason core operations fail. Build verification must also be deterministic enough that a green or red result can be reproduced from committed source and lockfiles.
 
 ```text
 SearchNowBackendRuntime
 ├── bounded DiagnosticsBuffer
+├── current component health
 ├── safe BackendHealthSnapshot
 ├── coarse operation timings
 └── stable result codes
+
+Repository
+├── Cargo.lock
+└── Frontend/package-lock.json
 
 GitHub Actions
 ├── Linux repository/backend/frontend gates
 └── Windows RustCore + Tauri compile gate
 ```
 
-No local-PC testing is required to maintain this contract. Local smoke testing remains a later TARGET_WINDOWS evidence step.
+Local smoke testing remains a later TARGET_WINDOWS evidence step; it is not silently substituted by hosted CI.
 
 ## Diagnostic ownership
 
@@ -28,12 +33,22 @@ No local-PC testing is required to maintain this contract. Local smoke testing r
 - `DiagnosticSeverity`;
 - `DiagnosticComponent`;
 - startup phase;
+- current degraded-component state;
 - backend health snapshot;
-- bounded in-memory retention.
+- bounded in-memory event retention.
 
-The default buffer retains 128 events and is hard-capped at 512. Older events are dropped rather than allowing unbounded memory growth.
+The default event buffer retains 128 events and is hard-capped at 512. Older events are dropped rather than allowing unbounded memory growth.
 
-Diagnostic failures are best-effort: poisoned/unavailable diagnostic state returns an unavailable/unknown snapshot and must not fail product operations.
+Historical events and current health have separate semantics:
+
+```text
+retained events     = what happened recently
+component health    = what is currently degraded
+```
+
+A successful operation clears the current error degradation for its component without deleting historical error events. A transient error therefore does not keep health degraded merely because the old event remains in the ring buffer.
+
+Diagnostic failures remain best-effort: poisoned/unavailable diagnostic state returns an unavailable/unknown snapshot and must not break core product operations.
 
 ## Safe event contract
 
@@ -61,73 +76,68 @@ Do not put into diagnostics:
 - opaque provider-session payloads;
 - entitlement/protected-content material.
 
-Messages in the generic diagnostic buffer remain static SearchNow-owned text. Detailed errors stay in the normal typed error boundary and must be sanitized before any future persistent logging is considered.
+Detailed errors stay in their typed boundary and must be sanitized before any future persistent logging is considered.
 
 ## Instrumentation level
 
-Instrument operation boundaries, not inner loops.
-
-Current coarse events cover:
-
-- backend startup and readiness;
-- provider-runtime composition;
-- download-runtime startup;
-- settings load/save;
-- Minecraft discovery;
-- local library scan;
-- package inspection;
-- catalog query;
-- download queue/cancel/retry/remove;
-- aggregate runtime snapshot.
+Instrument operation boundaries, not inner loops. Current coarse events cover backend startup, provider/download runtime composition, settings, Minecraft discovery, library scan, package inspection, catalog query, download lifecycle commands, and aggregate runtime snapshot.
 
 Do not emit per-file scan events, per-download-chunk events, HTTP header events, or provider payload dumps.
 
-## Health semantics
+## Download scheduler visibility
 
-`BackendHealthSnapshot` is safe public metadata. It may report:
+A scheduler/persistence failure after a worker completes must not disappear silently. `DownloadManagerSnapshot` may expose one safe scheduler failure code/message so the product can distinguish a healthy idle queue from a queue that cannot currently advance. The failure contains no runtime credential material.
 
-- startup phase;
-- healthy/degraded/unknown state;
-- retained/dropped event counts;
-- warning/error counts;
-- last stable diagnostic code.
+## Deterministic dependency verification
 
-It is not a persistence database and does not expose secret-bearing session material.
+The repository owns one Rust workspace lock and one frontend npm lock:
+
+```text
+Cargo.toml
+Cargo.lock
+EngineData/Frontend/RustApp/package-lock.json
+```
+
+CI uses locked resolution:
+
+```text
+npm ci
+cargo ... --locked
+```
+
+Do not return to floating CI installs unless the dependency policy is explicitly revised.
 
 ## Windows remote readiness
 
-Repository verification includes a hosted Windows gate after the normal Linux gate:
+Repository verification runs a hosted Windows gate after the normal Linux gate:
 
 ```text
 Windows runner
-├── cargo test RustCore
-└── cargo check Tauri crate
+├── cargo test -p searchnow-core --locked
+├── npm ci
+├── build Svelte/Vite frontend
+└── cargo check -p searchnow --locked
 ```
 
-This proves Windows compilation and deterministic Windows-compatible RustCore behavior without requiring the user's local PC.
+The committed `src-tauri/icons/icon.png` satisfies Tauri context generation. Windows resource compilation may continue using the build-only ICO generated under Cargo `OUT_DIR` until final branding assets are approved. Build placeholders are not product branding.
 
-Tauri 2 requires a Windows resource icon during `tauri-build`. Until final branding assets exist, `src-tauri/build.rs` generates a tiny build-only ICO under Cargo `OUT_DIR` on Windows and passes that path explicitly to `tauri-build`. The placeholder is never treated as a product branding asset and does not need to be committed as a binary file.
-
-Final product branding must replace this build-only fallback later.
+A green hosted Windows compile proves compilation and deterministic Windows-compatible RustCore behavior only. It does not prove installed-app behavior.
 
 ## Future local smoke evidence
 
-`tools/windows_smoke_readiness.ps1` is prepared for later use. It is not automatically run on the user's PC.
+`tools/windows_smoke_readiness.ps1` is the non-destructive readiness entrypoint. It checks current GDK and legacy UWP candidate locations and can run the same locked frontend/Rust compilation prerequisites.
 
-When local testing becomes convenient, the smoke phase should cover:
+When local testing becomes convenient, manual smoke evidence should cover:
 
 1. Windows/AppData environment resolution;
-2. RustCore + Tauri compile check;
-3. Minecraft GDK/UWP candidate detection;
-4. settings save/reload;
-5. local package inspection;
-6. local download finalization;
-7. safe diagnostics inspection.
+2. actual Bedrock GDK/UWP account discovery;
+3. settings save/reload/recovery;
+4. local package inspection;
+5. download state startup/reconciliation and stale staging cleanup;
+6. safe diagnostics inspection.
 
-Local runtime claims must not be made until that smoke phase is actually performed.
+Local runtime claims must not be made until those checks are actually performed.
 
 ## Security boundary
 
-Observability and readiness must not reintroduce legacy BlueCoin protected-content/key behavior, secret sharing, or provider-specific credential persistence.
-
-The Windows compile gate proves compilation only. It does not prove real Marketplace/provider compatibility, installed-app behavior, production TLS behavior, or user-machine performance.
+Observability/readiness must not reintroduce legacy protected-content/key behavior, hidden upload, secret sharing, or provider-specific credential persistence. Production Tauri IPC also does not expose the deterministic `local-file` fixture or raw transport-selecting enqueue requests.

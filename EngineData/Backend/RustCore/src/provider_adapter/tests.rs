@@ -123,6 +123,8 @@ impl CatalogProvider for FakeCatalogProvider {
             items: vec![CatalogProviderItem {
                 item_id: "demo-addon".into(),
                 title: "Demo Add-On".into(),
+                creator_name: Some("Demo Creator".into()),
+                thumbnail_url: Some("https://cdn.example.com/demo-addon.webp".into()),
                 description: Some("Integrated provider fixture".into()),
                 content_type: CatalogContentType::Addon,
                 tags: vec!["fixture".into()],
@@ -226,6 +228,11 @@ fn integrated_provider_catalog_to_download_reuses_one_secret_session() {
             query: CatalogQuery::default(),
         })
         .expect("catalog query");
+    assert_eq!(page.items[0].creator_name.as_deref(), Some("Demo Creator"));
+    assert_eq!(
+        page.items[0].thumbnail_url.as_deref(),
+        Some("https://cdn.example.com/demo-addon.webp")
+    );
     let source = page.items[0]
         .download
         .as_ref()

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
   import { runtimeProductFacade } from "../app/bridge/runtimeProductFacade";
-  import { catalogContentTypeLabel, formatDateTime } from "../app/shared/format";
+  import { catalogContentTypeLabel, formatDate, formatDateTime } from "../app/shared/format";
   import type {
     CatalogContentType,
     CatalogItem,
@@ -151,7 +151,7 @@
     <div>
       <span class="eyebrow">Catalog</span>
       <h1>Discover</h1>
-      <p>Search connected catalog sources for worlds, Add-Ons, packs, skins, and persona content.</p>
+      <p>Find Minecraft content from connected sources.</p>
     </div>
   </div>
 
@@ -159,16 +159,16 @@
     <div class="toolbar toolbar--catalog">
       <label class="search-field search-field--wide">
         <Search size={15} aria-hidden="true" />
-        <input bind:value={query} type="search" placeholder="Search catalog" aria-label="Search catalog" />
+        <input bind:value={query} type="search" placeholder="Search content" aria-label="Search content" />
       </label>
       {#if catalogProviders.length > 1}
-        <select class="select-field" bind:value={selectedProvider} aria-label="Catalog provider">
+        <select class="select-field" bind:value={selectedProvider} aria-label="Content source">
           {#each catalogProviders as provider (provider.capabilities.provider)}
             <option value={provider.capabilities.provider}>{provider.capabilities.provider}</option>
           {/each}
         </select>
       {/if}
-      <select class="select-field" bind:value={contentFilter} aria-label="Catalog content type">
+      <select class="select-field" bind:value={contentFilter} aria-label="Content type">
         <option value="all">All types</option>
         <option value="world">Worlds</option>
         <option value="addon">Add-Ons</option>
@@ -176,26 +176,26 @@
         <option value="skin">Skins</option>
         <option value="persona">Persona</option>
       </select>
-      <select class="select-field" bind:value={sort} aria-label="Catalog sort">
-        <option value="relevance">Relevance</option>
-        <option value="newest">Newest</option>
-        <option value="oldest">Oldest</option>
+      <select class="select-field" bind:value={sort} aria-label="Sort results">
+        <option value="relevance">Most relevant</option>
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
         <option value="nameAsc">Name A–Z</option>
         <option value="nameDesc">Name Z–A</option>
       </select>
     </div>
     {#if page}
       <ResultsBar
-        label={`${page.items.length} result${page.items.length === 1 ? "" : "s"} loaded`}
-        detail={`Source: ${page.provider}${page.nextCursor ? " · more results available" : ""}`}
+        label={`${page.items.length} result${page.items.length === 1 ? "" : "s"}`}
+        detail={page.nextCursor ? "More results available" : "All loaded results shown"}
         showReset={controlsChanged}
-        resetLabel="Reset search"
+        resetLabel="Reset"
         onReset={resetControls}
       />
     {/if}
   {:else}
     <div class="search-shell" aria-disabled="true">
-      <span><Search size={14} aria-hidden="true" /> Search catalog</span>
+      <span><Search size={14} aria-hidden="true" /> Search content</span>
       <kbd>Source unavailable</kbd>
     </div>
   {/if}
@@ -203,7 +203,7 @@
   {#if error}
     <Notice
       tone="warning"
-      title="Catalog unavailable."
+      title="Content unavailable"
       message={error}
       actionLabel="Retry"
       actionDisabled={loading}
@@ -212,40 +212,42 @@
   {/if}
 
   {#if !runtimeReady}
-    <PageState marker="02" title="Discover unavailable" message="SearchNow could not connect to the desktop runtime needed to browse catalog sources." />
+    <PageState marker="02" title="Discover unavailable" message="SearchNow cannot access connected content sources right now." />
   {:else if catalogProviders.length === 0}
-    <PageState marker="02" title="No catalog source connected" message="You can continue using your local Library and Downloads. Catalog browsing will become available when a source is connected." />
+    <PageState marker="02" title="No content source connected" message="Connect a supported source to browse downloadable content." />
   {:else if loading && !page}
-    <PageState kind="loading" title="Searching catalog" message="Waiting for results from the selected catalog source." />
+    <PageState kind="loading" title="Searching" message="Loading content from the selected source." />
   {:else if page && page.items.length > 0}
     <div class="content-grid content-grid--catalog" aria-busy={loading}>
       {#each page.items as item (`${item.provider}:${item.itemId}`)}
-        <article class="content-card content-card--catalog">
-          <div class="content-card__preview">
-            <ContentTypeMark kind={item.contentType} />
+        <article class="content-card content-card--catalog catalog-card">
+          <div class="content-card__preview catalog-card__thumbnail">
+            {#if item.thumbnailUrl}
+              <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+            {:else}
+              <ContentTypeMark kind={item.contentType} />
+            {/if}
+            <span class="catalog-card__type">{catalogContentTypeLabel(item.contentType)}</span>
           </div>
           <div class="content-card__body">
-            <div class="content-card__meta"><span>{catalogContentTypeLabel(item.contentType)}</span><span class="chip">{item.provider}</span></div>
             <h2 title={item.title}>{item.title}</h2>
-            <p>{item.description ?? "No catalog description is available for this item."}</p>
-            {#if item.tags.length}
-              <div class="chip-row">{#each item.tags.slice(0, 4) as tag}<span class="chip">{tag}</span>{/each}</div>
-            {/if}
+            <div class="catalog-card__creator">{item.creatorName ? `By ${item.creatorName}` : item.provider}</div>
+            <div class="catalog-card__facts">
+              {#if item.publishedAtMs}<span>Released {formatDate(item.publishedAtMs)}</span>{/if}
+              {#if item.updatedAtMs && item.updatedAtMs !== item.publishedAtMs}<span>Updated {formatDate(item.updatedAtMs)}</span>{/if}
+            </div>
             <div class="content-card__footer">
-              <span class="state-text">{item.download ? "Download available" : "Browse only"}</span>
-              {#if item.updatedAtMs || item.publishedAtMs}
-                <span>{formatDateTime(item.updatedAtMs ?? item.publishedAtMs ?? 0)}</span>
-              {/if}
+              <span class="state-text">{item.download ? "Download available" : "View only"}</span>
             </div>
             <ContentDetails
               description={item.description}
               items={[
-                { label: "Provider", value: item.provider },
-                { label: "Content type", value: catalogContentTypeLabel(item.contentType) },
+                { label: "Creator", value: item.creatorName },
+                { label: "Source", value: item.provider },
+                { label: "Type", value: catalogContentTypeLabel(item.contentType) },
                 { label: "Tags", value: item.tags.length ? item.tags.join(", ") : null },
-                { label: "Published", value: item.publishedAtMs ? formatDateTime(item.publishedAtMs) : null },
-                { label: "Updated", value: item.updatedAtMs ? formatDateTime(item.updatedAtMs) : null },
-                { label: "Availability", value: item.download ? "Download available" : "Browse only" },
+                { label: "Release date", value: item.publishedAtMs ? formatDateTime(item.publishedAtMs) : null },
+                { label: "Last updated", value: item.updatedAtMs ? formatDateTime(item.updatedAtMs) : null },
               ]}
             />
           </div>
@@ -260,9 +262,9 @@
   {:else if page}
     <PageState
       marker="02"
-      title="No matching catalog content"
-      message="Try a broader search or reset the current catalog filters."
-      actionLabel={controlsChanged ? "Reset search" : null}
+      title="No matching content"
+      message="Try a different search or reset the current filters."
+      actionLabel={controlsChanged ? "Reset" : null}
       onAction={controlsChanged ? resetControls : null}
     />
   {/if}

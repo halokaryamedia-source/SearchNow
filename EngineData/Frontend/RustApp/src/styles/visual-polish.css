@@ -10,6 +10,10 @@
   padding-bottom: 4px;
 }
 
+.page-heading > div > .eyebrow {
+  display: none;
+}
+
 .page-heading h1 {
   line-height: 1.04;
   letter-spacing: -0.04em;
@@ -20,7 +24,6 @@
   max-width: 720px;
 }
 
-/* Navigation: calm by default, obvious when selected. */
 .nav-item {
   position: relative;
   min-height: 42px;
@@ -44,16 +47,14 @@
 }
 
 .topbar {
-  min-height: 66px;
+  min-height: 58px;
   background: rgb(13 17 23 / 0.9);
 }
 
-.topbar strong {
-  color: var(--sn-text);
-  font-weight: 650;
+.topbar__actions--end {
+  margin-left: auto;
 }
 
-/* Primary action should be visible without becoming loud. */
 .button--primary {
   border-color: #80adf6;
   background: linear-gradient(180deg, var(--sn-accent-strong), var(--sn-accent));
@@ -82,7 +83,6 @@
     transform 140ms ease;
 }
 
-/* Metrics are supporting information, so keep them compact and scannable. */
 .metric-card {
   min-height: 116px;
   padding: 16px 17px;
@@ -101,7 +101,6 @@
   margin: 0;
 }
 
-/* Controls should read as one working surface, not many separate boxes. */
 .toolbar {
   flex-wrap: wrap;
   gap: 8px;
@@ -148,7 +147,6 @@
   border-color: var(--sn-border-strong);
 }
 
-/* Cards prioritize title/status, with secondary metadata visually quieter. */
 .content-grid {
   gap: 14px;
 }
@@ -209,7 +207,6 @@
   font-weight: 650;
 }
 
-/* Downloads are task rows, not content cards: flatter and easier to follow. */
 .download-list {
   gap: 10px;
 }
@@ -244,7 +241,6 @@
   background: var(--sn-accent);
 }
 
-/* Settings sections feel grouped rather than like a wall of cards. */
 .settings-section {
   border-color: #293647;
   background: #151d27;
@@ -267,7 +263,6 @@
   background: var(--sn-surface);
 }
 
-/* Empty/loading/error states remain distinct and centered on one next action. */
 .empty-panel {
   min-height: 200px;
   border-color: #334257;

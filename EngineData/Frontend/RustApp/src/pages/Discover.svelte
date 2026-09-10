@@ -23,7 +23,7 @@
   let query = $state("");
   let contentFilter = $state<ContentFilter>("all");
   let sort = $state<CatalogSort>("relevance");
-  let selectedProvider = $state(providers.find((provider) => provider.capabilities.catalog)?.capabilities.provider ?? "");
+  let selectedProvider = $state("");
   let page = $state<CatalogPage | null>(null);
   let loading = $state(false);
   let loadingMore = $state(false);
@@ -31,6 +31,14 @@
   let requestSequence = 0;
 
   let catalogProviders = $derived(providers.filter((provider) => provider.capabilities.catalog));
+
+  $effect(() => {
+    const firstProvider = catalogProviders[0]?.capabilities.provider ?? "";
+    const stillAvailable = catalogProviders.some(
+      (provider) => provider.capabilities.provider === selectedProvider,
+    );
+    if (!stillAvailable && selectedProvider !== firstProvider) selectedProvider = firstProvider;
+  });
 
   function makeRequest(
     provider: string,

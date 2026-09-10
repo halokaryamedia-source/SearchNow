@@ -94,7 +94,7 @@
       <p>Actual queue state comes from the Rust download runtime; active jobs refresh automatically while this page is open.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={() => refresh()} disabled={!runtimeReady || loading}>
-      <RefreshCw size={15} class:spin={loading} />
+      <RefreshCw size={15} class={loading ? "spin" : ""} />
       Refresh
     </button>
   </div>

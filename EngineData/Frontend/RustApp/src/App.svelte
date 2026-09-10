@@ -57,7 +57,7 @@
       </div>
       <div class="topbar__actions">
         <button class="icon-button icon-button--quiet" type="button" title="Refresh runtime" aria-label="Refresh runtime" onclick={refreshRuntime} disabled={booting || refreshing}>
-          <RefreshCw size={15} class:spin={refreshing} />
+          <RefreshCw size={15} class={refreshing ? "spin" : ""} />
         </button>
         <StatusBadge label={runtimeLabel} tone={runtimeTone} />
       </div>

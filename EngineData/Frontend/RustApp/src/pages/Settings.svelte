@@ -99,7 +99,7 @@
         <div class="settings-section__heading">
           <div><span class="eyebrow">Minecraft</span><h2>Content discovery</h2></div>
           <button class="button button--secondary button--compact" type="button" onclick={rescan} disabled={!snapshot?.ready || scanning}>
-            <RefreshCw size={14} class:spin={scanning} />Rescan
+            <RefreshCw size={14} class={scanning ? "spin" : ""} />Rescan
           </button>
         </div>
 

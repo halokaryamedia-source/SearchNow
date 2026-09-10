@@ -52,7 +52,7 @@
       <p>Installed Minecraft Bedrock worlds and packs detected from the runtime-owned local library.</p>
     </div>
     <button class="button button--secondary" type="button" onclick={refresh} disabled={!runtimeReady || loading}>
-      <RefreshCw size={15} class:spin={loading} />
+      <RefreshCw size={15} class={loading ? "spin" : ""} />
       {loading ? "Scanning" : "Rescan"}
     </button>
   </div>
